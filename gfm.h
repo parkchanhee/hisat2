@@ -1173,6 +1173,29 @@ public:
 	 * Write the rstarts array given the szs array for the reference.
 	 */
 	void szsToDisk(const EList<RefRecord>& szs, ostream& os, int reverse);
+
+    bool checkPosToSzs(const EList<RefRecord>& szs, index_t start_idx, index_t pos)
+    {
+        assert(szs[start_idx].first);
+        for(index_t i = start_idx; i < szs.size(); i++) {
+            if((i != start_idx) && (szs[i].first)) {
+                // span to next chr
+                return false;
+            }
+
+            if(pos < szs[i].off) {
+                return false;
+            } else {
+                pos -= szs[i].off;
+                if(pos < szs[i].len) {
+                    return true;
+                }
+                pos -= szs[i].len;
+            }
+        }
+        assert(false);
+        return false;
+    }
 	
 	/**
 	 * Helper for the constructors above.  Takes a vector of text
@@ -1569,6 +1592,14 @@ public:
                         pair<index_t, index_t> tmp_pair = chr_szs[chr_idx];
                         const index_t sofar_len = tmp_pair.first;
                         const index_t szs_idx = tmp_pair.second;
+
+                        // check whether ambiguous base is in exon's last and first base
+                        if(!checkPosToSzs(szs, szs_idx, left - 1)
+                                || !checkPosToSzs(szs, szs_idx, right + 1)) {
+                            //cerr << "Skip ss. " << chr << ", " << left - 1 << ", " << right + 1 << endl;
+                            continue;
+                        }
+
                         bool inside_Ns = false;
                         index_t add_pos = 0;
                         assert(szs[szs_idx].first);
@@ -4181,7 +4212,6 @@ void GFM<index_t>::joinToDisk(
 			}
 			// Increment seqsRead if this is the first fragment
 			if(rec.first && rec.len > 0) seqsRead++;
-			if(bases == 0) continue;
             assert_lt(szsi, szs.size());
             assert_eq(rec.off, szs[szsi].off);
             assert_eq(rec.len, szs[szsi].len);
@@ -4194,7 +4224,11 @@ void GFM<index_t>::joinToDisk(
 			patoff += rec.off; // add fragment's offset from end of last frag.
 			// Adjust rpcps
 			//index_t seq = seqsRead-1;
-			ASSERT_ONLY(entsWritten++);
+#ifndef NDEBUG
+            if(bases > 0) {
+			    ASSERT_ONLY(entsWritten++);
+            }
+#endif
 			// This is where rstarts elements are written to the output stream
 			//writeU32(out1, oldRetLen, this->toBe()); // offset from beginning of joined string
 			//writeU32(out1, seq,       this->toBe()); // sequence id
