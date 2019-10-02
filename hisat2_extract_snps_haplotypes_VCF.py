@@ -94,6 +94,26 @@ def extract_vars(chr_dic, chr, pos, ref_allele, alt_alleles, varID):
     vars = []
     assert ',' not in ref_allele
     alt_alleles = alt_alleles.split(',')    
+
+    def make_allele_smaller(ref_allele, alt_allele, min_len, pos):
+        if len(ref_allele) == len(alt_allele):
+            if ref_allele[0] == alt_allele[0]:
+                # we assume that last char of allele is different
+                ref_allele = ref_allele[min_len - 1:]
+                alt_allele = ref_allele[min_len - 1:]
+                pos += (min_len - 1)
+            else:
+                # first character is different
+                ref_allele = ref_allele[0]
+                alt_allele = alt_allele[0]
+        else:
+            ref_allele = ref_allele[min_len - 1:]
+            alt_allele = alt_allele[min_len - 1:]
+            pos += (min_len - 1)
+
+
+        return ref_allele, alt_allele, pos
+
     for a in range(len(alt_alleles)):
         alt_allele = alt_alleles[a]
         if 'N' in alt_allele:
@@ -102,9 +122,10 @@ def extract_vars(chr_dic, chr, pos, ref_allele, alt_alleles, varID):
         min_len = min(len(ref_allele2), len(alt_allele))
         assert min_len >= 1
         if min_len > 1:
-            ref_allele2 = ref_allele2[min_len - 1:]
-            alt_allele = alt_allele[min_len - 1:]
-            pos2 += (min_len - 1)
+            #ref_allele2 = ref_allele2[min_len - 1:]
+            #alt_allele = alt_allele[min_len - 1:]
+            #pos2 += (min_len - 1)
+            ref_allele2, alt_allele, pos2 = make_allele_smaller(ref_allele2, alt_allele, min_len, pos)
 
         type, data = '', ''
         if len(ref_allele2) == 1 and len(alt_allele) == 1:
