@@ -4557,7 +4557,7 @@ static void driver(
 
         AlnSink<index_t> *mssink = NULL;
 
-        auto_ptr<BitPairReference>  refss[2];
+        auto_ptr<BitPairReference> refss[2];
         auto_ptr<BitPairReference> refs;
         if (TLA) {
             for (int j = 0; j < 2; j++) {

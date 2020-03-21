@@ -573,7 +573,9 @@ public:
 
             struct ht2_position *pos = &repeatResult->positions[i];
             chromosomeRepeat = refNameMap->names[pos->chr_id];
-            chromosomeRepeat = chromosomeRepeat.substr(0, chromosomeRepeat.find(' ', 0));
+            if (chromosomeRepeat.find(' ', 0) != string::npos) {
+                chromosomeRepeat = chromosomeRepeat.substr(0, chromosomeRepeat.find(' ', 0));
+            }
             bool genomeForward = pos->direction == 0;
             if (!genomeForward) {
                 continue;
@@ -615,7 +617,7 @@ public:
                     nBestRepeat++;
                 }
             }
-            if (i > repeatLimit) {
+            if (nBestRepeat > repeatLimit || i > repeatLimit) {
                 if (nBestRepeat == 0 && !paired) {
                     continue;
                 } else {
