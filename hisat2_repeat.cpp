@@ -96,6 +96,12 @@ TIndexOffU max_seed_extlen;
 static bool save_sa;
 static bool load_sa;
 
+bool TLA;
+char convertedFrom;
+char convertedTo;
+char convertedToComplement;
+char convertedFromComplement;
+
 static void resetOptions() {
 	verbose        = true;  // be talkative (default)
 	sanityCheck    = 0;     // do slow sanity checks
@@ -172,6 +178,8 @@ enum {
     ARG_MAX_SEED_EXTLEN,
     ARG_SAVE_SA,
     ARG_LOAD_SA,
+    ARG_TLA,
+    ARG_BASE_CHANGE
 };
 
 /**
@@ -263,6 +271,8 @@ static struct option long_options[] = {
 	{(char*)"max-seed-extlen",required_argument, 0,            ARG_MAX_SEED_EXTLEN},
 	{(char*)"save-sa",        no_argument,       0,            ARG_SAVE_SA},
     {(char*)"load-sa",        no_argument,       0,            ARG_LOAD_SA},
+    {(char*)"TLA",            no_argument,       0,            ARG_TLA},
+    {(char*)"base-change",    required_argument, 0,            ARG_BASE_CHANGE},
 	{(char*)0, 0, 0, 0} // terminator
 };
 
@@ -459,6 +469,34 @@ static void parseOptions(int argc, const char **argv) {
             case ARG_LOAD_SA:
                 load_sa = true;
                 break;
+            case ARG_TLA: {
+                TLA = true;
+                break;
+            }
+            case ARG_BASE_CHANGE: {
+
+                string replaceRequest = optarg;
+                convertedFrom = replaceRequest.at(0);
+                convertedTo = replaceRequest.at(1);
+                convertedFromComplement = asc2dnacomp[convertedFrom];
+                convertedToComplement   = asc2dnacomp[convertedTo];
+
+                string dna5CodeString = "ACGTN";
+
+                int dna5Code;
+                for (dna5Code = 0; dna5Code < 4; dna5Code++) {
+                    if (dna5CodeString[dna5Code] == convertedTo) {
+                        break;
+                    }
+                }
+
+                asc2dna_TLA[0][int(convertedFrom)] = dna5Code;
+                asc2dna_TLA[0][int(tolower(convertedFrom))] = dna5Code;
+                asc2dna_TLA[1][int(asc2dnacomp[int(convertedFrom)])] = 3 - dna5Code;
+                asc2dna_TLA[1][int(tolower(asc2dnacomp[int(convertedFrom)]))] = 3 - dna5Code;
+
+                break;
+            }
 			case 'a': autoMem = false; break;
 			case 'q': verbose = false; break;
 			case 's': sanityCheck = true; break;
@@ -854,7 +892,52 @@ int hisat2_repeat(int argc, const char **argv) {
         {
             Timer timer(cerr, "Total time for call to driver() for forward index: ", verbose);
             try {
-                driver<SString<char> >(infile, infiles, outfile, false, forward_only, CGtoTG);
+                int nloop = TLA ? 2 : 1; // if TLA == true, nloop = 2. else one loop
+                for (int i = 0; i < nloop; i++) {
+                    string dna5CodeString = "ACGTN";
+                    int dna5Code = -1;
+
+                    string tag = "";
+                    if (TLA) {
+                        tag = '_';
+                        if (i == 0) {
+                            tag += convertedFrom;
+                            tag += +convertedTo;
+
+                            for (int j = 0; j < 4; j++) {
+                                if (dna5CodeString[j] == convertedTo) {
+                                    dna5Code = j;
+                                    break;
+                                }
+                            }
+                            asc2dna[int(convertedFrom)] = dna5Code;
+                            asc2dna[int(tolower(convertedFrom))] = dna5Code;
+                        } else {
+                            tag += convertedFromComplement;
+                            tag += convertedToComplement;
+
+                            for (int j = 0; j < 4; j++) {
+                                if (dna5CodeString[j] == convertedFrom) {
+                                    dna5Code = j;
+                                    break;
+                                }
+                            }
+                            asc2dna[int(convertedFrom)] = dna5Code;
+                            asc2dna[int(tolower(convertedFrom))] = dna5Code;
+
+                            for (int j = 0; j < 4; j++) {
+                                if (dna5CodeString[j] == asc2dnacomp[int(convertedTo)]) {
+                                    dna5Code = j;
+                                    break;
+                                }
+                            }
+                            asc2dna[int(asc2dnacomp[int(convertedFrom)])] = dna5Code;
+                            asc2dna[int(tolower(asc2dnacomp[int(convertedFrom)]))] = dna5Code;
+                        }
+                    }
+                    driver<SString<char> >(infile, infiles, outfile + tag, false, forward_only, CGtoTG);
+                }
+
             } catch(bad_alloc& e) {
                 if(autoMem) {
                     cerr << "Switching to a packed string representation." << endl;

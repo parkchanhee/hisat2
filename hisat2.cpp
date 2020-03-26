@@ -1835,19 +1835,17 @@ static void parseOption(int next_option, const char *arg) {
             string dna5CodeString = "ACGTN";
 
             int dna5Code;
-            for (dna5Code = 0; dna5Code < 4; dna5Code++) {
-                if (dna5CodeString[dna5Code] == convertedTo) {
+            for (int i = 0; i < 4; i++) {
+                if (dna5CodeString[i] == convertedTo) {
+                    dna5Code = i;
                     break;
                 }
             }
 
-            //string::iterator findIt = find(dna5CodeString.begin(), dna5CodeString.end(), toBase);
-            //int dna5Code = distance(dna5CodeString.begin(), findIt);
-
-            asc2dna_1[int(convertedFrom)] = dna5Code;
-            asc2dna_1[int(tolower(convertedFrom))] = dna5Code;
-            asc2dna_2[int(asc2dnacomp[int(convertedFrom)])] = 3 - dna5Code;
-            asc2dna_2[int(tolower(asc2dnacomp[int(convertedFrom)]))] = 3 - dna5Code;
+            asc2dna_TLA[0][int(convertedFrom)] = dna5Code;
+            asc2dna_TLA[0][int(tolower(convertedFrom))] = dna5Code;
+            asc2dna_TLA[1][int(asc2dnacomp[int(convertedFrom)])] = 3 - dna5Code;
+            asc2dna_TLA[1][int(tolower(asc2dnacomp[int(convertedFrom)]))] = 3 - dna5Code;
 
             break;
         }

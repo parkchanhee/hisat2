@@ -63,6 +63,7 @@ def main():
     curr_script         = os.path.realpath(inspect.getsourcefile(main))
     ex_path             = os.path.dirname(curr_script)
     build_bin_spec      = os.path.join(ex_path,build_bin_s)
+    #repeat_bin_spec     = os.path.join(ex_path,"hisat2-repeat")
 
     options, argv = build_args()
 
@@ -84,6 +85,37 @@ def main():
                 tot_size += statinfo.st_size
         if tot_size > small_index_max_size:
             build_bin_spec = os.path.join(ex_path,build_bin_l)
+
+    if "--auto-repeat-index" in argv:
+        #build repeat index first
+        repeatArgv = []
+        outputName = argv[-1]
+        nThread = "1"
+        repeatLength = "40-"
+        repeatCount = "5"
+        referenceName = ""
+        TLA = False
+        for i in range(len(argv)):
+            if argv[i] == "--base-change":
+                assert (len(argv[i+1]) == 2)
+                TLA = True
+                baseChange = argv[i+1]
+            elif argv[i] == "-p":
+                nThread = argv[i+1]
+            elif argv[i] == "-f":
+                referenceName = argv[i+1]
+        if len(referenceName) == 0:
+            referenceName = argv[-2]
+
+        repeatArgv += ["./hisat2-repeat"]
+        repeatArgv += ["-p", nThread]
+        repeatArgv += ["--repeat-length", repeatLength]
+        repeatArgv += ["--repeat-count", repeatCount]
+        repeatArgv += ["--save-sa"]
+        if TLA:
+            repeatArgv += ["--TLA", "--base-change", baseChange]
+        repeatArgv += [referenceName, outputName]
+        os.system(" ".join(repeatArgv))
 
     argv[0] = build_bin_name
     argv.insert(1, 'basic-0')
