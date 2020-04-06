@@ -1117,8 +1117,9 @@ def extract_pair(infilename,
                 partner = "%s\t%s\t%d" % (read_id, chr2, canonical_pos2)
             if partner in read_dic:
                 maps = read_dic[partner]
+
                 for map in maps:
-                    if map[0] == me:
+                    if (map[0] == me) or len(maps) == 1:
                         cigar2_str, NM2, pos2 = map[1:4]
 
                         if aligner == "bwa":
@@ -1152,6 +1153,8 @@ def extract_pair(infilename,
                         if p_str not in pair_reported:
                             pair_reported.add(p_str)
                             print >> outfile, p_str
+
+
 
             if not me in read_dic:
                 read_dic[me] = []
@@ -1474,6 +1477,7 @@ def compare_single_sam(RNA,
             if found:
                 if index == 0:
                     found_at_first = True
+
         else:
             if [chr, pos, pos2, cigar, NM] in maps:
                 found = True
@@ -1556,7 +1560,7 @@ def pairedInMaps(chr, pos, pos_right, cigar, pos2, pos2_right, cigar2, NM, NM2, 
     for i in range(len(maps)):
         if chr != maps[i][0]:
             continue;
-        if (pos == maps[i][1] or pos2_right == maps[i][2]) and (pos2 == maps[i][4] or pos2_right == maps[i][5]):
+        if (pos == maps[i][1] or pos_right == maps[i][2]) and (pos2 == maps[i][4] or pos2_right == maps[i][5]):
             return True, i
     return False, -1
 """
@@ -1761,7 +1765,7 @@ def compare_paired_sam(RNA,
             found, index = pairedInMaps(chr, pos, pos_right, cigar, pos2, pos2_right, cigar2, NM, NM2, maps)
             if (found):
                 if (index == 0):
-                    found_at_first = True;
+                    found_at_first = True
         else:
             if [chr, pos, pos_right, cigar, pos2, pos2_right, cigar2, NM, NM2] in maps:
                 found = True
@@ -2000,7 +2004,8 @@ def calculate_read_cost(single_end,
         num_threads = min(10, num_cpus)
         desktop = False
     else:
-        num_threads = min(3, num_cpus)
+        #num_threads = min(4, num_cpus)
+        num_threads = num_cpus - 1
         desktop = True
 
     data_base = "sim"

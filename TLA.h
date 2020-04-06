@@ -30,6 +30,7 @@ extern vector<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
 
+
 using namespace std;
 
 class Alignment;
@@ -1426,7 +1427,15 @@ public:
 
 
     int calculatePairScore(long long int location1, int AS1, long long int location2, int AS2) {
-        return 10*AS1 + 10*AS2 - abs(location1 - location2);
+        int score = 100*AS1 + 100*AS2;
+        int distance = abs(location1 - location2);
+        if (distance >= 10000) {
+            score -= distance;
+        }
+        if (distance > 500000) {
+            return numeric_limits<int>::min();
+        }
+        return score;
     }
 
     // add a extra tag if the read is aligned on repeat index. this tag will show which repeat index is used.
@@ -1575,6 +1584,12 @@ public:
         } else{
             for (int i = 0; i < alignments.size(); i++) {
                 // find it's pair
+                if ((alignments[i]->location != newAlignment->pairToLocation) || (alignments[i]->chromosomeName != newAlignment->chromosomeName)) {
+                    continue;
+                }
+                if (alignments[i]->pairSegment == newAlignment->pairSegment) {
+                    continue;
+                }
                 int nPair = 0;
                 int newPairScore = calculatePairScore(newAlignment, alignments[i], nPair);
                 if (newPairScore > bestNewPairScore) {
@@ -1594,15 +1609,18 @@ public:
             nBestPair += tmp_nBestPair;
         }
         if (pairTo > -1) {
-            if (bestNewPairScore >= newAlignment->pairScore) {
+            if (bestNewPairScore > newAlignment->pairScore) {
                 newAlignment->oppositePairAddress = alignments[pairTo];
+                newAlignment->pairToLocation = alignments[pairTo]->location;
             }
-            if (bestNewPairScore >= alignments[pairTo]->pairScore) {
+            if (bestNewPairScore > alignments[pairTo]->pairScore) {
                 alignments[pairTo]->oppositePairAddress = newAlignment;
+                alignments[pairTo]->pairToLocation = newAlignment->location;
             }
 
             if (newAlignment->pairSegment == 0) {
-                alignments.insert(alignments.begin()+pairTo, newAlignment);
+                //alignments.insert(alignments.begin()+pairTo, newAlignment);
+                alignments.push_back(newAlignment);
             } else {
                 alignments.insert(alignments.begin()+pairTo+1, newAlignment);
             }
