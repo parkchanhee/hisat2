@@ -236,7 +236,7 @@ public:
     }
 
 
-    int calculatePairScore(int &AS1, int &AS2, string &chromosome1, string &chromosome2, long long int &location1, long long int &location2) {
+    /*int calculatePairScore(int &AS1, int &AS2, string &chromosome1, string &chromosome2, long long int &location1, long long int &location2) {
         if (chromosome1 == chromosome2) {
             return (10*AS1+10*AS2-abs(location1-location2));
         } else {
@@ -251,7 +251,7 @@ public:
             pairToLocation = inputLocation;
         }
         return score;
-    }
+    }*/
 };
 
 class MappingPositions {
@@ -322,7 +322,7 @@ public:
         }
     }
 
-    void appendPair (long long int location, string chromosome, int AS, int pairSegment=0) {
+    /*void appendPair (long long int location, string chromosome, int AS, int pairSegment=0) {
 
         int score;
         int index;
@@ -349,7 +349,7 @@ public:
         }
 
         positions.push_back(MappingPosition(location, chromosome, AS, pairSegment, bestScoreThisPair, bestPairToLocation));
-    }
+    }*/
 
 };
 
@@ -396,17 +396,18 @@ public:
     bool primaryAlignment;
     bool mapped;
     bool concordant;
-    int pairSegment;
+    int pairSegment; // 0 for first segment, 1 for second segment.
     struct ht2_repeat_expand_result *repeatResult = nullptr;
     int pairScore; // to identify the better pair
 
+    vector<Alignment*> oppositePairAddresses;
     // for repeatAlignment only
     bool repeat;
     bool pairToRepeat;
     MappingPositions repeatPositions; // only have chromosme and location informations
     int bestAS;
     int nBestRepeat;
-    Alignment* oppositePairAddress;
+
 
     void initialize() {
         readName.clear();
@@ -437,7 +438,7 @@ public:
         nBestRepeat = 0;
         paired = false;
         pairScore = numeric_limits<int>::min();
-        oppositePairAddress = nullptr;
+        oppositePairAddresses.clear();
         repeatPositions.initialize();
         if (refLocations != nullptr) {
             free(refLocations);
@@ -1157,8 +1158,12 @@ public:
 
                     o.append('\n');
 
-                    if (oppositePairAddress != nullptr && oppositePairAddress->repeat && paired) {
-                        outputRepeatOppositePair(o, oppositePairAddress, currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, (nOutput==1 && primaryAlignment));
+                    if (!oppositePairAddresses.empty() && paired) {
+                        for (int k = 0; k < oppositePairAddresses.size(); k++) {
+                            if (oppositePairAddresses[k]->repeat) {
+                                outputRepeatOppositePair(o, oppositePairAddresses[k], currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, (nOutput==1 && primaryAlignment));
+                            }
+                        }
                     }
                 }
             }
@@ -1266,6 +1271,20 @@ public:
         return false;
     }
 
+    bool isConcordant(long long int &location1, bool &forward1, long long int &location2, bool &forward2) {
+        if (location1 < location2) {
+            if (forward1 == true && forward2 == false) {
+                return true;
+            }
+        } else {
+            if (forward1 == false && forward2 == true) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+
     int calculatePairScore(Alignment *alignment1, Alignment *alignment2, int &nPair) {
         int pairScore = numeric_limits<int>::min();
 
@@ -1302,14 +1321,14 @@ public:
             }
             //nPair = 1;
         } else if ((!alignment1->repeat && !alignment2->repeat) || !expandRepeat){
-            pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment2->location, alignment2->AS);
+            pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
             pairScore += alignment1->concordant * 1000;
             if (pairScore > alignment1->pairScore) {
-                alignment1->pairScore = pairScore;
+                //alignment1->pairScore = pairScore;
                 alignment1->pairToLocation = alignment2->location;
             }
             if (pairScore > alignment2->pairScore) {
-                alignment2->pairScore = pairScore;
+                //alignment2->pairScore = pairScore;
                 alignment2->pairToLocation = alignment1->location;
             }
             nPair = 1;
@@ -1318,6 +1337,8 @@ public:
 
             int AS2 = alignment2->AS;
             long long int location2 = alignment2->location;
+            bool forward1 = alignment1->forward;
+            bool forward2 = alignment2->forward;
             string chrmosome2 = alignment2->chromosomeName.toZBuf();
 
             for (int i = 0; i < alignment1->repeatPositions.positions.size(); i++) {
@@ -1327,16 +1348,16 @@ public:
                     if(repeatPosition->chromosome != chrmosome2) {
                         continue;
                     }
-                    tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, location2, AS2);
+                    tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward1, location2, AS2, forward2);
                     tmpPairScore += alignment1->concordant * 1000;
                     if (tmpPairScore >= alignment1->pairScore) {
-                        alignment1->pairScore = tmpPairScore;
+                        //alignment1->pairScore = tmpPairScore;
                         repeatPositions->pairScore = tmpPairScore;
                         repeatPosition->pairScore = tmpPairScore;
                         repeatPosition->pairToLocation = location2;
                     }
                     if (tmpPairScore >= alignment2->pairScore) {
-                        alignment2->pairScore = tmpPairScore;
+                        //alignment2->pairScore = tmpPairScore;
                         alignment2->pairToLocation = repeatPosition->location;
                     }
                     if (tmpPairScore > pairScore) {
@@ -1353,6 +1374,8 @@ public:
             int AS1 = alignment1->AS;
             long long int location1 = alignment1->location;
             string chromosome1 = alignment1->chromosomeName.toZBuf();
+            bool forward1 = alignment1->forward;
+            bool forward2 = alignment2->forward;
 
             for (int i = 0; i < alignment2->repeatPositions.positions.size(); i++) {
                 MappingPosition *repeatPositions = &alignment2->repeatPositions.positions[i];
@@ -1361,14 +1384,14 @@ public:
                     if(chromosome1 != repeatPosition->chromosome) {
                         continue;
                     }
-                    tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, location1, AS1);
+                    tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward2, location1, AS1, forward1);
                     tmpPairScore += alignment1->concordant * 1000;
                     if (tmpPairScore >= alignment1->pairScore) {
-                        alignment1->pairScore = tmpPairScore;
+                        //alignment1->pairScore = tmpPairScore;
                         alignment1->pairToLocation = repeatPosition->location;
                     }
                     if (tmpPairScore >= alignment2->pairScore) {
-                        alignment2->pairScore = tmpPairScore;
+                        //alignment2->pairScore = tmpPairScore;
                         repeatPositions->pairScore = tmpPairScore;
                         repeatPosition->pairScore = tmpPairScore;
                         repeatPosition->pairToLocation = location1;
@@ -1384,6 +1407,10 @@ public:
         } else { // both repeat
             pairScore = numeric_limits<int>::min()/2 + 1;
             int tmpPairScore;
+
+            bool forward1 = alignment1->forward;
+            bool forward2 = alignment2->forward;
+
             for (int i1 = 0; i1 < alignment1->repeatPositions.positions.size(); i1++) {
                 MappingPosition *repeatPositions1 = &alignment1->repeatPositions.positions[i1];
                 for (int j1 = 0; j1 < repeatPositions1->repeatPositions.size(); j1++) {
@@ -1397,16 +1424,16 @@ public:
                             if(repeatPosition1->chromosome != repeatPosition2->chromosome) {
                                 continue;
                             }
-                            tmpPairScore = calculatePairScore(repeatPosition1->location, repeatPositions1->AS, repeatPosition2->location, repeatPositions2->AS);
+                            tmpPairScore = calculatePairScore(repeatPosition1->location, repeatPositions1->AS, forward1, repeatPosition2->location, repeatPositions2->AS, forward2);
                             tmpPairScore += alignment1->concordant * 1000;
                             if (tmpPairScore >= alignment1->pairScore) {
-                                alignment1->pairScore = tmpPairScore;
+                                //alignment1->pairScore = tmpPairScore;
                                 repeatPositions1->pairScore = tmpPairScore;
                                 repeatPosition1->pairScore = tmpPairScore;
                                 repeatPosition1->pairToLocation = repeatPosition2->location;
                             }
                             if (tmpPairScore >= alignment2->pairScore) {
-                                alignment2->pairScore = tmpPairScore;
+                                //alignment2->pairScore = tmpPairScore;
                                 repeatPositions2->pairScore = tmpPairScore;
                                 repeatPosition2->pairScore = tmpPairScore;
                                 repeatPosition2->pairToLocation = repeatPosition1->location;
@@ -1426,14 +1453,20 @@ public:
     }
 
 
-    int calculatePairScore(long long int location1, int AS1, long long int location2, int AS2) {
+    int calculatePairScore(long long int &location1, int &AS1, bool &forward1, long long int &location2, int &AS2, bool &forward2) {
+    //int calculatePairScore(Alignment *alignment1, Alignment *alignment2) {
         int score = 100*AS1 + 100*AS2;
         int distance = abs(location1 - location2);
-        if (distance >= 10000) {
+
+        if (distance > 1000) {
             score -= distance;
         }
+
         if (distance > 500000) {
             return numeric_limits<int>::min();
+        }
+        if (isConcordant(location1, forward1, location2, forward2)) {
+            score += 500000;
         }
         return score;
     }
@@ -1592,7 +1625,7 @@ public:
                 }
                 int nPair = 0;
                 int newPairScore = calculatePairScore(newAlignment, alignments[i], nPair);
-                if (newPairScore > bestNewPairScore) {
+                if (newPairScore >= bestNewPairScore) {
                     bestNewPairScore = newPairScore;
                     tmp_nBestPair = nPair;
                     pairTo = i;
@@ -1610,20 +1643,31 @@ public:
         }
         if (pairTo > -1) {
             if (bestNewPairScore > newAlignment->pairScore) {
-                newAlignment->oppositePairAddress = alignments[pairTo];
+                newAlignment->pairScore = bestNewPairScore;
+                newAlignment->oppositePairAddresses.clear();
+                newAlignment->oppositePairAddresses.push_back(alignments[pairTo]);
+                newAlignment->pairToLocation = alignments[pairTo]->location;
+            } else if (bestNewPairScore == newAlignment->pairScore) {
+                newAlignment->oppositePairAddresses.push_back(alignments[pairTo]);
                 newAlignment->pairToLocation = alignments[pairTo]->location;
             }
             if (bestNewPairScore > alignments[pairTo]->pairScore) {
-                alignments[pairTo]->oppositePairAddress = newAlignment;
+                alignments[pairTo]->pairScore = bestNewPairScore;
+                alignments[pairTo]->oppositePairAddresses.clear();
+                alignments[pairTo]->oppositePairAddresses.push_back(newAlignment);
+                alignments[pairTo]->pairToLocation = newAlignment->location;
+            } else if (bestNewPairScore == alignments[pairTo]->pairScore) {
+                alignments[pairTo]->oppositePairAddresses.push_back(newAlignment);
                 alignments[pairTo]->pairToLocation = newAlignment->location;
             }
 
-            if (newAlignment->pairSegment == 0) {
+            /*if (newAlignment->pairSegment == 0) {
                 //alignments.insert(alignments.begin()+pairTo, newAlignment);
                 alignments.push_back(newAlignment);
             } else {
                 alignments.insert(alignments.begin()+pairTo+1, newAlignment);
-            }
+            }*/
+            alignments.push_back(newAlignment);
         } else {
             alignments.push_back(newAlignment);
         }
@@ -1792,7 +1836,31 @@ public:
                     if (primaryAlignment) {
                         alignments[i]->primaryAlignment = true;
                     }
-                    alignments[i]->output(o);
+                    //if (concordantAlignmentExist) {
+                    if (alignments[i]->pairSegment == 0) {
+
+                        for (int j = 0; j < alignments[i]->oppositePairAddresses.size(); j++) {
+                            if (j > 0) {
+                                primaryAlignment = false;
+                                alignments[i]->primaryAlignment = false;
+                            }
+                            if (primaryAlignment) {
+                                alignments[i]->oppositePairAddresses[j]->primaryAlignment = true;
+                            }
+                            if (!alignments[i]->mapped && alignments[i]->oppositePairAddresses[j]->mapped) {
+                                alignments[i]->oppositePairAddresses[j]->output(o);
+                                alignments[i]->output(o);
+                            } else {
+                                alignments[i]->output(o);
+                                alignments[i]->oppositePairAddresses[j]->output(o);
+                            }
+
+                        }
+                    }
+                    //} else {
+                    //    alignments[i]->output(o);
+                    //}
+
                     if (alignments[i]->pairSegment == 1) {
                         primaryAlignment = false;
                     }

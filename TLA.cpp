@@ -19,11 +19,11 @@ bool MappingPositions::append (Alignment* newAlignment) {
 
     int index;
     if (positionExist(location, chromosome, pairSegment, index)) {
-        if (positions[index].AS == AS) {
-            return false;
-        } else {
-            return true;
-        }
+        //if (positions[index].AS == AS) {
+        //    return false;
+        //} else {
+        return false;
+        //}
     } else {
         positions.push_back(MappingPosition(location, chromosome, AS, pairSegment));
         return true;
