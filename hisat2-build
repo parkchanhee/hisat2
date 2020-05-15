@@ -107,7 +107,7 @@ def main():
         if len(referenceName) == 0:
             referenceName = argv[-2]
 
-        cwd = os.getcwd()
+        cwd = sys.path[0]
         repeatArgv += [cwd + "/hisat2-repeat"]
         repeatArgv += ["-p", nThread]
         repeatArgv += ["--repeat-length", repeatLength]
