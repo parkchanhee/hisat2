@@ -1838,7 +1838,6 @@ public:
                     }
                     //if (concordantAlignmentExist) {
                     if (alignments[i]->pairSegment == 0) {
-
                         for (int j = 0; j < alignments[i]->oppositePairAddresses.size(); j++) {
                             if (j > 0) {
                                 primaryAlignment = false;
@@ -1847,6 +1846,8 @@ public:
                             if (primaryAlignment) {
                                 alignments[i]->oppositePairAddresses[j]->primaryAlignment = true;
                             }
+                            alignments[i]->oppositePairAddresses[j]->pairToLocation = alignments[i]->location;
+                            alignments[i]->pairToLocation = alignments[i]->oppositePairAddresses[j]->location;
                             if (!alignments[i]->mapped && alignments[i]->oppositePairAddresses[j]->mapped) {
                                 alignments[i]->oppositePairAddresses[j]->output(o);
                                 alignments[i]->output(o);
