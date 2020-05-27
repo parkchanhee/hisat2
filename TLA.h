@@ -196,6 +196,7 @@ public:
     int pairScore;
     int pairSegment;
     long long int pairToLocation;
+    bool concordant;
 
     // for repeat alignment only
     string MD;
@@ -1291,7 +1292,7 @@ public:
         nPair = 0;
         if (alignment1->pairSegment == alignment2->pairSegment){
             pairScore = numeric_limits<int>::min();
-        } else if (!alignment1->mapped || !alignment2->mapped) {
+        } else if (!alignment1->mapped || !alignment2->mapped || (alignment1->planA != alignment2->planA)) {
             pairScore = numeric_limits<int>::min()/2;
             if (!alignment1->mapped && !alignment2->mapped) {
                 nPair = 0;
@@ -1575,12 +1576,12 @@ public:
         paired = newAlignment->paired;
 
         if (newAlignment->repeat && expandRepeat) {
-            if(!existPositions.append(newAlignment)) {
+            /*if(!existPositions.append(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
                 return;
-            }
+            }*/
             if (!newAlignment->constructRepeatMD(existPositions)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1589,12 +1590,12 @@ public:
             }
         } else {
             // check if alignment result exist
-            if(!existPositions.append(newAlignment)) {
+            /*if(!existPositions.append(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
                 return;
-            }
+            }*/
             if (newAlignment->repeat) {
                 addRepeatIndexTag(newAlignment);
             } else {

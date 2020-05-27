@@ -12,6 +12,7 @@ bool MappingPositions::append (Alignment* newAlignment) {
     string chromosome = newAlignment->chromosomeName.toZBuf();
     int pairSegment = newAlignment->pairSegment;
     int AS = newAlignment->AS;
+    bool concordant = newAlignment->concordant;
 
     if (newAlignment->repeat) {
         return true;
