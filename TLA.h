@@ -1093,78 +1093,134 @@ public:
                 if (!paired && (currentPosition->AS == bestAS) || (paired && (currentPosition->repeatPositions[j].pairScore == pairScore))) {
                     nOutput++;
 
-                    // readName
-                    o.append(readName.toZBuf());
-                    o.append('\t');
-
-                    // flag
-                    itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
-                    o.append(buf);
-                    o.append('\t');
-
-                    // chromosome
-                    o.append(currentPosition->repeatPositions[j].chromosome.c_str());
-                    o.append('\t');
-
-                    // location
-                    itoa10<int>(currentPosition->repeatPositions[j].location, buf);
-                    o.append(buf);
-                    o.append('\t');
-
-                    //MAPQ
-                    o.append(MAPQ.toZBuf());
-                    o.append('\t');
-
-                    // cigar
-                    o.append(cigarString.toZBuf());
-                    o.append('\t');
-
-                    // pair to chromosome
-                    o.append(pairToChromosome.toZBuf());
-                    o.append('\t');
-
-                    // pair to location
-                    if (paired) {
-                        itoa10<int>(currentPosition->repeatPositions[j].pairToLocation, buf);
-                        o.append(buf);
-                        o.append('\t');
-                    } else {
-                        itoa10<int>(pairToLocation, buf);
-                        o.append(buf);
-                        o.append('\t');
-                    }
-
-                    // pairing distance
-                    if (paired) {
-                        itoa10<int>(currentPosition->repeatPositions[j].pairToLocation-currentPosition->repeatPositions[j].location, buf);
-                        o.append(buf);
-                        o.append('\t');
-                    } else {
-                        itoa10<int>(pairingDistance, buf);
-                        o.append(buf);
-                        o.append('\t');
-                    }
-
-                    // read sequence
-                    o.append(readSequence.toZBuf());
-                    o.append('\t');
-
-                    // read quality
-                    o.append(readQuality.toZBuf());
-                    o.append('\t');
-
-                    // tags
-                    outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
-                                      currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
-
-                    o.append('\n');
-
                     if (!oppositePairAddresses.empty() && paired) {
                         for (int k = 0; k < oppositePairAddresses.size(); k++) {
+                            // readName
+                            o.append(readName.toZBuf());
+                            o.append('\t');
+
+                            // flag
+                            itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
+                            o.append(buf);
+                            o.append('\t');
+
+                            // chromosome
+                            o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                            o.append('\t');
+
+                            // location
+                            itoa10<int>(currentPosition->repeatPositions[j].location, buf);
+                            o.append(buf);
+                            o.append('\t');
+
+                            //MAPQ
+                            o.append(MAPQ.toZBuf());
+                            o.append('\t');
+
+                            // cigar
+                            o.append(cigarString.toZBuf());
+                            o.append('\t');
+
+                            // pair to chromosome
+                            o.append(pairToChromosome.toZBuf());
+                            o.append('\t');
+
+                            // pair to location
+                            if (paired) {
+                                itoa10<int>(currentPosition->repeatPositions[j].pairToLocation, buf);
+                                o.append(buf);
+                                o.append('\t');
+                            } else {
+                                itoa10<int>(pairToLocation, buf);
+                                o.append(buf);
+                                o.append('\t');
+                            }
+
+                            // pairing distance
+                            if (paired) {
+                                itoa10<int>(currentPosition->repeatPositions[j].pairToLocation-currentPosition->repeatPositions[j].location, buf);
+                                o.append(buf);
+                                o.append('\t');
+                            } else {
+                                itoa10<int>(pairingDistance, buf);
+                                o.append(buf);
+                                o.append('\t');
+                            }
+
+                            // read sequence
+                            o.append(readSequence.toZBuf());
+                            o.append('\t');
+
+                            // read quality
+                            o.append(readQuality.toZBuf());
+                            o.append('\t');
+
+                            // tags
+                            outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                                              currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+
+                            o.append('\n');
+
                             if (oppositePairAddresses[k]->repeat) {
                                 outputRepeatOppositePair(o, oppositePairAddresses[k], currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, (nOutput==1 && primaryAlignment));
+                            } else {
+                                oppositePairAddresses[k]->output(o);
                             }
                         }
+                    } else {
+                        // readName
+                        o.append(readName.toZBuf());
+                        o.append('\t');
+
+                        // flag
+                        itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
+                        o.append(buf);
+                        o.append('\t');
+
+                        // chromosome
+                        o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                        o.append('\t');
+
+                        // location
+                        itoa10<int>(currentPosition->repeatPositions[j].location, buf);
+                        o.append(buf);
+                        o.append('\t');
+
+                        //MAPQ
+                        o.append(MAPQ.toZBuf());
+                        o.append('\t');
+
+                        // cigar
+                        o.append(cigarString.toZBuf());
+                        o.append('\t');
+
+                        // pair to chromosome
+                        o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                        o.append('\t');
+
+                        // pair to location
+                        itoa10<int>(currentPosition->repeatPositions[j].location, buf);
+                        o.append(buf);
+                        o.append('\t');
+                        
+                        // pairing distance
+                        o.append('0');
+                        o.append('\t');
+
+
+                        // read sequence
+                        o.append(readSequence.toZBuf());
+                        o.append('\t');
+
+                        // read quality
+                        o.append(readQuality.toZBuf());
+                        o.append('\t');
+
+                        // tags
+                        outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                                          currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+
+                        o.append('\n');
                     }
                 }
             }
