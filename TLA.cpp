@@ -20,13 +20,13 @@ bool MappingPositions::append (Alignment* newAlignment) {
 
     int index;
     if (positionExist(location, chromosome, pairSegment, index)) {
-        //if (positions[index].AS == AS) {
-        //    return false;
-        //} else {
-        return false;
-        //}
+        if ((positions[index].concordant == false) && (concordant == true)) {
+            return true;
+        } else {
+            return false;
+        }
     } else {
-        positions.push_back(MappingPosition(location, chromosome, AS, pairSegment));
+        positions.push_back(MappingPosition(location, chromosome, AS, pairSegment, concordant));
         return true;
     }
 }

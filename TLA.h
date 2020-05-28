@@ -210,8 +210,9 @@ public:
     string refSequence;
     vector<RepeatPosition> repeatPositions;
 
-    MappingPosition (long long int inputLocation, string inputChromosome, int inputAS_score, int inputReadSegment=0,
+    MappingPosition (long long int inputLocation, string inputChromosome, int inputAS_score, int inputReadSegment=0, bool inputConcordant=false,
                      int inputPairScore=numeric_limits<int>::min(), long long int inputPairToLocation = -1){
+        concordant = inputConcordant;
         location = inputLocation;
         chromosome = inputChromosome;
         AS = inputAS_score;
@@ -1163,7 +1164,6 @@ public:
                             // tags
                             outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                               currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
-
                             o.append('\n');
 
                             if (oppositePairAddresses[k]->repeat) {
@@ -1636,12 +1636,12 @@ public:
         paired = newAlignment->paired;
 
         if (newAlignment->repeat && expandRepeat) {
-            /*if(!existPositions.append(newAlignment)) {
+            if(!existPositions.append(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
                 return;
-            }*/
+            }
             if (!newAlignment->constructRepeatMD(existPositions)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1650,12 +1650,12 @@ public:
             }
         } else {
             // check if alignment result exist
-            /*if(!existPositions.append(newAlignment)) {
+            if(!existPositions.append(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
                 return;
-            }*/
+            }
             if (newAlignment->repeat) {
                 addRepeatIndexTag(newAlignment);
             } else {
