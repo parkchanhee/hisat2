@@ -981,14 +981,20 @@ public:
             o.append("=");
             o.append('\t');
         } else {
-            o.append(pairToChromosome.toZBuf());
+            o.append("*");
             o.append('\t');
         }
 
         // pair to location
-        itoa10<int>(pairToLocation, buf);
-        o.append(buf);
-        o.append('\t');
+        if (concordant) {
+            itoa10<int>(pairToLocation, buf);
+            o.append(buf);
+            o.append('\t');
+        } else {
+            o.append('0');
+            o.append('\t');
+        }
+
 
         // pairing distance
         if (paired) {
@@ -996,8 +1002,7 @@ public:
             o.append(buf);
             o.append('\t');
         } else {
-            itoa10<int>(pairingDistance, buf);
-            o.append(buf);
+            o.append('0');
             o.append('\t');
         }
 
@@ -1122,7 +1127,7 @@ public:
                             o.append('\t');
 
                             // pair to chromosome
-                            o.append(pairToChromosome.toZBuf());
+                            o.append('=');
                             o.append('\t');
 
                             // pair to location
@@ -1195,18 +1200,17 @@ public:
                         o.append('\t');
 
                         // pair to chromosome
-                        o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                        o.append('*');
                         o.append('\t');
 
                         // pair to location
-                        itoa10<int>(currentPosition->repeatPositions[j].location, buf);
-                        o.append(buf);
-                        o.append('\t');
-                        
-                        // pairing distance
+                        //itoa10<int>(currentPosition->repeatPositions[j].location, buf);
                         o.append('0');
                         o.append('\t');
 
+                        // pairing distance
+                        o.append('0');
+                        o.append('\t');
 
                         // read sequence
                         o.append(readSequence.toZBuf());
