@@ -1566,7 +1566,7 @@ public:
         paired = newAlignment->paired;
         int newAlignmentAS;
 
-        if (newAlignment->repeat && expandRepeat) {
+        if (newAlignment->repeat && expandRepeat && newAlignment->mapped) {
             if (!newAlignment->constructRepeatMD(existPositions)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1635,7 +1635,7 @@ public:
         }
         paired = newAlignment->paired;
 
-        if (newAlignment->repeat && expandRepeat) {
+        if (newAlignment->repeat && expandRepeat && newAlignment->mapped) {
             if(!existPositions.append(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
