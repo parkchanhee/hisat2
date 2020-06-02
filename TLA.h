@@ -1627,6 +1627,8 @@ public:
         working = true;
 
         if (alignments.size() > 20) {
+            newAlignment->initialize();
+            freeAlignments.push(newAlignment);
             working = false;
             return;
         }
