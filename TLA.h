@@ -1626,6 +1626,10 @@ public:
     void addNewAlignment_paired(Alignment *newAlignment) {
         working = true;
 
+        if (alignments.size() > 20) {
+            working = false;
+            return;
+        }
         int pairSegment = newAlignment->pairSegment;
 
 
