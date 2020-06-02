@@ -1291,6 +1291,7 @@ public:
             alignments.erase(alignments.begin());
         }
         while (freeAlignments.size() > 30) {
+            delete freeAlignments.front();
             freeAlignments.pop();
         }
     }
