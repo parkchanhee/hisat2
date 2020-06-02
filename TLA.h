@@ -1290,6 +1290,9 @@ public:
             freeAlignments.push(alignments[0]);
             alignments.erase(alignments.begin());
         }
+        while (freeAlignments.size() > 30) {
+            freeAlignments.pop();
+        }
     }
 
     Alignments() {
