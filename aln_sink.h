@@ -2087,7 +2087,7 @@ public:
             size_t        threadId0)    // which thread am I?
     {
         bool planA = rd.plan == 'A';
-
+        
         Alignment* newAlignment;
         alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
         newAlignment->planA = planA;
@@ -2097,6 +2097,7 @@ public:
         }*/
 
         if(rs == NULL && samc_.omitUnalignedReads()) {
+            delete newAlignment;
             return;
         }
         char buf[1024];
