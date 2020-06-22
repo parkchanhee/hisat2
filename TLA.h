@@ -1754,8 +1754,11 @@ public:
     void outputUnAlignmentRead(BTString& o) {
         if (paired) {
             for (int i = 0; i < 2; i++) {
+                string flag = (i == 0) ? "77" : "141";
                 o.append(readName[i].toZBuf());
-                o.append("\t4\t*\t0\t0\t*\t*\t0\t0\t");
+                o.append("\t");
+                o.append(flag.c_str());
+                o.append("\t*\t0\t0\t*\t*\t0\t0\t");
                 o.append(readSequence[i].toZBuf());
                 o.append("\t");
                 o.append(qualityScore[i].toZBuf());
