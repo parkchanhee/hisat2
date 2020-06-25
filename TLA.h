@@ -465,6 +465,14 @@ public:
         }
     }
 
+    void setConcordant(bool concordant_) {
+        concordant = concordant_;
+        if ((flag&2) && !concordant) {
+            flag -= 2;
+        } else if (!(flag&2) && concordant) {
+            flag += 2;
+        }
+    }
     void updateNH(int nAlignment) {
         if (!mapped) {
             return;
@@ -1353,6 +1361,19 @@ public:
         return false;
     }
 
+    bool isConcordant(Alignment* alignment1, Alignment* alignment2) {
+        if (alignment1->location < alignment2->location) {
+            if (alignment1->forward == true && alignment2->forward == false) {
+                return true;
+            }
+        } else {
+            if (alignment1->forward == false && alignment2->forward == true) {
+                return true;
+            }
+        }
+        return false;
+    }
+
 
     int calculatePairScore(Alignment *alignment1, Alignment *alignment2, int &nPair) {
         int pairScore = numeric_limits<int>::min();
@@ -1391,14 +1412,17 @@ public:
             //nPair = 1;
         } else if ((!alignment1->repeat && !alignment2->repeat) || !expandRepeat){
             pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
-            pairScore += alignment1->concordant * 1000;
+            //pairScore += alignment1->concordant * 1000;
+
             if (pairScore > alignment1->pairScore) {
                 //alignment1->pairScore = pairScore;
                 alignment1->pairToLocation = alignment2->location;
+
             }
             if (pairScore > alignment2->pairScore) {
                 //alignment2->pairScore = pairScore;
                 alignment2->pairToLocation = alignment1->location;
+
             }
             nPair = 1;
         } else if (alignment1->repeat && !alignment2->repeat) {
@@ -1705,9 +1729,9 @@ public:
                     bestNewPairScore = newPairScore;
                     tmp_nBestPair = nPair;
                     pairTo = i;
-                    if (newAlignment->concordant) {
-                        concordantAlignmentExist = true;
-                    }
+                    //if (newAlignment->concordant) {
+                    //    concordantAlignmentExist = true;
+                    //}
                 }
             }
         }
@@ -1718,23 +1742,32 @@ public:
             nBestPair += tmp_nBestPair;
         }
         if (pairTo > -1) {
+            bool concordant = isConcordant(newAlignment, alignments[pairTo]);
+            if (bestNewPairScore >= bestPairScore) {
+                concordantAlignmentExist = concordant;
+            }
+
             if (bestNewPairScore > newAlignment->pairScore) {
                 newAlignment->pairScore = bestNewPairScore;
                 newAlignment->oppositePairAddresses.clear();
                 newAlignment->oppositePairAddresses.push_back(alignments[pairTo]);
                 newAlignment->pairToLocation = alignments[pairTo]->location;
+                newAlignment->setConcordant(concordant);
             } else if (bestNewPairScore == newAlignment->pairScore) {
                 newAlignment->oppositePairAddresses.push_back(alignments[pairTo]);
                 newAlignment->pairToLocation = alignments[pairTo]->location;
+                newAlignment->setConcordant(concordant);
             }
             if (bestNewPairScore > alignments[pairTo]->pairScore) {
                 alignments[pairTo]->pairScore = bestNewPairScore;
                 alignments[pairTo]->oppositePairAddresses.clear();
                 alignments[pairTo]->oppositePairAddresses.push_back(newAlignment);
                 alignments[pairTo]->pairToLocation = newAlignment->location;
+                alignments[pairTo]->setConcordant(concordant);
             } else if (bestNewPairScore == alignments[pairTo]->pairScore) {
                 alignments[pairTo]->oppositePairAddresses.push_back(newAlignment);
                 alignments[pairTo]->pairToLocation = newAlignment->location;
+                alignments[pairTo]->setConcordant(concordant);
             }
 
             /*if (newAlignment->pairSegment == 0) {
