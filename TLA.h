@@ -994,7 +994,7 @@ public:
             o.append("=");
             o.append('\t');
         } else {
-            o.append("*");
+            o.append(pairToChromosome.toZBuf());
             o.append('\t');
         }
 
@@ -1004,7 +1004,8 @@ public:
             o.append(buf);
             o.append('\t');
         } else {
-            o.append('0');
+            itoa10<int>(pairToLocation, buf);
+            o.append(buf);
             o.append('\t');
         }
 
@@ -1018,7 +1019,6 @@ public:
             o.append('0');
             o.append('\t');
         }
-
 
         // read sequence
         o.append(readSequence.toZBuf());
@@ -1034,7 +1034,7 @@ public:
         o.append('\n');
     }
 
-    void outputRepeatOppositePair(BTString& o, Alignment* oppositeAlignment, string &chromosome, long long int &location, bool primary) {
+    void outputRepeatOppositePair(BTString& o, Alignment* oppositeAlignment, string &chromosome, long long int &location, long long int &oppoLocation, bool primary) {
         char buf[1024];
 
         for (int i = 0; i < oppositeAlignment->repeatPositions.positions.size(); i++) {
@@ -1068,16 +1068,16 @@ public:
                     o.append('\t');
 
                     // pair to chromosome
-                    o.append(oppositeAlignment->pairToChromosome.toZBuf());
+                    o.append("=");
                     o.append('\t');
 
                     // pair to location
-                    itoa10<int>(currentPosition->repeatPositions[j].pairToLocation, buf);
+                    itoa10<int>(oppoLocation, buf);
                     o.append(buf);
                     o.append('\t');
 
                     // pairing distance
-                    itoa10<int>(currentPosition->repeatPositions[j].pairToLocation-currentPosition->repeatPositions[j].location, buf);
+                    itoa10<int>(oppoLocation-currentPosition->repeatPositions[j].location, buf);
                     o.append(buf);
                     o.append('\t');
 
@@ -1109,77 +1109,75 @@ public:
             MappingPosition *currentPosition = &repeatPositions.positions[i];
             for (int j = 0; j < currentPosition->repeatPositions.size(); j++) {
                 if (!paired && (currentPosition->AS == bestAS) || (paired && (currentPosition->repeatPositions[j].pairScore == pairScore))) {
-                    nOutput++;
-
                     if (!oppositePairAddresses.empty() && paired) {
+                        nOutput++;
+                        // readName
+                        o.append(readName.toZBuf());
+                        o.append('\t');
+
+                        // flag
+                        itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
+                        o.append(buf);
+                        o.append('\t');
+
+                        // chromosome
+                        o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                        o.append('\t');
+
+                        // location
+                        itoa10<int>(currentPosition->repeatPositions[j].location, buf);
+                        o.append(buf);
+                        o.append('\t');
+
+                        //MAPQ
+                        o.append(MAPQ.toZBuf());
+                        o.append('\t');
+
+                        // cigar
+                        o.append(cigarString.toZBuf());
+                        o.append('\t');
+
+                        // pair to chromosome
+                        o.append('=');
+                        o.append('\t');
+
+                        // pair to location
+                        if (paired) {
+                            itoa10<int>(currentPosition->repeatPositions[j].pairToLocation, buf);
+                            o.append(buf);
+                            o.append('\t');
+                        } else {
+                            itoa10<int>(pairToLocation, buf);
+                            o.append(buf);
+                            o.append('\t');
+                        }
+
+                        // pairing distance
+                        if (paired) {
+                            itoa10<int>(currentPosition->repeatPositions[j].pairToLocation-currentPosition->repeatPositions[j].location, buf);
+                            o.append(buf);
+                            o.append('\t');
+                        } else {
+                            itoa10<int>(pairingDistance, buf);
+                            o.append(buf);
+                            o.append('\t');
+                        }
+
+                        // read sequence
+                        o.append(readSequence.toZBuf());
+                        o.append('\t');
+
+                        // read quality
+                        o.append(readQuality.toZBuf());
+                        o.append('\t');
+
+                        // tags
+                        outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                                          currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+                        o.append('\n');
                         for (int k = 0; k < oppositePairAddresses.size(); k++) {
-                            // readName
-                            o.append(readName.toZBuf());
-                            o.append('\t');
-
-                            // flag
-                            itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
-                            o.append(buf);
-                            o.append('\t');
-
-                            // chromosome
-                            o.append(currentPosition->repeatPositions[j].chromosome.c_str());
-                            o.append('\t');
-
-                            // location
-                            itoa10<int>(currentPosition->repeatPositions[j].location, buf);
-                            o.append(buf);
-                            o.append('\t');
-
-                            //MAPQ
-                            o.append(MAPQ.toZBuf());
-                            o.append('\t');
-
-                            // cigar
-                            o.append(cigarString.toZBuf());
-                            o.append('\t');
-
-                            // pair to chromosome
-                            o.append('=');
-                            o.append('\t');
-
-                            // pair to location
-                            if (paired) {
-                                itoa10<int>(currentPosition->repeatPositions[j].pairToLocation, buf);
-                                o.append(buf);
-                                o.append('\t');
-                            } else {
-                                itoa10<int>(pairToLocation, buf);
-                                o.append(buf);
-                                o.append('\t');
-                            }
-
-                            // pairing distance
-                            if (paired) {
-                                itoa10<int>(currentPosition->repeatPositions[j].pairToLocation-currentPosition->repeatPositions[j].location, buf);
-                                o.append(buf);
-                                o.append('\t');
-                            } else {
-                                itoa10<int>(pairingDistance, buf);
-                                o.append(buf);
-                                o.append('\t');
-                            }
-
-                            // read sequence
-                            o.append(readSequence.toZBuf());
-                            o.append('\t');
-
-                            // read quality
-                            o.append(readQuality.toZBuf());
-                            o.append('\t');
-
-                            // tags
-                            outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
-                                              currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
-                            o.append('\n');
-
                             if (oppositePairAddresses[k]->repeat) {
-                                outputRepeatOppositePair(o, oppositePairAddresses[k], currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, (nOutput==1 && primaryAlignment));
+                                outputRepeatOppositePair(o, oppositePairAddresses[k], currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, currentPosition->repeatPositions[j].location, (nOutput==1 && primaryAlignment));
                             } else {
                                 oppositePairAddresses[k]->output(o);
                             }
@@ -1362,6 +1360,9 @@ public:
     }
 
     bool isConcordant(Alignment* alignment1, Alignment* alignment2) {
+        if (alignment1->repeat || alignment2->repeat) {
+            return true;
+        }
         if (alignment1->location < alignment2->location) {
             if (alignment1->forward == true && alignment2->forward == false) {
                 return true;
@@ -1386,29 +1387,29 @@ public:
             if (!alignment1->mapped && !alignment2->mapped) {
                 nPair = 0;
                 pairScore -= 1;
-            } else {
+            } else if (alignment1->mapped && alignment2->mapped){
                 if (alignment1->chromosomeName == alignment2->chromosomeName) {
                     pairScore += 1;
                 }
                 nPair = 1;
             }
 
-            if (pairScore > alignment1->pairScore) {
-                alignment1->pairScore = pairScore;
-            }
-            if (pairScore > alignment2->pairScore) {
-                alignment2->pairScore = pairScore;
-            }
+//            if (pairScore > alignment1->pairScore) {
+//                alignment1->pairScore = pairScore;
+//            }
+//            if (pairScore > alignment2->pairScore) {
+//                alignment2->pairScore = pairScore;
+//            }
 
         } else if ((alignment1->chromosomeName != alignment2->chromosomeName && ((alignment1->chromosomeName != alignment2->pairToChromosome) && (alignment1->pairToChromosome != alignment2->chromosomeName))) ||
                     ((alignment1->location != alignment2->pairToLocation) && (alignment1->pairToLocation != alignment2->location))){
-            //pairScore = numeric_limits<int>::min()/2 + 2;
-            if (pairScore > alignment1->pairScore) {
-                alignment1->pairScore = pairScore;
-            }
-            if (pairScore > alignment2->pairScore) {
-                alignment2->pairScore = pairScore;
-            }
+            pairScore = numeric_limits<int>::min()/2 + 2;
+//            if (pairScore > alignment1->pairScore) {
+//                alignment1->pairScore = pairScore;
+//            }
+//            if (pairScore > alignment2->pairScore) {
+//                alignment2->pairScore = pairScore;
+//            }
             //nPair = 1;
         } else if ((!alignment1->repeat && !alignment2->repeat) || !expandRepeat){
             pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
@@ -1442,7 +1443,6 @@ public:
                         continue;
                     }
                     tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward1, location2, AS2, forward2);
-                    tmpPairScore += alignment1->concordant * 1000;
                     if (tmpPairScore >= alignment1->pairScore) {
                         //alignment1->pairScore = tmpPairScore;
                         repeatPositions->pairScore = tmpPairScore;
@@ -1478,7 +1478,6 @@ public:
                         continue;
                     }
                     tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward2, location1, AS1, forward1);
-                    tmpPairScore += alignment1->concordant * 1000;
                     if (tmpPairScore >= alignment1->pairScore) {
                         //alignment1->pairScore = tmpPairScore;
                         alignment1->pairToLocation = repeatPosition->location;
@@ -1518,24 +1517,31 @@ public:
                                 continue;
                             }
                             tmpPairScore = calculatePairScore(repeatPosition1->location, repeatPositions1->AS, forward1, repeatPosition2->location, repeatPositions2->AS, forward2);
-                            tmpPairScore += alignment1->concordant * 1000;
-                            if (tmpPairScore >= alignment1->pairScore) {
-                                //alignment1->pairScore = tmpPairScore;
-                                repeatPositions1->pairScore = tmpPairScore;
-                                repeatPosition1->pairScore = tmpPairScore;
-                                repeatPosition1->pairToLocation = repeatPosition2->location;
-                            }
-                            if (tmpPairScore >= alignment2->pairScore) {
-                                //alignment2->pairScore = tmpPairScore;
-                                repeatPositions2->pairScore = tmpPairScore;
-                                repeatPosition2->pairScore = tmpPairScore;
-                                repeatPosition2->pairToLocation = repeatPosition1->location;
-                            }
+
                             if (tmpPairScore > pairScore) {
                                 pairScore = tmpPairScore;
                                 nPair = 1;
                             } else if (tmpPairScore == pairScore) {
-                                nPair++;
+                                if ((alignment1->pairSegment == 0 && repeatPosition1->pairScore == tmpPairScore) ||
+                                        (alignment2->pairSegment == 0 && repeatPosition2->pairScore == tmpPairScore)){
+
+                                } else {
+                                    nPair++;
+                                }
+
+                            }
+
+                            if (tmpPairScore >= repeatPositions1->pairScore) {
+                                //alignment1->pairScore = tmpPairScore;
+                                repeatPositions1->pairScore = tmpPairScore;
+                                repeatPosition1->pairToLocation = repeatPosition2->location;
+                                repeatPosition1->pairScore = tmpPairScore;
+                            }
+                            if (tmpPairScore >= repeatPositions2->pairScore) {
+                                //alignment2->pairScore = tmpPairScore;
+                                repeatPositions2->pairScore = tmpPairScore;
+                                repeatPosition2->pairScore = tmpPairScore;
+                                repeatPosition2->pairToLocation = repeatPosition1->location;
                             }
                         }
                     }
@@ -1563,6 +1569,33 @@ public:
         }
         return score;
     }
+
+    int calculateNumBestPair() {
+        int numBestPair = 0;
+        for (int i = 0; i < alignments.size(); i++) {
+            if ((alignments[i]->pairScore == bestPairScore) && (alignments[i]->concordant == concordantAlignmentExist)) {
+                if (alignments[i]->pairSegment == 0) {
+                    if (alignments[i]->repeat && expandRepeat) {
+                        MappingPositions repeatPositions = alignments[i]->repeatPositions;
+                        for (int ii = 0; ii < repeatPositions.positions.size(); ii++) {
+                            MappingPosition *currentPosition = &repeatPositions.positions[ii];
+                            for (int jj = 0; jj < currentPosition->repeatPositions.size(); jj++) {
+                                if (paired && (currentPosition->repeatPositions[jj].pairScore == bestPairScore)) {
+                                    //for (int k = 0; k < alignments[i]->oppositePairAddresses.size(); k++) {
+                                    numBestPair++;
+                                    //}
+                                }
+                            }
+                        }
+                    } else {
+                        numBestPair++;
+                    }
+                }
+            }
+        }
+        return numBestPair;
+    }
+
 
     // add a extra tag if the read is aligned on repeat index. this tag will show which repeat index is used.
     // XR:Z:TC means the read aligned on TC conversion repeat index.
@@ -1661,7 +1694,6 @@ public:
             return;
         }
         int pairSegment = newAlignment->pairSegment;
-
 
         if (readName[pairSegment].empty()) {
             readName[pairSegment] = newAlignment->readName;
@@ -1879,6 +1911,9 @@ public:
                        uint64_t &uniqueDiscordant, uint64_t &unAlignedPairRead, uint64_t &alignedPairRead, uint64_t &uniqueAlignedPairRead, uint64_t &multipleAlignedPairRead,
                        uint64_t &concordantRepeat, uint64_t &disconcordantRepeatRead) {
         // update statistics
+
+        //int testNumBestPair = calculateNumBestPair();
+
         if (!concordantAlignmentExist) {
             unConcordant++;
             int nAlignment[2] = {0};
@@ -1934,6 +1969,7 @@ public:
         }
 
         // output
+        int nOutput = 0;
         bool primaryAlignment = true;
         if (alignments.empty() || nBestPair == 0) {
             // make a unalignment result and output it.
@@ -1950,36 +1986,37 @@ public:
                     }
                     //if (concordantAlignmentExist) {
                     if (alignments[i]->pairSegment == 0) {
-                        for (int j = 0; j < alignments[i]->oppositePairAddresses.size(); j++) {
-                            if (j > 0) {
-                                primaryAlignment = false;
-                                alignments[i]->primaryAlignment = false;
+                        if (alignments[i]->repeat && alignments[i]->pairToRepeat) {
+                            nOutput += alignments[i]->output(o);
+                        } else {
+                            for (int j = 0; j < alignments[i]->oppositePairAddresses.size(); j++) {
+                                if (j > 0) {
+                                    primaryAlignment = false;
+                                    alignments[i]->primaryAlignment = false;
+                                }
+                                if (primaryAlignment) {
+                                    alignments[i]->oppositePairAddresses[j]->primaryAlignment = true;
+                                }
+                                alignments[i]->oppositePairAddresses[j]->pairToLocation = alignments[i]->location;
+                                alignments[i]->pairToLocation = alignments[i]->oppositePairAddresses[j]->location;
+                                if (!alignments[i]->mapped && alignments[i]->oppositePairAddresses[j]->mapped) {
+                                    nOutput += alignments[i]->oppositePairAddresses[j]->output(o);
+                                    alignments[i]->output(o);
+                                } else {
+                                    nOutput += alignments[i]->output(o);
+                                    alignments[i]->oppositePairAddresses[j]->output(o);
+                                }
                             }
-                            if (primaryAlignment) {
-                                alignments[i]->oppositePairAddresses[j]->primaryAlignment = true;
-                            }
-                            alignments[i]->oppositePairAddresses[j]->pairToLocation = alignments[i]->location;
-                            alignments[i]->pairToLocation = alignments[i]->oppositePairAddresses[j]->location;
-                            if (!alignments[i]->mapped && alignments[i]->oppositePairAddresses[j]->mapped) {
-                                alignments[i]->oppositePairAddresses[j]->output(o);
-                                alignments[i]->output(o);
-                            } else {
-                                alignments[i]->output(o);
-                                alignments[i]->oppositePairAddresses[j]->output(o);
-                            }
-
                         }
-                    }
-                    //} else {
-                    //    alignments[i]->output(o);
-                    //}
 
+                    }
                     if (alignments[i]->pairSegment == 1) {
                         primaryAlignment = false;
                     }
                 }
             }
         }
+        assert(nOutput == nBestPair);
         initialize();
     }
 
