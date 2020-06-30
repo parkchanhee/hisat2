@@ -1,5 +1,6 @@
 //
 // Created by Yun (Leo) Zhang on 1/10/20.
+// This script is made for HISAT-3N (HISAT-TLA).
 //
 
 #ifndef HISAT2_TLA_H
@@ -29,7 +30,6 @@ extern bool expandRepeat;
 extern vector<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
-
 
 using namespace std;
 
@@ -181,10 +181,14 @@ public:
     long long int pairToLocation;
     bool concordant;
 
-    RepeatPosition(long long int &inputLocation, string &inputChromosome):location(inputLocation), chromosome(inputChromosome) {
+    void initialize() {
         pairScore = numeric_limits<int>::min();
         pairToLocation = -1;
         concordant = false;
+    }
+
+    RepeatPosition(long long int &inputLocation, string &inputChromosome):location(inputLocation), chromosome(inputChromosome) {
+        initialize();
     }
 };
 
@@ -236,28 +240,9 @@ public:
     void addRepeatPosition(long long int &inputLocation, string &inputChromosome) {
         repeatPositions.push_back(RepeatPosition(inputLocation, inputChromosome));
     }
-
-
-    /*int calculatePairScore(int &AS1, int &AS2, string &chromosome1, string &chromosome2, long long int &location1, long long int &location2) {
-        if (chromosome1 == chromosome2) {
-            return (10*AS1+10*AS2-abs(location1-location2));
-        } else {
-            return (numeric_limits<int>::min()/2);
-        }
-    }
-
-    int getPairScore(int &inputAS, string &inputChromosome, long long int &inputLocation) {
-        int score = calculatePairScore(AS, inputAS, chromosome, inputChromosome, location, inputLocation);
-        if (score > pairScore) {
-            pairScore = score;
-            pairToLocation = inputLocation;
-        }
-        return score;
-    }*/
 };
 
 class MappingPositions {
-
 public:
     vector<MappingPosition> positions;
     int bestPairScore;
@@ -307,10 +292,8 @@ public:
 
     bool append(Alignment* newAlignment);
 
-
     bool append (string chromosome, long long int location, int AS, int pairSegment=0) {
         // return true if the position is not exist and will append to positions, else, false.
-
         int index;
         if (positionExist(location, chromosome, pairSegment, index)) {
             if (positions[index].AS == AS) {
@@ -323,38 +306,7 @@ public:
             return true;
         }
     }
-
-    /*void appendPair (long long int location, string chromosome, int AS, int pairSegment=0) {
-
-        int score;
-        int index;
-        int bestScoreThisPair = numeric_limits<int>::min();
-        long long int bestPairToLocation;
-
-        for (int i = 0; i < positions.size(); i++) {
-            if (pairSegment == positions[i].pairSegment) {
-                continue;
-            } else {
-                score = positions[i].getPairScore(AS, chromosome, location);
-                if (score > bestScoreThisPair) {
-                    bestScoreThisPair = score;
-                    bestPairToLocation = positions[i].location;
-                }
-            }
-        }
-
-        if (bestScoreThisPair > bestPairScore) {
-            bestPairScore = bestScoreThisPair;
-            nPair = 1;
-        } else if (bestScoreThisPair == bestPairScore) {
-            nPair++;
-        }
-
-        positions.push_back(MappingPosition(location, chromosome, AS, pairSegment, bestScoreThisPair, bestPairToLocation));
-    }*/
-
 };
-
 
 class Alignment {
 public:
@@ -370,6 +322,7 @@ public:
     BTString readSequence;
     BTString readQuality;
 
+    // save original sequence and quality score for output
     BTString originalFw;
     BTString readQualityFw;
 
@@ -390,12 +343,11 @@ public:
     BTString unChangedTags;
 
     // intermediate variable
-    long long int* refLocations = nullptr;
-    char* locationPointer;
+    char* locationPointer; // point to the first char for mapping location in genome.
     bool planA;
     bool paired;
     bool forward;
-    bool primaryAlignment;
+    bool primaryAlignment; // this is for output flag adjustment.
     bool mapped;
     bool concordant;
     int pairSegment; // 0 for first segment, 1 for second segment.
@@ -442,10 +394,7 @@ public:
         pairScore = numeric_limits<int>::min();
         oppositePairAddresses.clear();
         repeatPositions.initialize();
-        if (refLocations != nullptr) {
-            free(refLocations);
-            refLocations = nullptr;
-        }
+
         if (repeatResult != nullptr) {
             free(repeatResult);
             repeatResult = nullptr;
@@ -457,15 +406,13 @@ public:
     }
 
     ~Alignment() {
-        if (refLocations != nullptr) {
-            free(refLocations);
-        }
         if (repeatResult != nullptr) {
             free(repeatResult);
         }
     }
 
     void setConcordant(bool concordant_) {
+        // change concordant status and flag
         concordant = concordant_;
         if ((flag&2) && !concordant) {
             flag -= 2;
@@ -509,6 +456,7 @@ public:
     }
 
     int RA_Map(char &base) {
+        // this is a helper function for RA tag construction.
         if (base == 'A') {
             return 0;
         }
@@ -523,9 +471,10 @@ public:
         }
         return 4;
     }
+
     vector<Cigar> getCigarSegments(string cigarString) {
         // input the Cigar string from SAM information and split it into each segment.
-
+        // this function run faster than regex.
         vector<Cigar> outputCigar;
         int previousLocation = 0;
         int lenLength = 0;
@@ -542,7 +491,7 @@ public:
     }
 
     void updateRA(char& read, char& ref) {
-        // update extra RA tag
+        // update RA tag
         RA_Array[RA_Map(ref)][RA_Map(read)]++;
     }
 
@@ -576,7 +525,7 @@ public:
         string readSequence_string = readSequence.toZBuf();
         int sequenceLength = readSequence_string.size();
 
-        ht2_error_t err = ht2_repeat_expand((planA == true)?repeatHandles[0]:repeatHandles[1],
+        ht2_error_t err = ht2_repeat_expand(planA ? repeatHandles[0] : repeatHandles[1],
                                             chromosomeName.toZBuf(),
                                             location - 1,
                                             sequenceLength,
@@ -616,7 +565,7 @@ public:
 
             string newMD;
             int nIncorrectMatch = 0;
-            if (!constructMD(readSequence_string, newMD, nIncorrectMatch)) {
+            if (!constructRepeatMD(readSequence_string, newMD, nIncorrectMatch)) {
                 continue;
             }
 
@@ -648,8 +597,8 @@ public:
         }
     }
 
-    bool constructMD(string &readSequence_string, string &newMD_String, int &nIncorrectMatch) {
-        // construct new MD string, this function if for repeat read
+    bool constructRepeatMD(string &readSequence_string, string &newMD_String, int &nIncorrectMatch) {
+        // construct new MD string, this function is for repeat read
         // return true, if the read is mapped to correct location.
         // return false, if the read is mapped to incorrect location.
 
@@ -702,7 +651,6 @@ public:
                         updateMP(refPos, readChar, refPos, refChar);
                     }
                     updateRA(readChar, refChar);
-
                     readPos++;
                     refPos++;
                 }
@@ -731,6 +679,9 @@ public:
     }
 
     bool constructMD() {
+        // this funtction is for non-repeat alignment.
+        // return true, if the read is mapped to correct location.
+        // return false, if the alignment has too many mismatch.
         if (!mapped) {
             return true;
         }
@@ -785,7 +736,6 @@ public:
                         updateMP(refPos, readChar, refPos, refChar);
                     }
                     updateRA(readChar, refChar);
-
                     readPos++;
                     refPos++;
                 }
@@ -823,6 +773,8 @@ public:
     }
 
     void outputFlags(BTString& o) {
+        // this function is for non-repeat or repeat-non-expand output.
+        // for repeat-expand output, use outputRepeatFlags function.
         char buf[1024];
         if (mapped) {
             // AS
@@ -830,30 +782,25 @@ public:
             itoa10<int>(AS, buf);
             o.append(buf);
             o.append('\t');
-
             // NH
             o.append("NH:i:");
             itoa10<int>(NH, buf);
             o.append(buf);
             o.append('\t');
-
             // XM
             o.append("XM:i:");
             itoa10<int>(XM, buf);
             o.append(buf);
             o.append('\t');
-
             // NM
             o.append("NM:i:");
             itoa10<int>(NM, buf);
             o.append(buf);
             o.append('\t');
-
             // MD
             o.append("MD:Z:");
             o.append(MD.toZBuf());
             o.append('\t');
-
             if (paired) {
                 // YS
                 o.append("YS:i:");
@@ -862,9 +809,7 @@ public:
                 o.append('\t');
             }
         }
-
         o.append(unChangedTags.toZBuf());
-
 
         if (mapped && !repeat) {
             o.append('\t');
@@ -873,7 +818,6 @@ public:
             itoa10<int>(TC, buf);
             o.append(buf);
             o.append('\t');
-
             // RA
             o.append("RA:i:");
             for (int i = 0; i < 5; i++) {
@@ -886,21 +830,18 @@ public:
                 }
             }
             o.append('\t');
-
             // MP
             if (!MP.empty()) {
                 o.append("MP:Z:");
                 o.append(MP.toZBuf());
             }
         }
-
     }
 
     void outputRepeatFlags(BTString& o, int &inputAS, int &inputXM, int &inputNM, string &inputMD,
             int &inputTC, int inputRA[5][5], BTString &inputMP) {
-
+        // this function is for repeat-expand alignment output.
         char buf[1024];
-
         // AS
         o.append("AS:i:");
         itoa10<int>(inputAS, buf);
@@ -957,38 +898,31 @@ public:
             o.append("MP:Z:");
             o.append(inputMP.toZBuf());
         }
-
     }
 
     void outputSingleAlginemnt(BTString& o) {
+        // this function is for non-repeat or repeat-non-expand alignment output.
         char buf[1024];
-
         // readName
         o.append(readName.toZBuf());
         o.append('\t');
-
         // flag, if it is primary alignment, -256
         itoa10<int>(flag-primaryAlignment*256, buf);
         o.append(buf);
         o.append('\t');
-
         // chromosome
         o.append(chromosomeName.toZBuf());
         o.append('\t');
-
         // location
         itoa10<int>(location, buf);
         o.append(buf);
         o.append('\t');
-
         //MAPQ
         o.append(MAPQ.toZBuf());
         o.append('\t');
-
         // cigar
         o.append(cigarString.toZBuf());
         o.append('\t');
-
         // pair to chromosome
         if (concordant) {
             o.append("=");
@@ -997,7 +931,6 @@ public:
             o.append(pairToChromosome.toZBuf());
             o.append('\t');
         }
-
         // pair to location
         if (concordant) {
             itoa10<int>(pairToLocation, buf);
@@ -1008,8 +941,6 @@ public:
             o.append(buf);
             o.append('\t');
         }
-
-
         // pairing distance
         if (paired) {
             itoa10<int>(pairToLocation - location, buf);
@@ -1019,18 +950,14 @@ public:
             o.append('0');
             o.append('\t');
         }
-
         // read sequence
         o.append(readSequence.toZBuf());
         o.append('\t');
-
         // read quality
         o.append(readQuality.toZBuf());
         o.append('\t');
-
         // tags
         outputFlags(o);
-
         o.append('\n');
     }
 
@@ -1041,7 +968,6 @@ public:
             MappingPosition *currentPosition = &oppositeAlignment->repeatPositions.positions[i];
             for (int j = 0; j < currentPosition->repeatPositions.size(); j++) {
                 if (currentPosition->repeatPositions[j].location == location && currentPosition->repeatPositions[j].chromosome == chromosome) {
-
                     // readName
                     o.append(oppositeAlignment->readName.toZBuf());
                     o.append('\t');
@@ -1049,50 +975,39 @@ public:
                     itoa10<int>(oppositeAlignment->flag-(256*primary), buf);
                     o.append(buf);
                     o.append('\t');
-
                     // chromosome
                     o.append(chromosome.c_str());
                     o.append('\t');
-
                     // location
                     itoa10<int>(location, buf);
                     o.append(buf);
                     o.append('\t');
-
                     //MAPQ
                     o.append(oppositeAlignment->MAPQ.toZBuf());
                     o.append('\t');
-
                     // cigar
                     o.append(oppositeAlignment->cigarString.toZBuf());
                     o.append('\t');
-
                     // pair to chromosome
                     o.append("=");
                     o.append('\t');
-
                     // pair to location
                     itoa10<int>(oppoLocation, buf);
                     o.append(buf);
                     o.append('\t');
-
                     // pairing distance
                     itoa10<int>(oppoLocation-currentPosition->repeatPositions[j].location, buf);
                     o.append(buf);
                     o.append('\t');
-
                     // read sequence
                     o.append(oppositeAlignment->readSequence.toZBuf());
                     o.append('\t');
-
                     // read quality
                     o.append(oppositeAlignment->readQuality.toZBuf());
                     o.append('\t');
-
                     // tags
                     outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                       currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
-
                     o.append('\n');
                     return;
                 }
@@ -1102,9 +1017,7 @@ public:
 
     int outputRepeatAlignment(BTString& o) {
         char buf[1024];
-
         int nOutput = 0;
-
         for (int i = 0; i < repeatPositions.positions.size(); i++) {
             MappingPosition *currentPosition = &repeatPositions.positions[i];
             for (int j = 0; j < currentPosition->repeatPositions.size(); j++) {
@@ -1114,33 +1027,26 @@ public:
                         // readName
                         o.append(readName.toZBuf());
                         o.append('\t');
-
                         // flag
                         itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
                         o.append(buf);
                         o.append('\t');
-
                         // chromosome
                         o.append(currentPosition->repeatPositions[j].chromosome.c_str());
                         o.append('\t');
-
                         // location
                         itoa10<int>(currentPosition->repeatPositions[j].location, buf);
                         o.append(buf);
                         o.append('\t');
-
                         //MAPQ
                         o.append(MAPQ.toZBuf());
                         o.append('\t');
-
                         // cigar
                         o.append(cigarString.toZBuf());
                         o.append('\t');
-
                         // pair to chromosome
                         o.append('=');
                         o.append('\t');
-
                         // pair to location
                         if (paired) {
                             itoa10<int>(currentPosition->repeatPositions[j].pairToLocation, buf);
@@ -1151,7 +1057,6 @@ public:
                             o.append(buf);
                             o.append('\t');
                         }
-
                         // pairing distance
                         if (paired) {
                             itoa10<int>(currentPosition->repeatPositions[j].pairToLocation-currentPosition->repeatPositions[j].location, buf);
@@ -1162,15 +1067,12 @@ public:
                             o.append(buf);
                             o.append('\t');
                         }
-
                         // read sequence
                         o.append(readSequence.toZBuf());
                         o.append('\t');
-
                         // read quality
                         o.append(readQuality.toZBuf());
                         o.append('\t');
-
                         // tags
                         outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                           currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
@@ -1186,54 +1088,41 @@ public:
                         // readName
                         o.append(readName.toZBuf());
                         o.append('\t');
-
                         // flag
                         itoa10<int>(flag-256*(nOutput==1 && primaryAlignment), buf);
                         o.append(buf);
                         o.append('\t');
-
                         // chromosome
                         o.append(currentPosition->repeatPositions[j].chromosome.c_str());
                         o.append('\t');
-
                         // location
                         itoa10<int>(currentPosition->repeatPositions[j].location, buf);
                         o.append(buf);
                         o.append('\t');
-
                         //MAPQ
                         o.append(MAPQ.toZBuf());
                         o.append('\t');
-
                         // cigar
                         o.append(cigarString.toZBuf());
                         o.append('\t');
-
                         // pair to chromosome
                         o.append('*');
                         o.append('\t');
-
                         // pair to location
-                        //itoa10<int>(currentPosition->repeatPositions[j].location, buf);
                         o.append('0');
                         o.append('\t');
-
                         // pairing distance
                         o.append('0');
                         o.append('\t');
-
                         // read sequence
                         o.append(readSequence.toZBuf());
                         o.append('\t');
-
                         // read quality
                         o.append(readQuality.toZBuf());
                         o.append('\t');
-
                         // tags
                         outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                           currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
-
                         o.append('\n');
                     }
                 }
@@ -1260,25 +1149,24 @@ public:
 
 class Alignments {
 public:
-    vector<Alignment*> alignments;
-    queue<Alignment*> freeAlignments;
+    vector<Alignment*> alignments; // pool to store current alignment result.
+    queue<Alignment*> freeAlignments; // free pointer pool for new alignment result. after output a alignment, return the pointer back to this pool.
 
     TReadId previousReadID;
     int bestAS; // for single-end read selection
     int bestPairScore; // for paired-end read selection;
-    int nBestPair;
-    bool concordantAlignmentExist;
-    MappingPositions existPositions;
+    int nBestPair; // NH for paired-end output.
+    bool concordantAlignmentExist; // for paired-end output, if there is concordant alignment, output the concordant one.
+    MappingPositions existPositions; // check if same alignment result is exist. same alignment result could made by planA alignment and planB alignment.
 
-    BTString readName[2];
-    BTString readSequence[2];
-    BTString qualityScore[2];
+    BTString readName[2]; // the read name could be different for segment 1 and segment 2.
+    BTString readSequence[2]; // save the read sequence for output.
+    BTString qualityScore[2]; // save the quality score for output.
 
     bool working;
     bool paired;
 
     void initialize() {
-        //alignments.clear();
         bestAS = numeric_limits<int>::min();
         bestPairScore = numeric_limits<int>::min()+1;
         existPositions.initialize();
@@ -1377,58 +1265,44 @@ public:
 
 
     int calculatePairScore(Alignment *alignment1, Alignment *alignment2, int &nPair) {
-        int pairScore = numeric_limits<int>::min();
+        // calculate the pairScore for a pair of alignment result. Output pair Score and number of pair (1 for non-repeat).
+        // Do not update their pairScore.
 
+        int pairScore = numeric_limits<int>::min();
         nPair = 0;
         if (alignment1->pairSegment == alignment2->pairSegment){
+            // when 2 alignment results are from same pair segment, output the lowest score and number of pair equal zero.
             pairScore = numeric_limits<int>::min();
-        } else if (!alignment1->mapped || !alignment2->mapped || (alignment1->planA != alignment2->planA)) {
+        } else if (!alignment1->mapped && !alignment2->mapped) {
+            // both ummaped.
+            pairScore = numeric_limits<int>::min()/2 - 1;
+        } else if (!alignment1->mapped || !alignment2->mapped) {
+            // one of the segment unmapped.
             pairScore = numeric_limits<int>::min()/2;
-            if (!alignment1->mapped && !alignment2->mapped) {
-                nPair = 0;
-                pairScore -= 1;
-            } else if (alignment1->mapped && alignment2->mapped){
-                if (alignment1->chromosomeName == alignment2->chromosomeName) {
-                    pairScore += 1;
-                }
-                nPair = 1;
+        } else if (alignment1->planA != alignment2->planA) {
+            // both mapped, but they belong to different plan.
+            pairScore = numeric_limits<int>::min()/2;
+            if (alignment1->chromosomeName == alignment2->chromosomeName) {
+                pairScore += 1;
             }
-
-//            if (pairScore > alignment1->pairScore) {
-//                alignment1->pairScore = pairScore;
-//            }
-//            if (pairScore > alignment2->pairScore) {
-//                alignment2->pairScore = pairScore;
-//            }
-
-        } else if ((alignment1->chromosomeName != alignment2->chromosomeName && ((alignment1->chromosomeName != alignment2->pairToChromosome) && (alignment1->pairToChromosome != alignment2->chromosomeName))) ||
+            nPair = 1;
+        }else if ((alignment1->chromosomeName != alignment2->chromosomeName && ((alignment1->chromosomeName != alignment2->pairToChromosome) && (alignment1->pairToChromosome != alignment2->chromosomeName))) ||
                     ((alignment1->location != alignment2->pairToLocation) && (alignment1->pairToLocation != alignment2->location))){
+            // both mapped, but they do not pair to each other.
             pairScore = numeric_limits<int>::min()/2 + 2;
-//            if (pairScore > alignment1->pairScore) {
-//                alignment1->pairScore = pairScore;
-//            }
-//            if (pairScore > alignment2->pairScore) {
-//                alignment2->pairScore = pairScore;
-//            }
-            //nPair = 1;
         } else if ((!alignment1->repeat && !alignment2->repeat) || !expandRepeat){
+            // both mapped and (both non-repeat or not expand repeat)
             pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
-            //pairScore += alignment1->concordant * 1000;
-
             if (pairScore > alignment1->pairScore) {
-                //alignment1->pairScore = pairScore;
                 alignment1->pairToLocation = alignment2->location;
-
             }
             if (pairScore > alignment2->pairScore) {
-                //alignment2->pairScore = pairScore;
                 alignment2->pairToLocation = alignment1->location;
-
             }
             nPair = 1;
         } else if (alignment1->repeat && !alignment2->repeat) {
+            // 1st alignment is repeat, 2nd alignment is not repeat.
             int tmpPairScore;
-
             int AS2 = alignment2->AS;
             long long int location2 = alignment2->location;
             bool forward1 = alignment1->forward;
@@ -1444,13 +1318,11 @@ public:
                     }
                     tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward1, location2, AS2, forward2);
                     if (tmpPairScore >= alignment1->pairScore) {
-                        //alignment1->pairScore = tmpPairScore;
                         repeatPositions->pairScore = tmpPairScore;
                         repeatPosition->pairScore = tmpPairScore;
                         repeatPosition->pairToLocation = location2;
                     }
                     if (tmpPairScore >= alignment2->pairScore) {
-                        //alignment2->pairScore = tmpPairScore;
                         alignment2->pairToLocation = repeatPosition->location;
                     }
                     if (tmpPairScore > pairScore) {
@@ -1462,8 +1334,9 @@ public:
                 }
             }
         } else if (!alignment1->repeat && alignment2->repeat) {
-            int tmpPairScore;
+            // 1st alignment is non-repeat, 2nd alignment is repeat alignment.
 
+            int tmpPairScore;
             int AS1 = alignment1->AS;
             long long int location1 = alignment1->location;
             string chromosome1 = alignment1->chromosomeName.toZBuf();
@@ -1479,11 +1352,9 @@ public:
                     }
                     tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward2, location1, AS1, forward1);
                     if (tmpPairScore >= alignment1->pairScore) {
-                        //alignment1->pairScore = tmpPairScore;
                         alignment1->pairToLocation = repeatPosition->location;
                     }
                     if (tmpPairScore >= alignment2->pairScore) {
-                        //alignment2->pairScore = tmpPairScore;
                         repeatPositions->pairScore = tmpPairScore;
                         repeatPosition->pairScore = tmpPairScore;
                         repeatPosition->pairToLocation = location1;
@@ -1511,13 +1382,11 @@ public:
                     for (int i2 = 0; i2 < alignment2->repeatPositions.positions.size(); i2++) {
                         MappingPosition *repeatPositions2 = &alignment2->repeatPositions.positions[i2];
                         for (int j2 = 0; j2 < repeatPositions2->repeatPositions.size(); j2++) {
-
                             RepeatPosition *repeatPosition2 = &repeatPositions2->repeatPositions[j2];
                             if(repeatPosition1->chromosome != repeatPosition2->chromosome) {
                                 continue;
                             }
                             tmpPairScore = calculatePairScore(repeatPosition1->location, repeatPositions1->AS, forward1, repeatPosition2->location, repeatPositions2->AS, forward2);
-
                             if (tmpPairScore > pairScore) {
                                 pairScore = tmpPairScore;
                                 nPair = 1;
@@ -1528,17 +1397,13 @@ public:
                                 } else {
                                     nPair++;
                                 }
-
                             }
-
                             if (tmpPairScore >= repeatPositions1->pairScore) {
-                                //alignment1->pairScore = tmpPairScore;
                                 repeatPositions1->pairScore = tmpPairScore;
                                 repeatPosition1->pairToLocation = repeatPosition2->location;
                                 repeatPosition1->pairScore = tmpPairScore;
                             }
                             if (tmpPairScore >= repeatPositions2->pairScore) {
-                                //alignment2->pairScore = tmpPairScore;
                                 repeatPositions2->pairScore = tmpPairScore;
                                 repeatPosition2->pairScore = tmpPairScore;
                                 repeatPosition2->pairToLocation = repeatPosition1->location;
@@ -1553,14 +1418,14 @@ public:
 
 
     int calculatePairScore(long long int &location1, int &AS1, bool &forward1, long long int &location2, int &AS2, bool &forward2) {
-    //int calculatePairScore(Alignment *alignment1, Alignment *alignment2) {
+        // this is the basic function to calculate pair score.
+        // if the distance between 2 alignment is more than 1000, we reduce the score by the distance.
+        // if two alignment is concordant we add 500000 to make sure to select the concordant pair as best pair.
         int score = 100*AS1 + 100*AS2;
         int distance = abs(location1 - location2);
-
         if (distance > 1000) {
             score -= distance;
         }
-
         if (distance > 500000) {
             return numeric_limits<int>::min();
         }
@@ -1570,7 +1435,32 @@ public:
         return score;
     }
 
+    int calculateNumAlignment(bool& repeat) {
+        // this function is to calculate number of alignment (NH) for single-end output.
+        int nAlignment = 0;
+        if (expandRepeat) {
+            for (int i = 0; i < alignments.size(); i++) {
+                if (alignments[i]->repeat) {
+                    nAlignment += alignments[i]->nBestRepeat;
+                    repeat = true;
+                } else {
+                    if (alignments[i]->mapped) {
+                        nAlignment++;
+                    }
+                }
+            }
+        } else {
+            for (int i = 0; i < alignments.size(); i++) {
+                if (alignments[i]->mapped) {
+                    nAlignment++;
+                }
+            }
+        }
+        return nAlignment;
+    }
+
     int calculateNumBestPair() {
+        // this is a backup function to calculate the number of best pair (NH). this can be use in output_paired function.
         int numBestPair = 0;
         for (int i = 0; i < alignments.size(); i++) {
             if ((alignments[i]->pairScore == bestPairScore) && (alignments[i]->concordant == concordantAlignmentExist)) {
@@ -1581,9 +1471,7 @@ public:
                             MappingPosition *currentPosition = &repeatPositions.positions[ii];
                             for (int jj = 0; jj < currentPosition->repeatPositions.size(); jj++) {
                                 if (paired && (currentPosition->repeatPositions[jj].pairScore == bestPairScore)) {
-                                    //for (int k = 0; k < alignments[i]->oppositePairAddresses.size(); k++) {
                                     numBestPair++;
-                                    //}
                                 }
                             }
                         }
@@ -1597,9 +1485,10 @@ public:
     }
 
 
-    // add a extra tag if the read is aligned on repeat index. this tag will show which repeat index is used.
-    // XR:Z:TC means the read aligned on TC conversion repeat index.
+
     void addRepeatIndexTag(Alignment *newAlignment) {
+        // add a extra tag if the read is aligned on repeat index. this tag will show which repeat index is used.
+        // XR:Z:TC means the read aligned on TC conversion repeat index.
         string tag = "";
         if (newAlignment->planA) {
             tag += convertedFrom;
@@ -1616,9 +1505,10 @@ public:
     }
 
     void addNewAlignment_single(Alignment *newAlignment) {
-
+        // add new single-end alignment into pool.
         working = true;
 
+        // save read name, sequence, and quality score for output.
         if (readName[0].empty()) {
             readName[0] = newAlignment->readName;
         }
@@ -1628,9 +1518,9 @@ public:
         if (qualityScore[0].empty()) {
             qualityScore[0] = newAlignment->readQualityFw;
         }
+
         paired = newAlignment->paired;
         int newAlignmentAS;
-
         if (newAlignment->repeat && expandRepeat) {
             if (!newAlignment->constructRepeatMD(existPositions)) {
                 newAlignment->initialize();
@@ -1639,7 +1529,6 @@ public:
                 return;
             }
             newAlignmentAS = newAlignment->bestAS;
-
         } else {
             // check if alignment result exist
             if(!existPositions.append(newAlignment)) {
@@ -1663,6 +1552,7 @@ public:
         }
 
         if (newAlignmentAS > bestAS) {
+            // if new alignment has best AS, clear alignments, update best AS, push new alignment to alignments.
             for (int i = 0; i < alignments.size(); i++) {
                 alignments[i]->initialize();
                 freeAlignments.push(alignments[i]);
@@ -1671,6 +1561,7 @@ public:
             bestAS = newAlignment->AS;
             alignments.push_back(newAlignment);
         } else if (newAlignmentAS == bestAS) {
+            // if new alignment has same AS to best AS, add it to alignments.
             if (alignmentExist(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1678,6 +1569,7 @@ public:
                 alignments.push_back(newAlignment);
             }
         } else {
+            // if new alignment has lower AS, return it to free alignment pool.
             newAlignment->initialize();
             freeAlignments.push(newAlignment);
         }
@@ -1685,16 +1577,18 @@ public:
     }
 
     void addNewAlignment_paired(Alignment *newAlignment) {
+        // add new paired-end alignment into pool.
         working = true;
-
+        // if there are too many alignment result, ignore it. otherwise it will consume hugh amount of time.
+        // this could happen when we use repeat index.
         if (alignments.size() > 20) {
             newAlignment->initialize();
             freeAlignments.push(newAlignment);
             working = false;
             return;
         }
+        // save read name, sequence, quality score information for output.
         int pairSegment = newAlignment->pairSegment;
-
         if (readName[pairSegment].empty()) {
             readName[pairSegment] = newAlignment->readName;
         }
@@ -1707,6 +1601,7 @@ public:
         paired = newAlignment->paired;
 
         if (newAlignment->repeat && expandRepeat) {
+            // check if alignment result exist
             if(!existPositions.append(newAlignment)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1748,7 +1643,7 @@ public:
             // jump pairing process, directly push back
         } else{
             for (int i = 0; i < alignments.size(); i++) {
-                // find it's pair
+                // find it's pair and pairScore.
                 if ((alignments[i]->location != newAlignment->pairToLocation) || (alignments[i]->chromosomeName != newAlignment->chromosomeName)) {
                     continue;
                 }
@@ -1761,24 +1656,22 @@ public:
                     bestNewPairScore = newPairScore;
                     tmp_nBestPair = nPair;
                     pairTo = i;
-                    //if (newAlignment->concordant) {
-                    //    concordantAlignmentExist = true;
-                    //}
                 }
             }
         }
+        // update pair score and nBest pair information in this class.
         if (bestNewPairScore > bestPairScore) {
             bestPairScore = bestNewPairScore;
             nBestPair = tmp_nBestPair;
         } else if (bestNewPairScore == bestPairScore) {
             nBestPair += tmp_nBestPair;
         }
+        // update pair score, pair address information for paired alignment.
         if (pairTo > -1) {
             bool concordant = isConcordant(newAlignment, alignments[pairTo]);
             if (bestNewPairScore >= bestPairScore) {
                 concordantAlignmentExist = concordant;
             }
-
             if (bestNewPairScore > newAlignment->pairScore) {
                 newAlignment->pairScore = bestNewPairScore;
                 newAlignment->oppositePairAddresses.clear();
@@ -1801,18 +1694,10 @@ public:
                 alignments[pairTo]->pairToLocation = newAlignment->location;
                 alignments[pairTo]->setConcordant(concordant);
             }
-
-            /*if (newAlignment->pairSegment == 0) {
-                //alignments.insert(alignments.begin()+pairTo, newAlignment);
-                alignments.push_back(newAlignment);
-            } else {
-                alignments.insert(alignments.begin()+pairTo+1, newAlignment);
-            }*/
             alignments.push_back(newAlignment);
         } else {
             alignments.push_back(newAlignment);
         }
-
         working = false;
     }
 
@@ -1841,33 +1726,15 @@ public:
             o.append("YT:Z:UU");
             o.append("\n");
         }
-
     }
 
     void output_single(BTString& o, uint64_t &unAligned, uint64_t &nonRepeatAlignment, uint64_t &uniqueAlignment,
                 uint64_t &multipleAlignment, uint64_t &repeatAlignment) {
 
-        int nAlignment = 0;
+
         bool repeat = false;
         // find NH (nAlginment)
-        if (expandRepeat) {
-            for (int i = 0; i < alignments.size(); i++) {
-                if (alignments[i]->repeat) {
-                    nAlignment += alignments[i]->nBestRepeat;
-                    repeat = true;
-                } else {
-                    if (alignments[i]->mapped) {
-                        nAlignment++;
-                    }
-                }
-            }
-        } else {
-            for (int i = 0; i < alignments.size(); i++) {
-                if (alignments[i]->mapped) {
-                    nAlignment++;
-                }
-            }
-        }
+        int nAlignment = calculateNumAlignment(repeat);
         // update statistics
         if (nAlignment == 0) {
             unAligned++;
@@ -1910,10 +1777,10 @@ public:
     void output_paired(BTString& o, uint64_t &unConcordant, uint64_t &uniqueConcordant, uint64_t &multipleConcordant, uint64_t &nonRepeatPairedAlignment,
                        uint64_t &uniqueDiscordant, uint64_t &unAlignedPairRead, uint64_t &alignedPairRead, uint64_t &uniqueAlignedPairRead, uint64_t &multipleAlignedPairRead,
                        uint64_t &concordantRepeat, uint64_t &disconcordantRepeatRead) {
-        // update statistics
 
         //int testNumBestPair = calculateNumBestPair();
 
+        // update statistics
         if (!concordantAlignmentExist) {
             unConcordant++;
             int nAlignment[2] = {0};
@@ -1984,7 +1851,7 @@ public:
                     if (primaryAlignment) {
                         alignments[i]->primaryAlignment = true;
                     }
-                    //if (concordantAlignmentExist) {
+                    // only output segment 0, then output it's pair (opposite pair).
                     if (alignments[i]->pairSegment == 0) {
                         if (alignments[i]->repeat && alignments[i]->pairToRepeat) {
                             nOutput += alignments[i]->output(o);

@@ -3913,8 +3913,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
         // output rest
         msink.output(tid-1, rpm);
 	}
-
-
+	
 	// One last metrics merge
 	MERGE_METRICS(metrics, nthreads > 1);
     
@@ -4772,9 +4771,9 @@ static void driver(
 			if(repThresh == 0) {
 				repThresh = std::numeric_limits<size_t>::max();
 			}
-			if (TLA) {
+			/*if (TLA) {
                 repThresh = 1;
-			}
+			}*/
 			mssink->finish(cerr,
                            repThresh,
                            gReportDiscordant,

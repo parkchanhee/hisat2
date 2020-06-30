@@ -1,5 +1,6 @@
 //
-// Created by s429377 on 1/10/20.
+// Created by Yun (Leo) Zhang on 1/10/20.
+// This script is made for HISAT-3N (HISAT-TLA).
 //
 
 #include "TLA.h"
@@ -20,11 +21,7 @@ bool MappingPositions::append (Alignment* newAlignment) {
 
     int index;
     if (positionExist(location, chromosome, pairSegment, index)) {
-        if ((positions[index].concordant == false) && (concordant == true)) {
-            return true;
-        } else {
-            return false;
-        }
+        return !positions[index].concordant && concordant;
     } else {
         positions.push_back(MappingPosition(location, chromosome, AS, pairSegment, concordant));
         return true;

@@ -1770,8 +1770,6 @@ protected:
     
     EList<SpliceSite> spliceSites_;
 
-    // for TLA
-
 };
 
 
@@ -2000,15 +1998,10 @@ public:
     }
 
     void output(int threadId0, ReportingMetrics& met) {
-
-        /*while(alignmentsEachThreads[threadId0]->working) {
-            usleep(1);
-        }*/
-
+        // this function is to output rest of alignments information in alignmentsEachThreads[threadId0].
         if (alignmentsEachThreads[threadId0]->readName->empty()) {
             return;
         }
-
         met.nread++;
         if (alignmentsEachThreads[threadId0]->paired) {
             met.npaired++;
@@ -2040,8 +2033,8 @@ public:
             const Scoring& sc,         // scoring scheme
             bool report2)              // report alns for both mates
     {
+        // this function is for HLA alignment result report.
         size_t threadId0 = threadId-1;
-
         if (rdid != alignmentsEachThreads[threadId0]->previousReadID ) {
             if (!alignmentsEachThreads[threadId0]->readName[0].empty()) {
                 // output previous result.
@@ -2086,15 +2079,11 @@ public:
             const Scoring& sc,
             size_t        threadId0)    // which thread am I?
     {
+        // this funtion is for HLA alignment result report.
         bool planA = rd.plan == 'A';
-        
         Alignment* newAlignment;
         alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
         newAlignment->planA = planA;
-
-        /*if (rdo != NULL) {
-            newAlignment->paired = true;
-        }*/
 
         if(rs == NULL && samc_.omitUnalignedReads()) {
             delete newAlignment;
@@ -2109,9 +2098,7 @@ public:
         }
         int offAdj = 0;
         // QNAME
-        //samc_.printReadName(o, rd.name, flags.partOfPair());
         samc_.printReadName(newAlignment->readName, rd.name, flags.partOfPair());
-        //o.append('\t');
         // FLAG
         int fl = 0;
         if(flags.partOfPair()) {
@@ -2141,24 +2128,18 @@ public:
             // Failed to align
             fl |= SAM_FLAG_UNMAPPED;
         }
-        //itoa10<int>(fl, buf);
         newAlignment->flag = fl;
-        //o.append(buf);
-        //o.append('\t');
         // RNAME
         if(rs != NULL) {
-            //samc_.printRefNameFromIndex(o, (size_t)rs->refid(), rs->repeat());
             samc_.printRefNameFromIndex(newAlignment->chromosomeName, (size_t)rs->refid(), rs->repeat());
             if (rs->repeat()) {
                 newAlignment->repeat = true;
             }
-            //o.append('\t');
         } else {
             if(summ.orefid() != -1) {
                 // Opposite mate aligned but this one didn't - print the opposite
                 // mate's RNAME and POS as is customary
                 assert(flags.partOfPair());
-                //samc_.printRefNameFromIndex(o, (size_t)summ.orefid(), summ.repeat());
                 samc_.printRefNameFromIndex(newAlignment->chromosomeName, (size_t)summ.orefid(), summ.repeat());
                 if (summ.repeat()) {
                     newAlignment->repeat = true;
@@ -2166,32 +2147,23 @@ public:
             } else {
                 // No alignment
                 newAlignment->chromosomeName = "*";
-                //o.append('*');
             }
-            //o.append('\t');
         }
         // POS
         // Note: POS is *after* soft clipping.  I.e. POS points to the
         // upstream-most character *involved in the clipped alignment*.
         if(rs != NULL) {
-            //itoa10<int64_t>(rs->refoff()+1+offAdj, buf);
             newAlignment->location = rs->refoff()+1+offAdj;
-            //o.append(buf);
-            //o.append('\t');
         } else {
             if(summ.orefid() != -1) {
                 // Opposite mate aligned but this one didn't - print the opposite
                 // mate's RNAME and POS as is customary
                 assert(flags.partOfPair());
-                //itoa10<int64_t>(summ.orefoff()+1+offAdj, buf);
                 newAlignment->location = summ.orefoff()+1+offAdj;
-                //o.append(buf);
             } else {
                 // No alignment
                 newAlignment->location = 0;
-                //o.append('0');
             }
-            //o.append('\t');
         }
         // MAPQ
         mapqInps[0] = '\0';
@@ -2200,36 +2172,27 @@ public:
                     summ, flags, rd.mate < 2, rd.length(),
                     rdo == NULL ? 0 : rdo->length(), mapqInps), buf);
             newAlignment->MAPQ = buf;
-            //o.append(buf);
-            //o.append('\t');
         } else {
             // No alignment
             newAlignment->MAPQ = "0";
-            //o.append("0\t");
         }
         // CIGAR
         if(rs != NULL) {
             staln.buildCigar(false);
-            //staln.writeCigar(&o, NULL);
             staln.writeCigar(&newAlignment->cigarString, NULL);
-            //o.append('\t');
         } else {
             // No alignment
             newAlignment->cigarString = "*";
-            //o.append("*\t");
         }
         // RNEXT
         if(rs != NULL && flags.partOfPair()) {
             if(rso != NULL && (rs->refid() != rso->refid() || rs->repeat() != rso->repeat())) {
-                //samc_.printRefNameFromIndex(o, (size_t)rso->refid(), rso->repeat());
                 samc_.printRefNameFromIndex(newAlignment->pairToChromosome, (size_t)rso->refid(), rso->repeat());
-                //o.append('\t');
             } else {
                 newAlignment->pairToChromosome = "=";
                 if (newAlignment->repeat) {
                     newAlignment->pairToRepeat = true;
                 }
-                //o.append("=\t");
             }
         } else if(summ.orefid() != -1) {
             // The convention if this mate fails to align but the other doesn't is
@@ -2238,107 +2201,67 @@ public:
             if (newAlignment->repeat) {
                 newAlignment->pairToRepeat = true;
             }
-            //o.append("=\t");
         } else {
             newAlignment->pairToChromosome = "*";
-            //o.append("*\t");
         }
         // PNEXT
         if(rs != NULL && flags.partOfPair()) {
             if(rso != NULL) {
-                //itoa10<int64_t>(rso->refoff()+1, buf);
                 newAlignment->pairToLocation = rso->refoff()+1;
-                //o.append(buf);
-                //o.append('\t');
             } else {
                 // The convenstion is that if this mate aligns but the opposite
                 // doesn't, we print this mate's offset here
-                //itoa10<int64_t>(rs->refoff()+1, buf);
                 newAlignment->pairToLocation = rs->refoff()+1;
-                //o.append(buf);
-                //o.append('\t');
             }
         } else if(summ.orefid() != -1) {
             // The convention if this mate fails to align but the other doesn't is
             // to copy the mate's details into here
-            //itoa10<int64_t>(summ.orefoff()+1, buf);
             newAlignment->pairToLocation = summ.orefoff()+1;
-            //o.append(buf);
-            //o.append('\t');
         } else {
             newAlignment->pairToLocation = 0;
-            //o.append("0\t");
         }
         // ISIZE
         if(rs != NULL && rs->isFraglenSet()) {
-            //itoa10<int64_t>(rs->fragmentLength(), buf);
             newAlignment->pairingDistance = rs->fragmentLength();
-            //o.append(buf);
-            //o.append('\t');
         } else {
             // No fragment
             newAlignment->pairingDistance = 0;
-            //o.append("0\t");
         }
         // SEQ
         if(!flags.isPrimary() && samc_.omitSecondarySeqQual()) {
             newAlignment->readSequence = "*";
-            //o.append('*');
         } else {
             // Print the read
             if(rd.patFw.length() == 0) {
                 newAlignment->readSequence = "*";
-                //o.append('*');
             } else {
                 newAlignment->originalFw = rd.originalFw.toZBuf();
                 if(rs == NULL || rs->fw()) {
                     newAlignment->readSequence = rd.originalFw.toZBuf();
-                    //o.append(rd.originalFw.toZBuf());
                 } else {
                     newAlignment->readSequence = rd.originalRc.toZBuf();
-                    //o.append(rd.originalRc.toZBuf());
                 }
             }
         }
-        //o.append('\t');
         // QUAL
         if(!flags.isPrimary() && samc_.omitSecondarySeqQual()) {
             newAlignment->readQuality = "*";
-            //o.append('*');
         } else {
             // Print the quals
             if(rd.qual.length() == 0) {
                 newAlignment->readQuality = "*";
-                //o.append('*');
             } else {
                 newAlignment->readQualityFw = rd.qual.toZBuf();
                 if(rs == NULL || rs->fw()) {
                     newAlignment->readQuality = rd.qual.toZBuf();
-                    //o.append(rd.qual.toZBuf());
                 } else {
                     newAlignment->readQuality = rd.qualRev.toZBuf();
-                    //o.append(rd.qualRev.toZBuf());
                 }
             }
         }
-        //o.append('\t');
-        //
         // Optional fields
         //
         if(rs != NULL) {
-            /*samc_.printAlignedOptFlags(
-                    o,           // output buffer
-                    true,        // first opt flag printed is first overall?
-                    rd,          // read
-                    *rs,         // individual alignment result
-                    staln,       // stacked alignment
-                    flags,       // alignment flags
-                    summ,        // summary of alignments for this read
-                    ssm,         // seed alignment summary
-                    prm,         // per-read metrics
-                    sc,          // scoring scheme
-                    mapqInps,    // inputs to MAPQ calculation
-                    this->altdb_);*/
             samc_.printAlignedOptFlags(
                     newAlignment,
                     true,        // first opt flag printed is first overall?
@@ -2353,15 +2276,6 @@ public:
                     mapqInps,    // inputs to MAPQ calculation
                     this->altdb_);
         } else {
-            /*samc_.printEmptyOptFlags(
-                    o,           // output buffer
-                    true,        // first opt flag printed is first overall?
-                    rd,          // read
-                    flags,       // alignment flags
-                    summ,        // summary of alignments for this read
-                    ssm,         // seed alignment summary
-                    prm,         // per-read metrics
-                    sc);         // scoring scheme*/
             samc_.printEmptyOptFlags(
                     newAlignment->unChangedTags,
                     true,        // first opt flag printed is first overall?
@@ -2372,17 +2286,12 @@ public:
                     prm,         // per-read metrics
                     sc);         // scoring scheme
         }
-        //o.append('\n');
         newAlignment->extractFlagInfo();
-
         if (newAlignment->paired) {
             alignmentsEachThreads[threadId0]->addNewAlignment_paired(newAlignment);
         } else {
             alignmentsEachThreads[threadId0]->addNewAlignment_single(newAlignment);
         }
-
-
-        //alignments.push_back(newAlignment);
     }
 };
 
