@@ -3913,7 +3913,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
         // output rest
         msink.output(tid-1, rpm);
 	}
-	
+
 	// One last metrics merge
 	MERGE_METRICS(metrics, nthreads > 1);
     

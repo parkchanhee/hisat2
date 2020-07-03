@@ -1279,6 +1279,7 @@ public:
         } else if (!alignment1->mapped || !alignment2->mapped) {
             // one of the segment unmapped.
             pairScore = numeric_limits<int>::min()/2;
+            nPair = 1;
         } else if (alignment1->planA != alignment2->planA) {
             // both mapped, but they belong to different plan.
             pairScore = numeric_limits<int>::min()/2;
@@ -1290,6 +1291,7 @@ public:
                     ((alignment1->location != alignment2->pairToLocation) && (alignment1->pairToLocation != alignment2->location))){
             // both mapped, but they do not pair to each other.
             pairScore = numeric_limits<int>::min()/2 + 2;
+            nPair = 1;
         } else if ((!alignment1->repeat && !alignment2->repeat) || !expandRepeat){
             // both mapped and (both non-repeat or not expand repeat)
             pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
