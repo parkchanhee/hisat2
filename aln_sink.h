@@ -2190,17 +2190,11 @@ public:
                 samc_.printRefNameFromIndex(newAlignment->pairToChromosome, (size_t)rso->refid(), rso->repeat());
             } else {
                 newAlignment->pairToChromosome = "=";
-                if (newAlignment->repeat) {
-                    newAlignment->pairToRepeat = true;
-                }
             }
         } else if(summ.orefid() != -1) {
             // The convention if this mate fails to align but the other doesn't is
             // to copy the mate's details into here
             newAlignment->pairToChromosome = "=";
-            if (newAlignment->repeat) {
-                newAlignment->pairToRepeat = true;
-            }
         } else {
             newAlignment->pairToChromosome = "*";
         }
