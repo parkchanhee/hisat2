@@ -1218,10 +1218,12 @@ public:
 
     int output(BTString& o) {
         int nOutput;
-        if (oppositePairAddresses[0]->primaryAlignment) {
-            primaryAlignment = true;
-        } else {
-            primaryAlignment = false;
+        if (paired) {
+            if (oppositePairAddresses[0]->primaryAlignment) {
+                primaryAlignment = true;
+            } else {
+                primaryAlignment = false;
+            }
         }
         if (repeat && expandRepeat) {
             if (pairSegment == 0 || (pairSegment == 1 && !pairToRepeat)) {
