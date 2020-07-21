@@ -546,9 +546,9 @@ public:
                 chromosomeRepeat = chromosomeRepeat.substr(0, chromosomeRepeat.find(' ', 0));
             }
             bool genomeForward = pos->direction == 0;
-            if (!genomeForward) {
+            /*if (!genomeForward) {
                 continue;
-            }
+            }*/
             locationRepeat = (pos->pos) + 1;
 
             if (!existPositions.append(chromosomeRepeat, locationRepeat, AS)){

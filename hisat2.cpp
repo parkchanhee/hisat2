@@ -560,7 +560,7 @@ static void resetOptions() {
     refNameMap = NULL;
     repeatLimit = 1000;
     expandRepeat = false;
-    incorrectTolerance = 2;
+    incorrectTolerance = 0;
 }
 
 static const char *short_options = "fF:qbzhcu:rv:s:aP:t3:5:w:p:k:M:1:2:I:X:CQ:N:i:L:U:x:S:g:O:D:R:";
@@ -793,7 +793,8 @@ static struct option long_options[] = {
     {(char*)"reference",       required_argument,  0,        ARG_REFERENCE},
     {(char*)"expand-repeat",   no_argument,        0,        ARG_EXPAND_REPEAT},
     {(char*)"repeat-limit",    required_argument,  0,        ARG_REPEAT_LIMIT},
-	{(char*)0, 0, 0, 0} // terminator
+    {(char*)"incorrect-tolerance", required_argument, 0,     ARG_INCORRECT_TOLERANCE},
+    {(char*)0, 0, 0, 0} // terminator
 };
 
 /**
@@ -1860,6 +1861,11 @@ static void parseOption(int next_option, const char *arg) {
         case ARG_REPEAT_LIMIT: {
             repeatLimit = stoi(arg);
             assert(repeatLimit > 0);
+            break;
+        }
+        case ARG_INCORRECT_TOLERANCE: {
+            incorrectTolerance = stoi(arg);
+            assert(incorrectTolerance >= 0);
             break;
         }
 		default:

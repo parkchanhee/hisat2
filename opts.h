@@ -192,7 +192,8 @@ enum {
     ARG_BASE_CHANGE,    // --base-change
     ARG_REFERENCE,       // --reference , the fasta file for geneome reference
     ARG_EXPAND_REPEAT,
-    ARG_REPEAT_LIMIT
+    ARG_REPEAT_LIMIT,
+    ARG_INCORRECT_TOLERANCE
 };
 
 #endif
