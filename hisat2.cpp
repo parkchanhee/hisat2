@@ -560,7 +560,7 @@ static void resetOptions() {
     refNameMap = NULL;
     repeatLimit = 1000;
     expandRepeat = false;
-    incorrectTolerance = 0;
+    incorrectTolerance = 2;
 }
 
 static const char *short_options = "fF:qbzhcu:rv:s:aP:t3:5:w:p:k:M:1:2:I:X:CQ:N:i:L:U:x:S:g:O:D:R:";

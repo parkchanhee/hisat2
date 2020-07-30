@@ -1658,11 +1658,15 @@ public:
 
         if (newAlignmentAS > bestAS) {
             // if new alignment has best AS, clear alignments, update best AS, push new alignment to alignments.
-            for (int i = 0; i < alignments.size(); i++) {
-                alignments[i]->initialize();
-                freeAlignments.push(alignments[i]);
+            if (!alignments.empty()) {
+                for (int i = alignments.size() - 1; i >= 0; i--) {
+                    if (!alignments[i]->repeat && !expandRepeat) {
+                        alignments[i]->initialize();
+                        freeAlignments.push(alignments[i]);
+                        alignments.erase(alignments.begin() + i);
+                    }
+                }
             }
-            alignments.clear();
             bestAS = newAlignment->AS;
             alignments.push_back(newAlignment);
         } else if (newAlignmentAS == bestAS) {
