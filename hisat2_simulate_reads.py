@@ -21,6 +21,7 @@
 import os, sys, math, random, re
 from collections import defaultdict, Counter
 from argparse import ArgumentParser, FileType
+import pprint
 
 
 """
@@ -109,9 +110,7 @@ def read_genome(genome_file):
     return chr_dic
 
 
-"""
-"""
-def read_transcript(genome_seq, gtf_file, frag_len):
+def load_transcript(genome_seq, gtf_file):
     genes = defaultdict(list)
     transcripts = {}
 
@@ -142,17 +141,27 @@ def read_transcript(genome_seq, gtf_file, frag_len):
 
         if 'gene_id' not in values_dict or \
                 'transcript_id' not in values_dict:
+            print('wrong line', line)
             continue
 
         transcript_id = values_dict['transcript_id']
+        gene_id = values_dict['gene_id']
+
         if transcript_id not in transcripts:
-            transcripts[transcript_id] = [chrom, strand, [[left, right]]]
+            transcripts[transcript_id] = [chrom, strand, [[left, right]], gene_id]
             genes[values_dict['gene_id']].append(transcript_id)
         else:
             transcripts[transcript_id][2].append([left, right])
 
+    return genes, transcripts
+
+"""
+"""
+def read_transcript(genome_seq, gtf_file, frag_len):
+    genes, transcripts = load_transcript(genome_seq, gtf_file)
+
     # Sort exons and merge where separating introns are <=5 bps
-    for tran, [chr, strand, exons] in transcripts.items():
+    for tran, [chr, strand, exons, gene_id] in transcripts.items():
             exons.sort()
             tmp_exons = [exons[0]]
             for i in range(1, len(exons)):
@@ -160,14 +169,14 @@ def read_transcript(genome_seq, gtf_file, frag_len):
                     tmp_exons[-1][1] = exons[i][1]
                 else:
                     tmp_exons.append(exons[i])
-            transcripts[tran] = [chr, strand, tmp_exons]
+            transcripts[tran] = [chr, strand, tmp_exons, gene_id]
 
     tmp_transcripts = {}
-    for tran, [chr, strand, exons] in transcripts.items():
+    for tran, [chr, strand, exons, gene_id] in transcripts.items():
         exon_lens = [e[1] - e[0] + 1 for e in exons]
         transcript_len = sum(exon_lens)
         if transcript_len >= frag_len:
-            tmp_transcripts[tran] = [chr, strand, transcript_len, exons]
+            tmp_transcripts[tran] = [chr, strand, transcript_len, exons, gene_id]
 
     transcripts = tmp_transcripts
 
@@ -687,7 +696,89 @@ def samRepOk(genome_seq, read_seq, chr, pos, cigar, XM, NM, MD, Zs, max_mismatch
         print(chr, pos, cigar, MD, XM, NM, Zs, file=sys.stderr)
         print(tMD, tXM, tNM, file=sys.stderr)
         assert False
-        
+
+
+def write_fasta(fp, ref_id, seq, width=60):
+    print('>{}'.format(ref_id), file=fp)
+
+    for i in range(0, len(seq), width):
+        print(seq[i:i+width], file=fp)
+
+
+def write_exon_info(fp, tid, chr_name, strand, transcript_len, exons, gene_id):
+    print('>{}\t{}\t{}\t{}\t{}'.format(tid, chr_name, strand, transcript_len, gene_id), file=fp)
+
+    buf = []
+    for i, e in enumerate(exons):
+        fp.write('{}:{}:{}'.format(chr_name, e[0], e[1] - e[0] + 1))
+        if i % 4 == 3:
+            fp.write('\n')
+        else:
+            fp.write('\t')
+
+        #buf.append('{}:{}:{}\t'.format(chr_name, e[0], e[1] - e[0] + 1))
+
+    if len(exons) % 4 != 0:
+        fp.write('\n')
+
+    #print('\t'.join(buf), file=fp)
+
+
+
+def reverse_complement(seq):
+    result = seq[::-1]
+
+    intab = 'ACGTacgt'
+    outtab = 'TGCAtgca'
+
+    result = result.translate(result.maketrans(intab, outtab))
+
+    return result
+
+
+def get_seq(ref, strand, exons):
+    seq = ''
+
+    for e in exons:
+        seq += ref[e[0]:e[1] + 1]
+
+    #if strand == '-':
+    #    seq = reverse_complement(seq)
+
+    return seq
+
+"""
+"""
+def make_transcript_reference(genome_file, gtf_file, base_fname):
+    genome_seq = read_genome(genome_file)
+    genes, transcripts = read_transcript(genome_seq, gtf_file, 250)
+    #genes, transcripts = load_transcript(genome_seq, gtf_file)
+
+    # get sorted id
+    transcript_ids = sorted(list(transcripts.keys()))
+
+
+    fasta_fp = open(base_fname + ".fa", "w")
+    info_fp = open(base_fname + ".info", "w")
+
+    for tid in transcript_ids:
+        chr, strand, transcript_len, exons, gene_id = transcripts[tid]
+
+        #exon_lens = [e[1] - e[0] + 1 for e in exons]
+        #transcript_len = sum(exon_lens)
+
+        seq = get_seq(genome_seq[chr], strand, exons)
+
+        #write_fasta(fp, '{}.{}'.format(tid, gene_id), seq)
+        write_fasta(fasta_fp, tid, seq)
+
+        # write exon locations 
+        write_exon_info(info_fp, tid, *transcripts[tid]) 
+
+
+    fasta_fp.close()
+    info_fp.close()
+    return
         
 """
 """
@@ -717,6 +808,9 @@ def simulate_reads(genome_file, gtf_file, snp_file, base_fname,
         expr_profile = generate_rna_expr_profile(expr_profile_type, num_transcripts)
     else:
         expr_profile = generate_dna_expr_profile(genome_seq)
+
+    print(len(transcripts))
+    return
 
     expr_profile = [int(expr_profile[i] * num_frag) for i in range(len(expr_profile))]
     assert num_frag >= sum(expr_profile)
@@ -958,14 +1052,25 @@ if __name__ == '__main__':
     parser.add_argument('--version', 
                         action='version',
                         version='%(prog)s 2.0.0-alpha')
+    parser.add_argument('--build-tr',
+                        dest='build_trans_reference',
+                        action='store_true',
+                        default=False,
+                        help='build a transcriptome reference')
+
     args = parser.parse_args()
     if not args.genome_file or not args.gtf_file or not args.snp_file:
         parser.print_help()
         exit(1)
     if not args.rna:
         args.expr_profile = "constant"
-    simulate_reads(args.genome_file, args.gtf_file, args.snp_file, args.base_fname,
+
+    if args.build_trans_reference:
+        make_transcript_reference(args.genome_file, args.gtf_file, args.base_fname)
+    else:
+        simulate_reads(args.genome_file, args.gtf_file, args.snp_file, args.base_fname,
                    args.rna, args.paired_end, args.read_len, args.frag_len,
                    args.num_frag, args.expr_profile, args.repeat_fname,
                    args.error_rate, args.max_mismatch,
                    args.random_seed, args.snp_prob, args.sanity_check, args.verbose)
+
