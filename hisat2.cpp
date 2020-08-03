@@ -698,8 +698,7 @@ static struct option long_options[] = {
 	{(char*)"seedmms",          required_argument, 0,        'N'},
 	{(char*)"seedival",         required_argument, 0,        'i'},
 	{(char*)"ignore-quals",     no_argument,       0,        ARG_IGNORE_QUALS},
-	{(char*)"index1",            required_argument, 0,        'x1'},
-    {(char*)"index2",            required_argument, 0,        'x2'},
+	{(char*)"index",            required_argument, 0,        'x'},
 	{(char*)"arg-desc",         no_argument,       0,        ARG_DESC},
 	{(char*)"wrapper",          required_argument, 0,        ARG_WRAPPER},
 	{(char*)"unpaired",         required_argument, 0,        'U'},
@@ -1472,8 +1471,6 @@ static void parseOption(int next_option, const char *arg) {
 		case ARG_1MM_MINLEN:       do1mmMinLen = parse<size_t>(arg); break;
 		case ARG_NOISY_HPOLY: noisyHpolymer = true; break;
 		case 'x' : bt2indexs[0] = arg; break;
-		case 'x1': bt2indexs[0] = arg; break;
-		case 'x2': bt2indexs[1] = arg; break;
 		case ARG_PRESET_VERY_FAST_LOCAL: localAlign = true;
 		case ARG_PRESET_VERY_FAST: {
 			presetList.push_back("very-fast%LOCAL%"); break;
@@ -1833,20 +1830,10 @@ static void parseOption(int next_option, const char *arg) {
             convertedFromComplement = asc2dnacomp[convertedFrom];
             convertedToComplement   = asc2dnacomp[convertedTo];
 
-            string dna5CodeString = "ACGTN";
-
-            int dna5Code;
-            for (int i = 0; i < 4; i++) {
-                if (dna5CodeString[i] == convertedTo) {
-                    dna5Code = i;
-                    break;
-                }
-            }
-
-            asc2dna_TLA[0][int(convertedFrom)] = dna5Code;
-            asc2dna_TLA[0][int(tolower(convertedFrom))] = dna5Code;
-            asc2dna_TLA[1][int(asc2dnacomp[int(convertedFrom)])] = 3 - dna5Code;
-            asc2dna_TLA[1][int(tolower(asc2dnacomp[int(convertedFrom)]))] = 3 - dna5Code;
+            asc2dna_TLA[0]['C'] = 3;
+            asc2dna_TLA[0]['c'] = 3;
+            asc2dna_TLA[1]['G'] = 0;
+            asc2dna_TLA[1]['g'] = 0;
 
             break;
         }
@@ -4899,16 +4886,17 @@ int hisat2(int argc, const char **argv) {
 
 			// Get index basename (but only if it wasn't specified via --index)
 			if (TLA) {
-			    for (int i = 0; i < 2; i++) {
-                    if(bt2indexs[i].empty()) {
-                        if(optind >= argc) {
-                            cerr << "No index, query, or output file specified!" << endl;
-                            printUsage(cerr);
-                            return 1;
-                        }
-                        bt2indexs[i] = argv[optind++];
+                if(bt2indexs[0].empty()) {
+                    if(optind >= argc) {
+                        cerr << "No index, query, or output file specified!" << endl;
+                        printUsage(cerr);
+                        return 1;
                     }
-			    }
+                    bt2indexs[0] = argv[optind++];
+                }
+                bt2indexs[1] = bt2indexs[0];
+                bt2indexs[0] += ".TLA.1";
+                bt2indexs[1] += ".TLA.2";
 			} else {
                 if(bt2indexs[0].empty()) {
                     if(optind >= argc) {

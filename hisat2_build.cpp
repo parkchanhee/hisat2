@@ -160,7 +160,6 @@ enum {
     ARG_REPEAT_SNP,
     ARG_REPEAT_HAPLOTYPE,
     ARG_TLA,
-    ARG_BASE_CHANGE,
     ARG_AUTO_REPEAT_INDEX
 };
 
@@ -267,7 +266,6 @@ static struct option long_options[] = {
 	{(char*)"usage",          no_argument,       0,            ARG_USAGE},
     {(char*)"wrapper",        required_argument, 0,            ARG_WRAPPER},
     {(char*)"TLA",            no_argument,        0,        ARG_TLA},
-    {(char*)"base-change",    required_argument,  0,        ARG_BASE_CHANGE},
     {(char*)"auto-repeat-index",   no_argument,        0,        ARG_AUTO_REPEAT_INDEX},
 	{(char*)0, 0, 0, 0} // terminator
 };
@@ -401,28 +399,6 @@ static void parseOptions(int argc, const char **argv) {
 			case ARG_NTOA: nsToAs = true; break;
             case ARG_TLA: {
                 TLA = true;
-                break;
-            }
-            case ARG_BASE_CHANGE: {
-                string replaceRequest = optarg;
-                convertedFrom = replaceRequest.at(0);
-                convertedTo = replaceRequest.at(1);
-                convertedFromComplement = asc2dnacomp[convertedFrom];
-                convertedToComplement   = asc2dnacomp[convertedTo];
-
-                string dna5CodeString = "ACGTN";
-
-                int dna5Code;
-                for (dna5Code = 0; dna5Code < 4; dna5Code++) {
-                    if (dna5CodeString[dna5Code] == convertedTo) {
-                        break;
-                    }
-                }
-
-                asc2dna_TLA[0][int(convertedFrom)] = dna5Code;
-                asc2dna_TLA[0][int(tolower(convertedFrom))] = dna5Code;
-                asc2dna_TLA[1][int(asc2dnacomp[int(convertedFrom)])] = 3 - dna5Code;
-                asc2dna_TLA[1][int(tolower(asc2dnacomp[int(convertedFrom)]))] = 3 - dna5Code;
                 break;
             }
             case ARG_AUTO_REPEAT_INDEX: {
@@ -830,45 +806,19 @@ int hisat2_build(int argc, const char **argv) {
 
                 int nloop = TLA ? 2 : 1; // if TLA == true, nloop = 2. else one loop
                 for (int i = 0; i < nloop; i++) {
-                    string dna5CodeString = "ACGTN";
-                    int dna5Code = -1;
 
                     string tag = "";
                     if (TLA) {
-                        tag = '_';
                         if (i == 0) {
-                            tag += convertedFrom ;
-                            tag += + convertedTo;
-
-                            for (int j = 0; j < 4; j++) {
-                                if (dna5CodeString[j] == convertedTo) {
-                                    dna5Code = j;
-                                    break;
-                                }
-                            }
-                            asc2dna[int(convertedFrom)] = dna5Code;
-                            asc2dna[int(tolower(convertedFrom))] = dna5Code;
+                            tag = ".TLA.1";
+                            asc2dna[int('C')] = 3;
+                            asc2dna[int('c')] = 3;
                         } else {
-                            tag += convertedFromComplement;
-                            tag += convertedToComplement;
-
-                            for (int j = 0; j < 4; j++) {
-                                if (dna5CodeString[j] == convertedFrom) {
-                                    dna5Code = j;
-                                    break;
-                                }
-                            }
-                            asc2dna[int(convertedFrom)] = dna5Code;
-                            asc2dna[int(tolower(convertedFrom))] = dna5Code;
-
-                            for (int j = 0; j < 4; j++) {
-                                if (dna5CodeString[j] == asc2dnacomp[int(convertedTo)]) {
-                                    dna5Code = j;
-                                    break;
-                                }
-                            }
-                            asc2dna[int(asc2dnacomp[int(convertedFrom)])] = dna5Code;
-                            asc2dna[int(tolower(asc2dnacomp[int(convertedFrom)]))] = dna5Code;
+                            tag = ".TLA.2";
+                            asc2dna[int('C')] = 1;
+                            asc2dna[int('c')] = 1;
+                            asc2dna[int('G')] = 0;
+                            asc2dna[int('g')] = 0;
                         }
                     }
 
