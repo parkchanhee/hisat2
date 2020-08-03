@@ -198,6 +198,16 @@ def make_consensus_exons(exons_list):
 
     return cons_exon_list
 
+"""
+"""
+def get_seq(ref, exons):
+    seq = ''
+
+    for e in exons:
+        seq += ref[e[0]:e[1] + 1]
+
+    return seq
+
 
 """
 """
@@ -405,6 +415,47 @@ def extract_transcript_graph(genome_file, gtf_file, base_fname):
     return
 
 
+"""
+for linear transcripts
+"""
+def write_exon_info(fp, tid, chr_name, strand, transcript_len, exons, gene_id):
+    print('>{}\t{}\t{}\t{}\t{}'.format(tid, chr_name, strand, transcript_len, gene_id), file=fp)
+
+    buf = []
+    for i, e in enumerate(exons):
+        fp.write('{}:{}:{}'.format(chr_name, e[0], e[1] - e[0] + 1))
+        if i % 4 == 3:
+            fp.write('\n')
+        else:
+            fp.write('\t')
+
+        #buf.append('{}:{}:{}\t'.format(chr_name, e[0], e[1] - e[0] + 1))
+
+    if len(exons) % 4 != 0:
+        fp.write('\n')
+
+    #print('\t'.join(buf), file=fp)
+
+
+def extract_transcript_linear(genome_file, gtf_file, base_fname):
+    genome_seq = read_genome(genome_file)
+    genes, transcripts = read_transcript(genome_seq, gtf_file)
+
+    transcript_ids = sorted(list(transcripts.keys()))
+
+    with open(base_fname + ".trans.fa", "w") as trseq_file,\
+        open(base_fname + ".trans.map", "w") as trmap_file:
+
+        for tid in transcript_ids:
+            chr, strand, transcript_len, exons, gene_id = transcripts[tid]
+            
+            seq = get_seq(genome_seq[chr], exons)
+    
+            write_fasta(trseq_file, tid, seq)
+            
+            write_exon_info(trmap_file, tid, *transcripts[tid])
+
+    return
 
 if __name__ == '__main__':
     parser = ArgumentParser(
@@ -424,6 +475,12 @@ if __name__ == '__main__':
             dest='out_fname',
             type=str,
             help='output filename prefix')
+
+    parser.add_argument('--linear',
+            dest='bLinear',
+            action='store_true',
+            default=False,
+            help='Create linear-transcripts files')
 
     parser.add_argument('--debug',
             dest='bDebug',
@@ -446,8 +503,13 @@ if __name__ == '__main__':
     if args.bVerbose != None:
         bVerbose = args.bVerbose
 
-
-    extract_transcript_graph(
+    if args.bLinear:
+        extract_transcript_linear(
+            args.genome_file,
+            args.gtf_file,
+            args.out_fname)
+    else:
+        extract_transcript_graph(
             args.genome_file,
             args.gtf_file,
             args.out_fname)
