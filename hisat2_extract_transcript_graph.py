@@ -275,6 +275,51 @@ def write_transcripts_snp(fp, gene_id, trans_ids, transcripts, exon_list):
 
 """
 """
+def write_transcripts_ss(fp, gene_id, trans_ids, transcripts, exon_list):
+
+    ss = set()
+
+    for trans_id in trans_ids:
+        trans = transcripts[trans_id]
+       
+        if bDebug:
+            pprint.pprint(trans)
+        
+        old_exons = trans[3]
+
+        assert len(old_exons) >= 1
+       
+        new_exons = list()
+        for old_exon in old_exons:
+            ne, idx = map_to_exons(old_exon, exon_list)
+
+            if bDebug:
+                print(ne, idx)
+
+            if idx == -1:
+                continue
+
+            new_exons.append(ne)
+
+
+        for i in range(1, len(new_exons)):
+            gap = new_exons[i][0] - new_exons[i-1][1] - 1
+            if gap > 0:
+                ss.add((new_exons[i-1][1], new_exons[i][0]))
+
+
+
+    ss_list = sorted(list(ss))
+
+    for s in ss_list:
+        print('{}\t{}\t{}\t{}'.format(gene_id, s[0], s[1], '+'), file=fp)
+
+
+    return
+
+
+"""
+"""
 def write_transcripts_map(fp, gene_id, chr_name, exon_list):
     print('>{}\t{}'.format(gene_id, chr_name), file=fp)
 
@@ -309,7 +354,8 @@ def extract_transcript_graph(genome_file, gtf_file, base_fname):
 
     with open(base_fname + ".trans.fa", "w") as trseq_file,\
         open(base_fname + ".trans.snp", "w") as trsnp_file,\
-        open(base_fname + ".trans.map", "w") as trmap_file:
+        open(base_fname + ".trans.map", "w") as trmap_file,\
+        open(base_fname + ".trans.ss", "w") as trss_file:
 
         # for each gene, build a consensus exons
         #   exon in consensus exons is not overlapped to other exon
@@ -339,6 +385,9 @@ def extract_transcript_graph(genome_file, gtf_file, base_fname):
 
             # print snps
             write_transcripts_snp(trsnp_file, gene_id, trans_ids, transcripts, exon_list)
+
+            # print splice-sites 
+            write_transcripts_ss(trss_file, gene_id, trans_ids, transcripts, exon_list)
 
             # print exon_map
             write_transcripts_map(trmap_file, gene_id, chrom, exon_list)
