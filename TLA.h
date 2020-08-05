@@ -25,11 +25,11 @@ extern char convertedFrom;
 extern char convertedTo;
 extern char convertedFromComplement;
 extern char convertedToComplement;
-extern int incorrectTolerance;
 extern bool expandRepeat;
 extern vector<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
+extern bool uniqueOutputOnly;
 
 using namespace std;
 
@@ -524,7 +524,7 @@ public:
         }
     }
 
-    bool constructRepeatMD(MappingPositions &existPositions) {
+    bool constructRepeatMD(MappingPositions &existPositions, bool &multipleAlignmentDetected) {
 
         string readSequence_string = readSequence.toZBuf();
         int sequenceLength = readSequence_string.size();
@@ -546,9 +546,10 @@ public:
                 chromosomeRepeat = chromosomeRepeat.substr(0, chromosomeRepeat.find(' ', 0));
             }
             bool genomeForward = pos->direction == 0;
-            /*if (!genomeForward) {
+            if (!genomeForward) {
                 continue;
-            }*/
+            }
+
             locationRepeat = (pos->pos) + 1;
 
             if (!existPositions.append(chromosomeRepeat, locationRepeat, AS)){
@@ -573,9 +574,9 @@ public:
                 continue;
             }
 
-            int newXM = XM - nIncorrectMatch;
-            int newNM = NM - nIncorrectMatch;
-            int newAS = AS - 5*nIncorrectMatch;
+            int newXM = XM + nIncorrectMatch;
+            int newNM = NM + nIncorrectMatch;
+            int newAS = AS - 6*nIncorrectMatch;
 
             repeatPositions.appendRepeat(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, TC, MP, RA_Array);
             if (!paired) {
@@ -584,6 +585,10 @@ public:
                     nBestRepeat = 1;
                 } else if (newAS == bestAS) {
                     nBestRepeat++;
+                }
+                if (bestAS == 0 && nBestRepeat > 1 && uniqueOutputOnly) {
+                    multipleAlignmentDetected = true;
+                    return false;
                 }
             }
             if (nBestRepeat > repeatLimit || i > repeatLimit) {
@@ -648,11 +653,11 @@ public:
                             // real mismatch
                             newMD_String += refChar;
                             newXM++;
-                            if (newXM - XM > incorrectTolerance) {
-                                return false;
-                            }
                         }
                         updateMP(refPos, readChar, refPos, refChar);
+                    }
+                    if (newXM > readSequence.length()/25) {
+                        return false;
                     }
                     updateRA(readChar, refChar);
                     readPos++;
@@ -679,6 +684,7 @@ public:
             newMD_String += '0';
         }
 
+        nIncorrectMatch = newXM - XM;
         return true;
     }
 
@@ -733,11 +739,11 @@ public:
                             // real mismatch
                             newMD_String += refChar;
                             newXM++;
-                            if (newXM - XM > incorrectTolerance) {
-                                return false;
-                            }
                         }
                         updateMP(refPos, readChar, refPos, refChar);
+                    }
+                    if (newXM > readSequence.length()/25) {
+                        return false;
                     }
                     updateRA(readChar, refChar);
                     readPos++;
@@ -771,7 +777,7 @@ public:
         int nIncorrectMatch = newXM - XM;
         NM += nIncorrectMatch;
         XM = newXM;
-        AS = AS - 5*nIncorrectMatch;
+        AS = AS - 6*nIncorrectMatch;
         MD = newMD_String;
         return true;
     }
@@ -1257,6 +1263,9 @@ public:
 
     bool working;
     bool paired;
+    int poolLimit = 20;
+    bool multipleAligned = false;
+    const int maxPairScore = 500000;
 
     void initialize() {
         bestAS = numeric_limits<int>::min();
@@ -1266,6 +1275,7 @@ public:
         nBestPair = 0;
         concordantAlignmentExist = false;
         paired = false;
+        multipleAligned = false;
         for (int i = 0; i < 2; i++) {
             readName[i].clear();
             readSequence[i].clear();
@@ -1276,7 +1286,7 @@ public:
             freeAlignments.push(alignments[0]);
             alignments.erase(alignments.begin());
         }
-        while (freeAlignments.size() > 30) {
+        while (freeAlignments.size() > poolLimit) {
             delete freeAlignments.front();
             freeAlignments.pop();
         }
@@ -1624,10 +1634,17 @@ public:
             qualityScore[0] = newAlignment->readQualityFw;
         }
 
+        if (uniqueOutputOnly && multipleAligned) {
+            newAlignment->initialize();
+            freeAlignments.push(newAlignment);
+            working = false;
+            return;
+        }
+
         paired = newAlignment->paired;
         int newAlignmentAS;
         if (newAlignment->repeat && expandRepeat) {
-            if (!newAlignment->constructRepeatMD(existPositions)) {
+            if (!newAlignment->constructRepeatMD(existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
@@ -1683,6 +1700,9 @@ public:
             newAlignment->initialize();
             freeAlignments.push(newAlignment);
         }
+        if (bestAS == 0 && alignments.size() > 1) {
+            multipleAligned = true;
+        }
         working = false;
     }
 
@@ -1691,7 +1711,7 @@ public:
         working = true;
         // if there are too many alignment result, ignore it. otherwise it will consume hugh amount of time.
         // this could happen when we use repeat index.
-        if (alignments.size() > 20) {
+        if ((alignments.size() > poolLimit) || (uniqueOutputOnly && multipleAligned)) {
             newAlignment->initialize();
             freeAlignments.push(newAlignment);
             working = false;
@@ -1718,7 +1738,7 @@ public:
                 working = false;
                 return;
             }
-            if (!newAlignment->constructRepeatMD(existPositions)) {
+            if (!newAlignment->constructRepeatMD(existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
@@ -1775,6 +1795,9 @@ public:
             nBestPair = tmp_nBestPair;
         } else if (bestNewPairScore == bestPairScore) {
             nBestPair += tmp_nBestPair;
+        }
+        if (bestPairScore == maxPairScore && nBestPair > 1) {
+            multipleAligned = true;
         }
         // update pair score, pair address information for paired alignment.
         if (pairTo > -1) {
@@ -1846,6 +1869,9 @@ public:
         bool repeat = false;
         // find NH (nAlginment)
         int nAlignment = calculateNumAlignment(repeat);
+        if (uniqueOutputOnly && multipleAligned) {
+            nAlignment = 999;
+        }
         // update statistics
         if (nAlignment == 0) {
             unAligned++;
@@ -1867,6 +1893,9 @@ public:
         if (alignments.empty()) {
             // make a unalignment result and output it.
             outputUnAlignmentRead(o);
+        } else if (uniqueOutputOnly && nAlignment > 1) {
+            // make a unalignment result and output it.
+            outputUnAlignmentRead(o);
         } else {
             // update NH then output
             for (int i = 0; i < alignments.size(); i++) {
@@ -1881,7 +1910,7 @@ public:
             }
         }
 
-        assert ((nOutput == nAlignment) || (nAlignment == 0 && nOutput == 1));
+        assert (!uniqueOutputOnly && ((nOutput == nAlignment) || (nAlignment == 0 && nOutput == 1)));
         initialize();
     }
 
@@ -1951,6 +1980,9 @@ public:
         int nOutput = 0;
         bool primaryAlignment = true;
         if (alignments.empty() || nBestPair == 0) {
+            // make a unalignment result and output it.
+            outputUnAlignmentRead(o);
+        } else if (uniqueOutputOnly && (nBestPair > 1 || multipleAligned)) {
             // make a unalignment result and output it.
             outputUnAlignmentRead(o);
         } else {

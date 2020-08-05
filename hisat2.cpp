@@ -308,11 +308,11 @@ char convertedFrom;
 char convertedTo;
 char convertedToComplement;
 char convertedFromComplement;
-int incorrectTolerance;
 vector<ht2_handle_t> repeatHandles;
 bool expandRepeat;
 struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
+bool uniqueOutputOnly;
 
 bool TLA = false;
 
@@ -560,7 +560,7 @@ static void resetOptions() {
     refNameMap = NULL;
     repeatLimit = 1000;
     expandRepeat = false;
-    incorrectTolerance = 2;
+    uniqueOutputOnly = false;
 }
 
 static const char *short_options = "fF:qbzhcu:rv:s:aP:t3:5:w:p:k:M:1:2:I:X:CQ:N:i:L:U:x:S:g:O:D:R:";
@@ -792,7 +792,7 @@ static struct option long_options[] = {
     {(char*)"reference",       required_argument,  0,        ARG_REFERENCE},
     {(char*)"expand-repeat",   no_argument,        0,        ARG_EXPAND_REPEAT},
     {(char*)"repeat-limit",    required_argument,  0,        ARG_REPEAT_LIMIT},
-    {(char*)"incorrect-tolerance", required_argument, 0,     ARG_INCORRECT_TOLERANCE},
+    {(char*)"unique-only",     no_argument,        0,        ARG_UNIQUE_ONLY},
     {(char*)0, 0, 0, 0} // terminator
 };
 
@@ -1850,9 +1850,8 @@ static void parseOption(int next_option, const char *arg) {
             assert(repeatLimit > 0);
             break;
         }
-        case ARG_INCORRECT_TOLERANCE: {
-            incorrectTolerance = stoi(arg);
-            assert(incorrectTolerance >= 0);
+        case ARG_UNIQUE_ONLY: {
+            uniqueOutputOnly = true;
             break;
         }
 		default:

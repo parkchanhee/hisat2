@@ -193,7 +193,7 @@ enum {
     ARG_REFERENCE,       // --reference , the fasta file for geneome reference
     ARG_EXPAND_REPEAT,
     ARG_REPEAT_LIMIT,
-    ARG_INCORRECT_TOLERANCE
+    ARG_UNIQUE_ONLY
 };
 
 #endif
