@@ -1591,6 +1591,7 @@ bool GenomeHit<index_t>::combineWith(
             static const char GC   = 0x21, GCrc = 0x21;
             static const char AT   = 0x03, AC   = 0x01;
             static const char ATrc = 0x03, ACrc = 0x20;
+            static const char AA   = 0x00, AArc = 0x33;
             int i;
             for(i = 0; i < (int)len; i++) {
                 int rdc = seq[this_rdoff + i], rfc = refbuf[i];
@@ -1647,16 +1648,16 @@ bool GenomeHit<index_t>::combineWith(
                 }
                 bool canonical = false, semi_canonical = false;
                 uint32_t spldir = SPL_UNKNOWN;
-                if((donor == GT && acceptor == AG) /* || (donor == AT && acceptor == AC) */) {
+                if((donor == GT && acceptor == AG) || (donor == AT && acceptor == AA)) {
                     spldir = SPL_FW;
                     canonical = true;
-                } else if((donor == AGrc && acceptor == GTrc) /* || (donor == ACrc && acceptor == ATrc) */) {
+                } else if((donor == AGrc && acceptor == GTrc) || (donor == AArc && acceptor == ATrc)) {
                     spldir = SPL_RC;
                     canonical = true;
-                } else if((donor == GC && acceptor == AG) || (donor == AT && acceptor == AC)) {
+                } else if((donor == GT && acceptor == AG) || (donor == AT && acceptor == AT) || (donor == AC && acceptor == AA) || (donor == AT && acceptor == AC)) {
                     spldir = SPL_SEMI_FW;
                     semi_canonical = true;
-                } else if((donor == AGrc && acceptor == GCrc) || (donor == ACrc && acceptor == ATrc)) {
+                } else if((donor == AGrc && acceptor == GTrc) || (donor == ATrc && acceptor == ATrc) || (donor == AArc && acceptor == ACrc) || (donor == ACrc && acceptor == ATrc)) {
                     spldir = SPL_SEMI_RC;
                     semi_canonical = true;
                 }
