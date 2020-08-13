@@ -32,10 +32,21 @@ def read_transinfo(info_fp):
             line = line[1:].split('\t')
 
             current_tid = line[0]
+            chr_name = line[1]
+
+            if len(line) < 3:
+                strand = ''
+                tran_gene_len = 100000000
+                gene_id = ''
+            else:
+                strand = line[2]
+                tran_gene_len = int(line[3])
+                gene_id = line[4]
+
 
             if not current_tid in tbl:
                 #                   chr_name, strand, len, exons, gene_id
-                tbl[current_tid] = [line[1], line[2], int(line[3]), list(), line[4]]
+                tbl[current_tid] = [chr_name, strand, tran_gene_len, list(), gene_id]
                 current_trans = tbl[current_tid]
 
             else:
@@ -79,7 +90,7 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
 
     assert e_idx >= 0
 
-    new_cigar = list()
+    tmp_cigar = list()
 
     r_len = exons[e_idx][1] - (new_pos - exons[e_idx][0])
     for cigar in cigars:
@@ -89,28 +100,85 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
         while c_len > 0 and e_idx < len(exons):
             if c_len <= r_len:
                 r_len -= c_len
-                new_cigar.append('{}{}'.format(c_len, c_op))
+                tmp_cigar.append([c_len, c_op])
                 break
             else:
                 c_len -= r_len
-                new_cigar.append('{}{}'.format(r_len, c_op))
+                tmp_cigar.append([r_len, c_op])
 
                 gap = exons[e_idx + 1][0] - (exons[e_idx][0] + exons[e_idx][1])
-                new_cigar.append('{}{}'.format(gap, 'N'))
+                tmp_cigar.append([gap, 'N'])
 
-                e_idx +=1
+                e_idx += 1
                 r_len = exons[e_idx][1]
 
+
+    # clean new_cigars
+    ni = 0
+
+    for i in range(1, len(tmp_cigar)):
+        if tmp_cigar[i][0] == 0:
+            pass
+        elif tmp_cigar[ni][1] == tmp_cigar[i][1]:
+            # merge to ni
+            tmp_cigar[ni][0] += tmp_cigar[i][0]
+        else:
+            ni += 1
+            tmp_cigar[ni] = tmp_cigar[i]
+
+    new_cigar = list()
+    for i in range(ni+1):
+        new_cigar.append('{}{}'.format(tmp_cigar[i][0], tmp_cigar[i][1]))
 
     return new_chr, new_pos, ''.join(new_cigar)
     #
     #    new_chr, new_pos, new_cigar = translate_position(transinfo_table, tid, tr_pos, cigars)
 
 
+class OutputQueue:
+    def __init__(self, fp=sys.stdout):
+        self.fp = fp
+        # new_chr, new_pos, new_cigar
+        self.current_item = tuple()
+        self.current_fields = []
+        self.count = 0
+
+    def print_sam(self):
+        fields = self.current_fields
+        item = self.current_item
+
+        old_flag = int(fields[1])
+        old_flag &= ~0x01
+
+        mapq = 60
+        if old_flag & 0x100:
+            mapq = 1
+
+        print('\t'.join([fields[0], str(old_flag), item[0], str(item[1] + 1), item[2], str(mapq), *fields[5:]]), file=self.fp)
+
+
+    def flush(self):
+        if self.current_item:
+            self.print_sam()
+
+        self.current_fields = []
+        self.current_item = tuple()
+
+    def push(self, new_item, sam_fields):
+        if self.current_item == new_item:
+            self.count += 1
+
+        else:
+            self.flush()
+
+            self.current_item = new_item
+            self.current_fields = list(sam_fields)
+
 
 def main(sam_file, transinfo_file):
     transinfo_table = read_transinfo(transinfo_file)
 
+    outq = OutputQueue()
     #pprint.pprint(transinfo_table)
 
     for line in sam_file:
@@ -118,12 +186,18 @@ def main(sam_file, transinfo_file):
         if not line:
             continue
         if line.startswith('@'):
+            outq.flush()
             print(line)
             continue
 
         fields = line.split('\t')
 
-        #print(fields[0], fields[1])
+        flag = int(fields[1])
+        if flag & 0x04:
+            # unmapped
+            outq.flush()
+            print(line)
+            continue
 
         tid = fields[2]
         tr_pos = int(fields[3]) - 1
@@ -133,9 +207,13 @@ def main(sam_file, transinfo_file):
         cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
 
         new_chr, new_pos, new_cigar = translate_position(transinfo_table, tid, tr_pos, cigars)
-    
-        print(fields[0], new_chr, new_pos + 1, new_cigar)
+
+        outq.push((new_chr, new_pos, new_cigar), fields)
+
+
+        #print(fields[0], new_chr, new_pos + 1, new_cigar)
         
+    outq.flush()
 
     return
 
