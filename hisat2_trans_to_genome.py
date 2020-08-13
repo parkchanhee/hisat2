@@ -119,6 +119,12 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
     for i in range(1, len(tmp_cigar)):
         if tmp_cigar[i][0] == 0:
             pass
+        elif tmp_cigar[i][1] == 'S' and tmp_cigar[ni][1] == 'N':
+            # replace ni to i
+            tmp_cigar[ni] = tmp_cigar[i]
+        elif tmp_cigar[i][1] == 'N' and tmp_cigar[ni][1] == 'S':
+            # goto next
+            pass
         elif tmp_cigar[ni][1] == tmp_cigar[i][1]:
             # merge to ni
             tmp_cigar[ni][0] += tmp_cigar[i][0]
@@ -154,7 +160,7 @@ class OutputQueue:
         if old_flag & 0x100:
             mapq = 1
 
-        print('\t'.join([fields[0], str(old_flag), item[0], str(item[1] + 1), item[2], str(mapq), *fields[5:]]), file=self.fp)
+        print('\t'.join([fields[0], str(old_flag), item[0], str(item[1] + 1), str(mapq), item[2], *fields[6:]]), file=self.fp)
 
 
     def flush(self):

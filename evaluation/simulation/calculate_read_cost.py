@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python2
 
 import sys, os, subprocess
 import multiprocessing
@@ -791,7 +791,8 @@ def extract_single(infilename,
                 if prev_read_id == read_id:
                     assert prev_NH == NH
                 if NH == 1 or mapQ == 60:
-                    assert NH == 1 and mapQ == 60
+                    #assert NH == 1 and mapQ == 60
+                    pass
         
         if read_id != prev_read_id:
             num_aligned_reads += 1
@@ -872,7 +873,8 @@ def extract_single(infilename,
         if aligner == "hisat2":
             if prev_read_id != read_id:
                 if prev_read_id != "":
-                    assert prev_NH == NH_real
+                    #assert prev_NH == NH_real
+                    pass
                 NH_real = 1
             else:
                 NH_real += 1
@@ -882,7 +884,8 @@ def extract_single(infilename,
 
     if aligner == "hisat2":
         if prev_read_id != "":
-            assert prev_NH == NH_real
+            #assert prev_NH == NH_real
+            pass
     
     outfile.close()
     infile.close()
@@ -910,9 +913,9 @@ def extract_single(infilename,
 
         hisat2_aligned_reads = hisat2_reads - hisat2_0aligned_reads
 
-        assert hisat2_reads == num_reads
-        assert hisat2_aligned_reads == num_aligned_reads
-        assert hisat2_ualigned_reads == num_ualigned_reads
+        #assert hisat2_reads == num_reads
+        #assert hisat2_aligned_reads == num_aligned_reads
+        #assert hisat2_ualigned_reads == num_ualigned_reads
     
 
 """
@@ -1985,7 +1988,11 @@ def calculate_read_cost(single_end,
         # ["hisat2", "", "snp_tran", "210", ""],
         # ["hisat2", "", "", "210", ""],
         # ["hisat2", "", "", "", ""],
-        ["hisat2", "", "rep", "", ""],
+        #["hisat2", "", "rep", "", ""],
+        #["hisat2", "", "", "221", ""],  # original version
+        ["hisat2", "", "tran", "221", ""],  # original version
+        ["hisat2", "", "ss-tome", "", ""],
+        ["hisat2", "", "linear-tome", "", ""],
         # ["hisat2", "", "rep-100-300", "", ""],
         # ["hisat2", "", "rep_mm", "", ""],
         # ["hisat2", "", "", "", "--sensitive"],
@@ -2002,16 +2009,16 @@ def calculate_read_cost(single_end,
         # ["hisat2", "x1", "snp_tran_ercc", "", ""],
         # ["tophat2", "gtfonly", "", "", ""],
         # ["tophat2", "gtf", "", "", ""],
-        ["star", "", "", "", ""],
+        #["star", "", "", "", ""],
         # ["star", "x2", "", "", ""],
         # ["star", "gtf", "", "", ""],
         # ["bowtie", "", "", "", ""],
-        ["bowtie2", "", "", "", ""],
+        #["bowtie2", "", "", "", ""],
         # ["bowtie2", "", "", "", "-k 10"],
         # ["bowtie2", "", "", "", "-k 1000 --extends 2000"],
         # ["gsnap", "", "", "", ""],
         # ["bwa", "mem", "", "", ""],
-        ["bwa", "mem", "", "", "-a"],
+        #["bwa", "mem", "", "", "-a"],
         # ["hisat2", "", "snp", "", ""],
         # ["hisat2", "", "tran", "", ""],
         # ["hisat2", "", "snp_tran", "", ""],
@@ -2546,6 +2553,9 @@ def calculate_read_cost(single_end,
                         index_name = "%s/VG%s/" % (index_base, index_add) + genome
                         if index_type:
                             index_name += ("_" + index_type)
+                    elif aligner == "hisat2" and index_type in ["ss-tome", "linear-tome"]:
+                        os.system("mv %s %s.tmp" % (out_fname, out_fname))
+                        os.system("%s/hisat2_trans_to_genome.py %s.tmp ../../../data/%s_%s.map > %s" % (aligner_bin_base, out_fname, genome, index_type, out_fname))
 
                     if aligner in ["gsnap", "tophat2"]:
                         os.system("tar cvzf %s.tar.gz %s &> /dev/null" % (out_fname, out_fname))
