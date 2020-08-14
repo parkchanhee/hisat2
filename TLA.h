@@ -1286,10 +1286,6 @@ public:
             freeAlignments.push(alignments[0]);
             alignments.erase(alignments.begin());
         }
-        while (freeAlignments.size() > poolLimit) {
-            delete freeAlignments.front();
-            freeAlignments.pop();
-        }
     }
 
     Alignments() {

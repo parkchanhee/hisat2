@@ -328,7 +328,7 @@ public:
         
         // Next 4 bits for repeat score
         TAlScore repeat_score = 0;
-        if(repeat_) repeat_score = 1;
+        if(repeat_ && !TLA) repeat_score = 1;
         
         // Next 4 bits for alignments against transcripts
         TAlScore transcript_score = 0;
