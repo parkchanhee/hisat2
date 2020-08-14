@@ -17,6 +17,7 @@ def read_len_cigar(cigars):
 
     return read_len
 
+
 def read_transinfo(info_fp):
 
     tbl = {}
@@ -76,9 +77,8 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
     exons = trans[3]
     assert len(exons) >= 1
 
-
-   
-    e_idx = -1 
+    e_idx = -1
+    new_pos = 0
     for i, exon in enumerate(exons):
         # find first exon
         if tr_pos >= exon[1]:
@@ -144,42 +144,79 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
 class OutputQueue:
     def __init__(self, fp=sys.stdout):
         self.fp = fp
-        # new_chr, new_pos, new_cigar
-        self.current_item = tuple()
-        self.current_fields = []
-        self.count = 0
+
+        # read id
+        self.current_rid = ''
+        # key = [new_chr, new_pos, new_cigar], value = [count, samline_fields]
+        self.alignments = {}
+
+    def reset(self):
+        self.current_rid = ''
+        self.alignments = {}
+
+        return
+
+    """
+    """
+    def updateNH(self, fields, count):
+        for i, tag in enumerate(fields):
+            if isinstance(tag, str) and tag.startswith("NH:i:"):
+                fields[i] = 'NH:i:{}'.format(str(count))
+                break
+
+        return
 
     def print_sam(self):
-        fields = self.current_fields
-        item = self.current_item
 
-        old_flag = int(fields[1])
-        old_flag &= ~0x01
+        count = len(self.alignments)
 
-        mapq = 60
-        if old_flag & 0x100:
-            mapq = 1
+        for item, value in self.alignments.items():
+            fields = value[1]
 
-        print('\t'.join([fields[0], str(old_flag), item[0], str(item[1] + 1), str(mapq), item[2], *fields[6:]]), file=self.fp)
+            flag = int(fields[1])
+            mapq = 60
+            if count == 1:
+                mapq = 60
+            else:
+                mapq = 1
+
+            # update NH
+            self.updateNH(fields, count)
+
+            assert self.current_rid == '' or self.current_rid == fields[0]
+
+            print('\t'.join([fields[0], str(flag), item[0], str(item[1] + 1), str(mapq), item[2], *fields[6:]]), file=self.fp)
 
 
+    """
+    """
+    def add(self, new_rid, new_chr, new_pos, new_cigar, sam_fields):
+        new_key = (new_chr, new_pos, new_cigar)
+
+        assert self.current_rid == '' or self.current_rid == new_rid
+
+        if new_key in self.alignments:
+            self.alignments[new_key][0] += 1
+        else:
+            self.alignments[new_key] = [1, sam_fields]
+
+    """
+    """
     def flush(self):
-        if self.current_item:
+        if self.alignments:
             self.print_sam()
 
-        self.current_fields = []
-        self.current_item = tuple()
+        self.reset()
 
-    def push(self, new_item, sam_fields):
-        if self.current_item == new_item:
-            self.count += 1
-
-        else:
+    """
+    """
+    def push(self, new_rid, new_chr, new_pos, new_cigar, sam_fields):
+        if self.current_rid != new_rid:
             self.flush()
+            self.current_rid = new_rid
 
-            self.current_item = new_item
-            self.current_fields = list(sam_fields)
-
+        self.add(new_rid, new_chr, new_pos, new_cigar, sam_fields)
+        return
 
 def main(sam_file, transinfo_file):
     transinfo_table = read_transinfo(transinfo_file)
@@ -205,6 +242,7 @@ def main(sam_file, transinfo_file):
             print(line)
             continue
 
+        rid = fields[0]
         tid = fields[2]
         tr_pos = int(fields[3]) - 1
         cigar_str = fields[5]
@@ -214,7 +252,7 @@ def main(sam_file, transinfo_file):
 
         new_chr, new_pos, new_cigar = translate_position(transinfo_table, tid, tr_pos, cigars)
 
-        outq.push((new_chr, new_pos, new_cigar), fields)
+        outq.push(rid, new_chr, new_pos, new_cigar, fields)
 
 
         #print(fields[0], new_chr, new_pos + 1, new_cigar)
