@@ -547,6 +547,7 @@ public:
             }
             bool genomeForward = pos->direction == 0;
             if (!genomeForward) {
+                cerr << readName << endl;
                 continue;
             }
 

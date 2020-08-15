@@ -3573,7 +3573,7 @@ void RepeatBuilder<TStr>::build(const RepeatParameter& rp)
             
             if(count == true_count || rc_count == true_count) {
                 match++;
-            } else if(total - match <= 10) {
+            } else if(total - match <= 10 && !TLA) {
                 cerr << "   query: " << query << endl;
                 cerr << "rc_query: " << rc_query << endl;
                 cerr << "true count: " << true_count << endl;
@@ -3583,7 +3583,12 @@ void RepeatBuilder<TStr>::build(const RepeatParameter& rp)
             }
         }
         
-        cerr << "RepeatBuilder: sanity check: " << match << " passed (out of " << total << ")" << endl << endl;
+        cerr << "RepeatBuilder: sanity check: " << match << " passed (out of " << total << ")" << endl;
+        if (TLA) {
+            cerr << "For TLA mode, it is normal that many check can not pass the sanity check." << endl << endl;
+        } else {
+            cerr << endl;
+        }
     }
 }
 

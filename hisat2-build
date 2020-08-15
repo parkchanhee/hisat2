@@ -113,7 +113,6 @@ def main():
         repeatArgv += ["--save-sa"]
         if TLA:
             repeatArgv += ["--TLA"]
-            repeatArgv += ["--forward-only"]
         repeatArgv += [referenceName, outputName]
         os.system(" ".join(repeatArgv))
 
