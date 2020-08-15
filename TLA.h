@@ -1263,7 +1263,7 @@ public:
 
     bool working;
     bool paired;
-    int poolLimit = 20;
+    int poolLimit = 40;
     bool multipleAligned = false;
     const int maxPairScore = 500000;
 

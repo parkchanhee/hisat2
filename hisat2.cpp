@@ -3492,10 +3492,19 @@ static void multiseedSearchWorker_hisat2(void *vp) {
 				gettimeofday(&prm.tv_beg, &prm.tz_beg);
 			}
 			// Try to align this read
-			while(retry || (TLA && ps->isPlanA)) {
-                //
+			int nCycle = 0;
+            bool gNofwTLA = false;
+            bool gNorcTLA = false;
+			while(retry || (TLA ? (nCycle <= 3) : (nCycle <= 0)) ) {
+                if (nCycle%2 == 0) {
+                    gNofwTLA = false;
+                    gNorcTLA = true;
+                } else {
+                    gNorcTLA = true;
+                    gNorcTLA = false;
+                }
                 msinkwrap.resetInit_();
-                if (!retry && (TLA && ps->isPlanA))
+                if (!retry && (nCycle == 2))
                 {
 
                     ps->planB(); // use patFW1 for alignment
@@ -3525,7 +3534,6 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                         gettimeofday(&prm.tv_beg, &prm.tz_beg);
                     }
                 }
-
 
 				retry = false;
 				assert_eq(ps->bufa().color, false);
@@ -3625,10 +3633,18 @@ static void multiseedSearchWorker_hisat2(void *vp) {
 				// Calcualte nofw / no rc
 				bool nofw[2] = { false, false };
 				bool norc[2] = { false, false };
-				nofw[0] = paired ? (gMate1fw ? gNofw : gNorc) : gNofw;
-				norc[0] = paired ? (gMate1fw ? gNorc : gNofw) : gNorc;
-				nofw[1] = paired ? (gMate2fw ? gNofw : gNorc) : gNofw;
-				norc[1] = paired ? (gMate2fw ? gNorc : gNofw) : gNorc;
+				if (TLA) {
+                    nofw[0] = paired ? (gMate1fw ? gNofwTLA : gNorcTLA) : gNofwTLA;
+                    norc[0] = paired ? (gMate1fw ? gNorcTLA : gNofwTLA) : gNorcTLA;
+                    nofw[1] = paired ? (gMate2fw ? gNofwTLA : gNorcTLA) : gNofwTLA;
+                    norc[1] = paired ? (gMate2fw ? gNorcTLA : gNofwTLA) : gNorcTLA;
+				} else {
+                    nofw[0] = paired ? (gMate1fw ? gNofw : gNorc) : gNofw;
+                    norc[0] = paired ? (gMate1fw ? gNorc : gNofw) : gNorc;
+                    nofw[1] = paired ? (gMate2fw ? gNofw : gNorc) : gNofw;
+                    norc[1] = paired ? (gMate2fw ? gNorc : gNofw) : gNorc;
+				}
+
 				// Calculate nceil
 				int nceil[2] = { 0, 0 };
 				nceil[0] = nCeil.f<int>((double)rdlens[0]);
@@ -3881,10 +3897,8 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                             seedSumm,             //rdid suppress alignments?
                             templateLenAdjustment);
                 };
-
-                //msinkwraps.push_back(msinkwrap);
-
                 //assert(!retry || msinkwrap.empty());
+                nCycle++;
 			}
 
 
