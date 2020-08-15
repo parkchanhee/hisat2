@@ -266,7 +266,7 @@ static struct option long_options[] = {
 	{(char*)"usage",          no_argument,       0,            ARG_USAGE},
     {(char*)"wrapper",        required_argument, 0,            ARG_WRAPPER},
     {(char*)"TLA",            no_argument,        0,        ARG_TLA},
-    {(char*)"auto-repeat-index",   no_argument,        0,        ARG_AUTO_REPEAT_INDEX},
+    {(char*)"auto-repeat-index",   required_argument,        0,        ARG_AUTO_REPEAT_INDEX},
 	{(char*)0, 0, 0, 0} // terminator
 };
 

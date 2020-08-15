@@ -86,11 +86,12 @@ def main():
         if tot_size > small_index_max_size:
             build_bin_spec = os.path.join(ex_path, build_bin_l)
 
+
     if "--auto-repeat-index" in argv:
         #build repeat index first
         outputName = argv[-1]
         nThread = "1"
-        repeatLength = "40-"
+        repeatLength = "100-300"
         repeatCount = "5"
         referenceName = ""
         TLA = False
@@ -101,6 +102,8 @@ def main():
                 nThread = argv[i+1]
             elif argv[i] == "-f":
                 referenceName = argv[i+1]
+            elif argv[i] == "--auto-repeat-index":
+                repeatLength = argv[i+1]
         if len(referenceName) == 0:
             referenceName = argv[-2]
         cwd = sys.path[0]
