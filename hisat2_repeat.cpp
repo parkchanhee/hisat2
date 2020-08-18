@@ -572,11 +572,7 @@ static void driver(
 		if(verbose) cerr << "Reading reference sizes" << endl;
 		Timer _t(cerr, "  Time reading reference sizes: ", verbose);
         sztot = BitPairReference::szsFromFasta(is, "", bigEndian, refparams, szs, sanityCheck, &ref_names);
-        if (TLA) { // if TLA, we read reference 2 times
-            sztot = BitPairReference::szsFromFasta(is, "", bigEndian, refparams, szs, sanityCheck, &ref_names);
-        }
 	}
-
 	assert_gt(sztot.first, 0);
 	assert_gt(sztot.second, 0);
 	assert_gt(szs.size(), 0);
@@ -870,8 +866,25 @@ int hisat2_repeat(int argc, const char **argv) {
         {
             Timer timer(cerr, "Total time for call to driver() for forward index: ", verbose);
             try {
-                string tag = TLA? ".TLA":"";
-                driver<SString<char> >(infile, infiles, outfile + tag, false, forward_only, CGtoTG);
+                int nloop = TLA ? 2 : 1; // if TLA == true, nloop = 2. else one loop
+                for (int i = 0; i < nloop; i++) {
+                    string tag = "";
+                    if (TLA) {
+                        if (i == 0) {
+                            tag = ".TLA.1";
+                            asc2dna[int('C')] = 3;
+                            asc2dna[int('c')] = 3;
+                        } else {
+                            tag = ".TLA.2";
+                            asc2dna[int('C')] = 1;
+                            asc2dna[int('c')] = 1;
+                            asc2dna[int('G')] = 0;
+                            asc2dna[int('g')] = 0;
+                        }
+                    }
+                    driver<SString<char> >(infile, infiles, outfile + tag, false, forward_only, CGtoTG);
+                }
+
             } catch(bad_alloc& e) {
                 if(autoMem) {
                     cerr << "Switching to a packed string representation." << endl;

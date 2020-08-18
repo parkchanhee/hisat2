@@ -3583,12 +3583,7 @@ void RepeatBuilder<TStr>::build(const RepeatParameter& rp)
             }
         }
         
-        cerr << "RepeatBuilder: sanity check: " << match << " passed (out of " << total << ")" << endl;
-        if (TLA) {
-            cerr << "For TLA mode, it is normal that many check can not pass the sanity check." << endl << endl;
-        } else {
-            cerr << endl;
-        }
+        cerr << "RepeatBuilder: sanity check: " << match << " passed (out of " << total << ")" << endl << endl;
     }
 }
 

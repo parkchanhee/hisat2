@@ -3735,49 +3735,26 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     int ret;
                     if (TLA) {
                         // for TLA only
-                        if (ps->isPlanA) {
-                            ret = splicedAligner.go(
-                                    sc,
-                                    pepol,
-                                    *multiseed_tpol,
-                                    *gpol,
-                                    gfm_TLA_A,
-                                    rgfm_TLA_A,
-                                    *altdbs_TLA[0],
-                                    *repeatdbs_TLA[0],
-                                    *raltdbs_TLA[0],
-                                    ref_TLA_A,
-                                    rref_TLA_A,
-                                    sw,
-                                    *ssdb,
-                                    wlm,
-                                    prm,
-                                    swmSeed,
-                                    him,
-                                    rnd,
-                                    msinkwrap);
-                        } else {
-                            ret = splicedAligner.go(
-                                    sc,
-                                    pepol,
-                                    *multiseed_tpol,
-                                    *gpol,
-                                    gfm_TLA_B,
-                                    rgfm_TLA_B,
-                                    *altdbs_TLA[1],
-                                    *repeatdbs_TLA[1],
-                                    *raltdbs_TLA[1],
-                                    ref_TLA_B,
-                                    rref_TLA_B,
-                                    sw,
-                                    *ssdb,
-                                    wlm,
-                                    prm,
-                                    swmSeed,
-                                    him,
-                                    rnd,
-                                    msinkwrap);
-                        }
+                        ret = splicedAligner.go(
+                                sc,
+                                pepol,
+                                *multiseed_tpol,
+                                *gpol,
+                                (nCycle<=1)?gfm_TLA_A:gfm_TLA_B,
+                                (nCycle == 0 || nCycle == 3)?rgfm_TLA_A:rgfm_TLA_B,
+                                *altdbs_TLA[0],
+                                *repeatdbs_TLA[0],
+                                *raltdbs_TLA[0],
+                                (nCycle<=1)?ref_TLA_A:ref_TLA_B,
+                                (nCycle == 0 || nCycle == 3)?rref_TLA_A:rref_TLA_B,
+                                sw,
+                                *ssdb,
+                                wlm,
+                                prm,
+                                swmSeed,
+                                him,
+                                rnd,
+                                msinkwrap);
                     } else {
                         // for regular Hisat2
                         ret = splicedAligner.go(

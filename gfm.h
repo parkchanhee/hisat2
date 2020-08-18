@@ -4492,9 +4492,6 @@ void GFM<index_t>::join(EList<FileBuf*>& l,
 	rand.init(seed);
 	RefReadInParams rpcp = refparams;
 	index_t guessLen = sztot;
-	if (TLA) {
-	    guessLen *= 2;
-	}
     if(include_rc) {
         s.resize(guessLen << 1);
     } else {
@@ -4502,12 +4499,6 @@ void GFM<index_t>::join(EList<FileBuf*>& l,
     }
 	ASSERT_ONLY(index_t szsi = 0);
 	TIndexOffU dstoff = 0;
-	if (TLA) {
-        asc2dna[int('G')] = 2;
-        asc2dna[int('g')] = 2;
-        asc2dna[int('C')] = 3;
-        asc2dna[int('c')] = 3;
-	}
 	for(index_t i = 0; i < l.size(); i++) {
 		// For each sequence we can pull out of istream l[i]...
 		assert(!l[i]->eof());
@@ -4523,29 +4514,6 @@ void GFM<index_t>::join(EList<FileBuf*>& l,
 			if(bases == 0) continue;
 		}
 	}
-	if (TLA) {
-        asc2dna[int('C')] = 1;
-        asc2dna[int('c')] = 1;
-        asc2dna[int('G')] = 0;
-        asc2dna[int('g')] = 0;
-        for(index_t i = 0; i < l.size(); i++) {
-            // For each sequence we can pull out of istream l[i]...
-            l[i]->reset();
-            assert(!l[i]->eof());
-            bool first = true;
-            while(!l[i]->eof()) {
-                RefRecord rec = fastaRefReadAppend(*l[i], first, s, dstoff, rpcp);
-                first = false;
-                index_t bases = (index_t)rec.len;
-                assert_eq(rec.off, szs[szsi].off);
-                assert_eq(rec.len, szs[szsi].len);
-                assert_eq(rec.first, szs[szsi].first);
-                ASSERT_ONLY(szsi++);
-                if(bases == 0) continue;
-            }
-        }
-	}
-
 
     // Change 'C' in CG to 'T' so that CG becomes TG
     if(CGtoTG) {
