@@ -842,14 +842,14 @@ int hisat2_build(int argc, const char **argv) {
                     if(repeat_ref_fname.length() > 0) {
                         EList<string> repeat_infiles(MISC_CAT);
                         tokenize(repeat_ref_fname, ",", repeat_infiles);
-                        driver<SString<char> >(repeat_ref_fname,
+                        driver<SString<char> >(repeat_ref_fname + tag,
                                                repeat_infiles,
                                                repeat_snp_fname,
                                                repeat_haplotype_fname,
                                                dummy_fname,
                                                dummy_fname,
                                                dummy_fname,
-                                               repeat_info_fname,
+                                               repeat_info_fname + tag,
                                                outfile + tag + ".rep",
                                                false,
                                                REF_READ_FORWARD,
