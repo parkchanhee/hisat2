@@ -573,6 +573,7 @@ static void driver(
 		Timer _t(cerr, "  Time reading reference sizes: ", verbose);
         sztot = BitPairReference::szsFromFasta(is, "", bigEndian, refparams, szs, sanityCheck, &ref_names);
 	}
+
 	assert_gt(sztot.first, 0);
 	assert_gt(sztot.second, 0);
 	assert_gt(szs.size(), 0);
@@ -766,7 +767,7 @@ static void driver(
             RepeatBuilder<TStr> repeatBuilder(s,
                                               szs,
                                               ref_names,
-                                              forward_only,
+                                              TLA?true:forward_only,
                                               outfile);
             cerr << "RepeatBuilder: " << outfile << " " << rp.min_repeat_len << "-" << rp.max_repeat_len << endl;
 
