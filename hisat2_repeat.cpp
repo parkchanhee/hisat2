@@ -767,7 +767,7 @@ static void driver(
             RepeatBuilder<TStr> repeatBuilder(s,
                                               szs,
                                               ref_names,
-                                              TLA?true:forward_only,
+                                              forward_only,
                                               outfile);
             cerr << "RepeatBuilder: " << outfile << " " << rp.min_repeat_len << "-" << rp.max_repeat_len << endl;
 
@@ -796,7 +796,7 @@ int hisat2_repeat(int argc, const char **argv) {
 		resetOptions();
 
 		string infile;
-		EList<string> infiles(MISC_CAT);
+        EList<string> infiles(MISC_CAT);
 
 		parseOptions(argc, argv);
 		argv0 = argv[0];
@@ -836,12 +836,12 @@ int hisat2_repeat(int argc, const char **argv) {
 		}
 		outfile = argv[optind++];
 
-		tokenize(infile, ",", infiles);
-		if(infiles.size() < 1) {
-			cerr << "Tokenized input file list was empty!" << endl;
-			printUsage(cerr);
-			return 1;
-		}
+        tokenize(infile, ",", infiles);
+        if(infiles.size() < 1) {
+            cerr << "Tokenized input file list was empty!" << endl;
+            printUsage(cerr);
+            return 1;
+        }
 
    		// Optionally summarize
 		if(verbose) {
@@ -857,10 +857,10 @@ int hisat2_repeat(int argc, const char **argv) {
 	#endif
 			cerr << "  Random seed: " << seed << endl;
 			cerr << "  Sizeofs: void*:" << sizeof(void*) << ", int:" << sizeof(int) << ", long:" << sizeof(long) << ", size_t:" << sizeof(size_t) << endl;
-			cerr << "Input files DNA, " << file_format_names[format].c_str() << ":" << endl;
-			for(size_t i = 0; i < infiles.size(); i++) {
-				cerr << "  " << infiles[i].c_str() << endl;
-			}
+            cerr << "Input files DNA, " << file_format_names[format].c_str() << ":" << endl;
+            for(size_t i = 0; i < infiles.size(); i++) {
+                cerr << "  " << infiles[i].c_str() << endl;
+            }
 		}
 		// Seed random number generator
         srand(seed);

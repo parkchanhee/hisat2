@@ -3665,7 +3665,7 @@ void RepeatBuilder<TStr>::writeAllele(TIndexOffU grp_id,
         TIndexOffU joinedOff = seeds[range.first + i].pos.first;
 
         bool fw = true;
-        if(joinedOff < TLA?forward_length_/2:forward_length_) {
+        if(joinedOff < forward_length_) {
             fw = true;
         } else {
             fw = false;

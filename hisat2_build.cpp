@@ -863,19 +863,38 @@ int hisat2_build(int argc, const char **argv) {
                                                &parent_szs,
                                                &parent_refnames);
                     } else if (autoRepeatIndex) {
-                        repeat_ref_fname = outfile + tag + ".rep.fa";
-                        repeat_info_fname = outfile + tag + ".rep.info";
+                        string repeat_ref_fname_TLA = outfile + ".TLA.1.rep.fa";
+                        string repeat_info_fname_TLA = outfile + ".TLA.1.rep.info";
                         EList<string> repeat_infiles(MISC_CAT);
-                        tokenize(repeat_ref_fname, ",", repeat_infiles);
-                        driver<SString<char> >(repeat_ref_fname,
+                        tokenize(repeat_ref_fname_TLA, ",", repeat_infiles);
+                        driver<SString<char> >(repeat_ref_fname_TLA,
                                                repeat_infiles,
                                                repeat_snp_fname,
                                                repeat_haplotype_fname,
                                                dummy_fname,
                                                dummy_fname,
                                                dummy_fname,
-                                               repeat_info_fname,
-                                               outfile + tag + ".rep",
+                                               repeat_info_fname_TLA,
+                                               outfile + tag + ".1.rep",
+                                               false,
+                                               REF_READ_FORWARD,
+                                               true, // create local index?
+                                               &parent_szs,
+                                               &parent_refnames);
+
+                        repeat_ref_fname_TLA = outfile + ".TLA.2.rep.fa";
+                        repeat_info_fname_TLA = outfile + ".TLA.2.rep.info";
+                        repeat_infiles.clear();
+                        tokenize(repeat_ref_fname_TLA, ",", repeat_infiles);
+                        driver<SString<char> >(repeat_ref_fname_TLA,
+                                               repeat_infiles,
+                                               repeat_snp_fname,
+                                               repeat_haplotype_fname,
+                                               dummy_fname,
+                                               dummy_fname,
+                                               dummy_fname,
+                                               repeat_info_fname_TLA,
+                                               outfile + tag + ".2.rep",
                                                false,
                                                REF_READ_FORWARD,
                                                true, // create local index?
