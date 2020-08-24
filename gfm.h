@@ -4532,7 +4532,6 @@ void GFM<index_t>::join(EList<FileBuf*>& l,
             assert_range(0, 3, nt);
             s[guessLen + i] = dnacomp[nt];
         }
-
     }
 }
 

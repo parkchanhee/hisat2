@@ -4262,7 +4262,7 @@ public:
                     if(skip_repeat[rdi][fwi]) continue;
                     ReadBWTHit<index_t>& hit = _hits[rdi][fwi];
                     index_t offsetSize = hit.offsetSize();
-                    assert_gt(offsetSize, 0);
+                    //assert_gt(offsetSize, 0);
                     for(size_t hi = 0; hi < offsetSize; hi++) {
                         BWTHit<index_t>& partialHit = hit.getPartialHit(hi);
                         if(partialHit.len() >= (rref->getMinK() << 1)) {

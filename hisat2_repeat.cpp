@@ -503,6 +503,73 @@ static void parseOptions(int argc, const char **argv) {
 extern void initializeCntLut();
 extern void initializeCntBit();
 
+class ConvertMatrixTLA {
+    char convertFrom = 'A';
+    char convertTo = 'A';
+    string allBase = "ACGT";
+    string allBaseLower = "acgt";
+    int charToInt(char inputChar) {
+        return allBase.find(inputChar);
+    }
+
+    int complement(char inputChar) {
+        return allBase[3-charToInt(inputChar)];
+    }
+
+    void convertMatrix() {
+        for (int i = 0; i < 4; i++) {
+            char base = allBase[i];
+            char lowerBase = allBaseLower[i];
+            if (convertFrom == base) {
+                asc2dna[base] = charToInt(convertTo);
+                asc2dna[lowerBase] = charToInt(convertTo);
+            } else if (complement(convertFrom) == base) {
+                asc2dnacomp[base] = convertTo;
+                asc2dnacomp[lowerBase] = convertTo;
+                dnacomp[i] = charToInt(convertTo);
+            } else {
+                asc2dna[base] = charToInt(base);
+                asc2dna[lowerBase] = charToInt(base);
+                asc2dnacomp[base] = complement(base);
+                asc2dnacomp[lowerBase] = complement(base);
+                dnacomp[i] = charToInt(complement(base));
+            }
+        }
+    }
+public:
+    ConvertMatrixTLA(){
+
+    };
+
+    void convert(char from, char to)  {
+        convertFrom = from;
+        convertTo = to;
+        convertMatrix();
+    }
+
+    void inverseConversion() {
+        convertFrom = complement(convertFrom);
+        convertTo = complement(convertTo);
+        convertMatrix();
+    }
+
+    void restoreNormal() {
+        for (int i = 0; i < 4; i++) {
+            char base = allBase[i];
+            char lowerBase = allBaseLower[i];
+            asc2dna[base] = charToInt(base);
+            asc2dna[lowerBase] = charToInt(base);
+            asc2dnacomp[base] = complement(base);
+            asc2dnacomp[lowerBase] = complement(base);
+            dnacomp[i] = charToInt(complement(base));
+        }
+    }
+
+    void restoreConversion() {
+        convertMatrix();
+    }
+};
+ConvertMatrixTLA baseChange;
 /**
  * Drive the index construction process and optionally sanity-check the
  * result.
@@ -518,6 +585,7 @@ static void driver(
 {
     initializeCntLut();
     initializeCntBit();
+
 	EList<FileBuf*> is(MISC_CAT);
 	bool bisulfite = false;
     bool nsToAs = false;
@@ -601,6 +669,34 @@ static void driver(
                 s,
                 both_strand, // include reverse complemented sequence
                 CGtoTG); //Change CG to TG
+    }
+
+    TStr sOriginal;
+    if (TLA) {
+        baseChange.restoreNormal();
+        bool both_strand = forward_only ? false : true;
+        for (int i = 0; i < is.size(); i++) {
+            is[i]->reset();
+        }
+        GFM<TIndexOffU>::join<TStr>(
+                is,
+                szs,
+                (TIndexOffU) sztot.first,
+                refparams,
+                seed,
+                sOriginal,
+                both_strand, // include reverse complemented sequence
+                CGtoTG); //Change CG to TG
+        baseChange.restoreConversion();
+
+        long long int guessLen = s.length() / 2;
+        for (TIndexOffU i = 0; i < guessLen; i++) {
+            int nt = sOriginal[guessLen - i - 1];
+            assert_range(0, 3, nt);
+            s[guessLen + i] = dnacomp[nt];
+        }
+    } else {
+        sOriginal = s;
     }
 
     // Successfully obtained joined reference string
@@ -765,6 +861,7 @@ static void driver(
             rp.append_result = (i != 0);
 
             RepeatBuilder<TStr> repeatBuilder(s,
+                                              sOriginal,
                                               szs,
                                               ref_names,
                                               forward_only,
@@ -873,14 +970,10 @@ int hisat2_repeat(int argc, const char **argv) {
                     if (TLA) {
                         if (i == 0) {
                             tag = ".TLA.1";
-                            asc2dna[int('C')] = 3;
-                            asc2dna[int('c')] = 3;
+                            baseChange.convert('C', 'T');
                         } else {
                             tag = ".TLA.2";
-                            asc2dna[int('C')] = 1;
-                            asc2dna[int('c')] = 1;
-                            asc2dna[int('G')] = 0;
-                            asc2dna[int('g')] = 0;
+                            baseChange.convert('G', 'A');
                         }
                     }
                     driver<SString<char> >(infile, infiles, outfile + tag, false, forward_only, CGtoTG);

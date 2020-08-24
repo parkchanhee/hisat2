@@ -547,7 +547,7 @@ public:
             }
             bool genomeForward = pos->direction == 0;
             if (!genomeForward) {
-                cerr << readName << endl;
+                //cerr << readName << endl;
                 continue;
             }
 
@@ -1907,7 +1907,7 @@ public:
             }
         }
 
-        assert (!uniqueOutputOnly && ((nOutput == nAlignment) || (nAlignment == 0 && nOutput == 1)));
+        //assert (!uniqueOutputOnly && ((nOutput == nAlignment) || (nAlignment == 0 && nOutput == 1)));
         initialize();
     }
 
