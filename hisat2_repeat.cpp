@@ -517,6 +517,7 @@ class ConvertMatrixTLA {
     }
 
     void convertMatrix() {
+        restoreNormal();
         for (int i = 0; i < 4; i++) {
             char base = allBase[i];
             char lowerBase = allBaseLower[i];
@@ -527,12 +528,6 @@ class ConvertMatrixTLA {
                 asc2dnacomp[base] = convertTo;
                 asc2dnacomp[lowerBase] = convertTo;
                 dnacomp[i] = charToInt(convertTo);
-            } else {
-                asc2dna[base] = charToInt(base);
-                asc2dna[lowerBase] = charToInt(base);
-                asc2dnacomp[base] = complement(base);
-                asc2dnacomp[lowerBase] = complement(base);
-                dnacomp[i] = charToInt(complement(base));
             }
         }
     }
