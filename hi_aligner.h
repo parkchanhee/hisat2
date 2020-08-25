@@ -3688,7 +3688,7 @@ bool GenomeHit<index_t>::repOk(const Read& rd, const BitPairReference& ref)
             refstr.append(rfc);
         }
     }
-    if(refstr != editstr) {
+    if((refstr != editstr) && !TLA) {
         cerr << "Decoded nucleotides and edits don't match reference:" << endl;
         //cerr << "           score: " << score.score()
         //<< " (" << gaps << " gaps)" << endl;

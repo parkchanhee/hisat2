@@ -20,8 +20,8 @@ bool MappingPositions::append (Alignment* newAlignment) {
     }
 
     int index;
-    if (positionExist(location, chromosome, pairSegment, index)) {
-        return !positions[index].concordant && concordant;
+    if (positionExist(location, chromosome, pairSegment, AS, index)) {
+        return (!positions[index].concordant) && concordant;
     } else {
         positions.push_back(MappingPosition(location, chromosome, AS, pairSegment, concordant));
         return true;

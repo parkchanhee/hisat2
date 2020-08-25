@@ -269,12 +269,13 @@ public:
         return false;
     }
 
-    bool positionExist (long long int &location, string &chromosome, int pairSegment, int &index) {
+    bool positionExist (long long int &location, string &chromosome, int pairSegment, int AS, int &index) {
         // return true if position is exist, else, return false.
         for (int i = 0; i < positions.size(); i++) {
             if ((positions[i].pairSegment == pairSegment) &&
                 (positions[i].location == location) &&
-                (positions[i].chromosome == chromosome)) {
+                (positions[i].chromosome == chromosome) &&
+                (positions[i].AS == AS)) {
                 index = i;
                 return true;
             }
@@ -295,12 +296,8 @@ public:
     bool append (string chromosome, long long int location, int AS, int pairSegment=0) {
         // return true if the position is not exist and will append to positions, else, false.
         int index;
-        if (positionExist(location, chromosome, pairSegment, index)) {
-            if (positions[index].AS == AS) {
-                return false;
-            } else {
-                return true;
-            }
+        if (positionExist(location, chromosome, pairSegment, AS, index)) {
+            return false;
         } else {
             positions.emplace_back(location, chromosome, AS);
             return true;
@@ -1649,13 +1646,6 @@ public:
             }
             newAlignmentAS = newAlignment->bestAS;
         } else {
-            // check if alignment result exist
-            if(!existPositions.append(newAlignment)) {
-                newAlignment->initialize();
-                freeAlignments.push(newAlignment);
-                working = false;
-                return;
-            }
             if (newAlignment->repeat) {
                 addRepeatIndexTag(newAlignment);
             } else {
@@ -1668,6 +1658,14 @@ public:
                 }
             }
             newAlignmentAS = newAlignment->AS;
+        }
+
+        // check if alignment result exist
+        if(!existPositions.append(newAlignment)) {
+            newAlignment->initialize();
+            freeAlignments.push(newAlignment);
+            working = false;
+            return;
         }
 
         if (newAlignmentAS > bestAS) {
@@ -1728,13 +1726,6 @@ public:
         paired = newAlignment->paired;
 
         if (newAlignment->repeat && expandRepeat) {
-            // check if alignment result exist
-            if(!existPositions.append(newAlignment)) {
-                newAlignment->initialize();
-                freeAlignments.push(newAlignment);
-                working = false;
-                return;
-            }
             if (!newAlignment->constructRepeatMD(existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1742,13 +1733,6 @@ public:
                 return;
             }
         } else {
-            // check if alignment result exist
-            if(!existPositions.append(newAlignment)) {
-                newAlignment->initialize();
-                freeAlignments.push(newAlignment);
-                working = false;
-                return;
-            }
             if (newAlignment->repeat) {
                 addRepeatIndexTag(newAlignment);
             } else {
@@ -1760,6 +1744,14 @@ public:
                     return;
                 }
             }
+        }
+
+        // check if alignment result exist
+        if(!existPositions.append(newAlignment)) {
+            newAlignment->initialize();
+            freeAlignments.push(newAlignment);
+            working = false;
+            return;
         }
 
         int bestNewPairScore = numeric_limits<int>::min();
