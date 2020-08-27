@@ -791,8 +791,8 @@ def extract_single(infilename,
                 if prev_read_id == read_id:
                     assert prev_NH == NH
                 if NH == 1 or mapQ == 60:
-                    #assert NH == 1 and mapQ == 60
-                    pass
+                    assert NH == 1 and mapQ == 60
+
         
         if read_id != prev_read_id:
             num_aligned_reads += 1
@@ -873,8 +873,8 @@ def extract_single(infilename,
         if aligner == "hisat2":
             if prev_read_id != read_id:
                 if prev_read_id != "":
-                    #assert prev_NH == NH_real
-                    pass
+                    assert prev_NH == NH_real
+
                 NH_real = 1
             else:
                 NH_real += 1
@@ -884,8 +884,8 @@ def extract_single(infilename,
 
     if aligner == "hisat2":
         if prev_read_id != "":
-            #assert prev_NH == NH_real
-            pass
+            assert prev_NH == NH_real
+
     
     outfile.close()
     infile.close()
@@ -1965,7 +1965,7 @@ def calculate_read_cost(single_end,
 
     num_cpus = multiprocessing.cpu_count()
     if num_cpus > 6:
-        num_threads = min(6, num_cpus)
+        num_threads = min(5, num_cpus)
         desktop = False
     else:
         num_threads = min(3, num_cpus)
@@ -1992,7 +1992,8 @@ def calculate_read_cost(single_end,
         #["hisat2", "", "", "221", ""],  # original version
         ["hisat2", "", "tran", "221", ""],  # original version
         ["hisat2", "", "ss-tome", "", ""],
-        ["hisat2", "", "linear-tome", "", ""],
+        ["hisat2", "", "ss-tome", "", "--transcriptome"],
+        #["hisat2", "", "linear-tome", "", ""],
         # ["hisat2", "", "rep-100-300", "", ""],
         # ["hisat2", "", "rep_mm", "", ""],
         # ["hisat2", "", "", "", "--sensitive"],

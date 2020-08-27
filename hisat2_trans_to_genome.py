@@ -97,6 +97,10 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
         c_len, c_op = cigar
         c_len = int(c_len)
 
+        if c_op in ['S']:
+            tmp_cigar.append([c_len, c_op])
+            continue
+
         while c_len > 0 and e_idx < len(exons):
             if c_len <= r_len:
                 r_len -= c_len
@@ -105,7 +109,10 @@ def translate_position(trans_tbl, tid, tr_pos, cigars):
             else:
                 c_len -= r_len
                 tmp_cigar.append([r_len, c_op])
-
+                """
+                if e_idx == len(exons):
+                    print(tid)
+                """
                 gap = exons[e_idx + 1][0] - (exons[e_idx][0] + exons[e_idx][1])
                 tmp_cigar.append([gap, 'N'])
 
