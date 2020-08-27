@@ -55,6 +55,9 @@ ifneq (,$(findstring Darwin,$(shell uname)))
 	MACOS = 1
 endif
 
+EXTRA_FLAGS += -DUSE_TRANSCRIPTOME -DCP_DEBUG
+
+
 EXTRA_FLAGS += -DPOPCNT_CAPABILITY -std=c++11
 INC += -I. -I third_party 
 
