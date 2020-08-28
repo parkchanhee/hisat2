@@ -3727,6 +3727,8 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                         } else{
                             index = 1;
                         }
+
+                        bool useRepeat = ps->bufa().length() >= 60;
                         // for TLA only
                         ret = splicedAligner.go(
                                 sc,
@@ -3734,7 +3736,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                 *multiseed_tpol,
                                 *gpol,
                                 *gfm_TLA[index],
-                                rgfm_TLA[index],
+                                useRepeat ? rgfm_TLA[index] : NULL,
                                 *altdbs_TLA[index],
                                 *repeatdbs_TLA[index],
                                 *raltdbs_TLA[index],
