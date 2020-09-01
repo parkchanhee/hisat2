@@ -502,18 +502,17 @@ public:
 
     void updateMP(int readLocation, char read, long long int refLocation, char ref) {
         char buf[1024];
-        string comma;
         if (!MP.empty()) {
             MP.append(",");
         }
-        itoa10<int>(RA_Map(ref) * 5 + RA_Map(read) + ':' + readLocation + 1 + ':' + refLocation + 1, buf);
-        MP.append(buf + ':');
-        //MP.append(":");
-        //itoa10<int>(readLocation + 1, buf);
-        //MP.append(buf + ':');
-        //MP.append(":");
-        //itoa10<int>(refLocation + 1, buf);
-        //MP.append(buf);
+        itoa10<int>(RA_Map(ref) * 5 + RA_Map(read), buf);
+        MP.append(buf);
+        MP.append(":");
+        itoa10<int>(readLocation + 1, buf);
+        MP.append(buf);
+        MP.append(":");
+        itoa10<int>(refLocation + 1, buf);
+        MP.append(buf);
     }
 
     void clearExtraTags() {
@@ -807,33 +806,33 @@ public:
             // AS
             o.append("AS:i:");
             itoa10<int>(AS, buf);
-            o.append(buf + '\t');
-            //o.append('\t');
+            o.append(buf);
+            o.append('\t');
             // NH
             o.append("NH:i:");
             itoa10<int>(NH, buf);
-            o.append(buf + '\t');
-            //o.append('\t');
+            o.append(buf);
+            o.append('\t');
             // XM
             o.append("XM:i:");
             itoa10<int>(XM, buf);
-            o.append(buf + '\t');
-            //o.append('\t');
+            o.append(buf);
+            o.append('\t');
             // NM
             o.append("NM:i:");
             itoa10<int>(NM, buf);
-            o.append(buf + '\t');
-            //o.append('\t');
+            o.append(buf);
+            o.append('\t');
             // MD
             o.append("MD:Z:");
-            o.append(MD.toZBuf() + '\t');
-            //o.append('\t');
+            o.append(MD.toZBuf());
+            o.append('\t');
             if (paired) {
                 // YS
                 o.append("YS:i:");
                 itoa10<int>(YS, buf);
-                o.append(buf + '\t');
-                //o.append('\t');
+                o.append(buf);
+                o.append('\t');
             }
         }
         o.append(unChangedTags.toZBuf());
@@ -843,8 +842,8 @@ public:
             // TC
             o.append("TC:i:");
             itoa10<int>(TC, buf);
-            o.append(buf + '\t');
-            //o.append('\t');
+            o.append(buf);
+            o.append('\t');
             // RA
             o.append("RA:i:");
             for (int i = 0; i < 5; i++) {
@@ -872,42 +871,42 @@ public:
         // AS
         o.append("AS:i:");
         itoa10<int>(inputAS, buf);
-        o.append(buf + '\t');
-        //o.append('\t');
+        o.append(buf);
+        o.append('\t');
         // NH
         o.append("NH:i:");
         itoa10<int>(NH, buf);
-        o.append(buf + '\t');
-        //o.append('\t');
+        o.append(buf);
+        o.append('\t');
         // XM
         o.append("XM:i:");
         itoa10<int>(inputXM, buf);
-        o.append(buf + '\t');
-        //o.append('\t');
+        o.append(buf);
+        o.append('\t');
         // NM
         o.append("NM:i:");
         itoa10<int>(inputNM, buf);
-        o.append(buf + '\t');
-        //o.append('\t');
+        o.append(buf);
+        o.append('\t');
         // MD
         o.append("MD:Z:");
-        o.append(inputMD.c_str() + '\t');
-        //o.append('\t');
+        o.append(inputMD.c_str());
+        o.append('\t');
         // YS
         if (paired) {
             o.append("YS:i:");
             itoa10<int>(YS, buf);
-            o.append(buf + '\t');
-            //o.append('\t');
+            o.append(buf);
+            o.append('\t');
         }
         // unchanged Tags
-        o.append(unChangedTags.toZBuf() + '\t');
-        //o.append('\t');
+        o.append(unChangedTags.toZBuf());
+        o.append('\t');
         // TC
         o.append("TC:i:");
         itoa10<int>(inputTC, buf);
-        o.append(buf + '\t');
-        //o.append('\t');
+        o.append(buf);
+        o.append('\t');
         // RA
         o.append("RA:i:");
         for (int i = 0; i < 5; i++) {
