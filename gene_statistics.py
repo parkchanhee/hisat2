@@ -7,6 +7,9 @@ import sys
 def parse_gene_line(fields, genes):
     values = fields[8]
 
+    begin_pos = int(fields[3]) - 1
+    end_pos = int(fields[4]) - 1
+    strand = fields[6]
     values_dict = {}
     for attr in values.split(';'):
         name, _, value = attr.strip().partition(' ')
@@ -24,7 +27,7 @@ def parse_gene_line(fields, genes):
     if gene_id in genes:
         print('Duplicated gene: {}'.format(gene_id))
     else:
-        genes[gene_id] = [gene_id, values_dict['gene_name'], values_dict['gene_biotype']]
+        genes[gene_id] = [gene_id, values_dict['gene_name'], values_dict['gene_biotype'], begin_pos, end_pos, strand]
 
     return
 
@@ -97,7 +100,6 @@ def genes_groupby_biotype(genes):
     return group_biotype
 
 
-
 print('Total genes: {}'.format(len(genes)))
 
 print('Number of genes by gene_biotype')
@@ -109,6 +111,19 @@ v = sum([len(value) for value in groupby_biotype.values()])
 assert v == len(genes)
 
 print(len(transcripts))
+
+
+for gene in genes.items():
+    print(gene)
+
+
+print('-----------------')
+
+sorted_gene = sorted(genes, key=lambda gene: (gene[3], gene[4], gene[5])) # sort by start_pos, end, strand
+
+for gene in genes.items():
+    print(gene)
+
 
 """
 for gene in genes:
