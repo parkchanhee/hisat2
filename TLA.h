@@ -214,12 +214,11 @@ public:
     string refSequence;
     vector<RepeatPosition> repeatPositions;
 
-    MappingPosition (long long int inputLocation, string inputChromosome, int inputAS_score, int inputReadSegment=0, bool inputConcordant=false,
+    MappingPosition (long long int inputLocation, string inputChromosome, int inputReadSegment=0, bool inputConcordant=false,
                      int inputPairScore=numeric_limits<int>::min(), long long int inputPairToLocation = -1){
         concordant = inputConcordant;
         location = inputLocation;
         chromosome = inputChromosome;
-        AS = inputAS_score;
         pairScore = inputPairScore;
         pairSegment = inputReadSegment;
         pairToLocation = inputPairToLocation;
@@ -269,13 +268,14 @@ public:
         return false;
     }
 
-    bool positionExist (long long int &location, string &chromosome, int pairSegment, int AS, int &index) {
+    bool positionExist (Alignment* newAlignment);
+
+    bool positionExist (long long int &location, string &chromosome, int pairSegment, int &index) {
         // return true if position is exist, else, return false.
         for (int i = 0; i < positions.size(); i++) {
             if ((positions[i].pairSegment == pairSegment) &&
                 (positions[i].location == location) &&
-                (positions[i].chromosome == chromosome) &&
-                (positions[i].AS == AS)) {
+                (positions[i].chromosome == chromosome)) {
                 index = i;
                 return true;
             }
@@ -293,13 +293,13 @@ public:
 
     bool append(Alignment* newAlignment);
 
-    bool append (string chromosome, long long int location, int AS, int pairSegment=0) {
+    bool append (string chromosome, long long int location, int pairSegment=0) {
         // return true if the position is not exist and will append to positions, else, false.
         int index;
-        if (positionExist(location, chromosome, pairSegment, AS, index)) {
+        if (positionExist(location, chromosome, pairSegment, index)) {
             return false;
         } else {
-            positions.emplace_back(location, chromosome, AS);
+            positions.emplace_back(location, chromosome);
             return true;
         }
     }
@@ -359,6 +359,8 @@ public:
     int bestAS;
     int nBestRepeat;
 
+    int conversionCount[2] = {0};
+
 
     void initialize() {
         readName.clear();
@@ -391,6 +393,8 @@ public:
         pairScore = numeric_limits<int>::min();
         oppositePairAddresses.clear();
         repeatPositions.initialize();
+        conversionCount[0] = 0;
+        conversionCount[1] = 0;
 
         if (repeatResult != nullptr) {
             free(repeatResult);
@@ -550,7 +554,7 @@ public:
 
             locationRepeat = (pos->pos) + 1;
 
-            if (!existPositions.append(chromosomeRepeat, locationRepeat, AS)){
+            if (!existPositions.append(chromosomeRepeat, locationRepeat)){
                 continue;
             }
 
@@ -610,6 +614,8 @@ public:
         // return false, if the read is mapped to incorrect location.
 
         vector<Cigar> cigarSegments = getCigarSegments(cigarString.toZBuf());
+        conversionCount[0] = 0;
+        conversionCount[1] = 0;
 
         int readPos = 0;
         long long int refPos = 0;
@@ -642,19 +648,18 @@ public:
                         if (!newMD_String.empty() && isalpha(newMD_String.back())) {
                             newMD_String += '0';
                         }
-                        if (((readChar == convertedTo) && (refChar == convertedFrom) && planA) ||
-                            ((readChar == convertedToComplement) && (refChar == convertedFromComplement) && !planA)) {
-                            // converted base, output to MD, do not count as mismatch
-                            newMD_String += refChar;
-                            TC++;
+                        if ((readChar == convertedTo) && (refChar == convertedFrom)) {
+                            conversionCount[0]++;
+                        } else if ((readChar == convertedToComplement) && (refChar == convertedFromComplement)) {
+                            conversionCount[1]++;
                         } else {
                             // real mismatch
-                            newMD_String += refChar;
                             newXM++;
                         }
+                        newMD_String += refChar;
                         updateMP(refPos, readChar, refPos, refChar);
                     }
-                    if (newXM > readSequence.length()/25) {
+                    if (newXM + (conversionCount[0] >= conversionCount[1] ? conversionCount[1]:conversionCount[0])> readSequence.length()/25) {
                         return false;
                     }
                     updateRA(readChar, refChar);
@@ -682,7 +687,10 @@ public:
             newMD_String += '0';
         }
 
-        nIncorrectMatch = newXM - XM;
+        newXM -= XM;
+        nIncorrectMatch = (conversionCount[0] >= conversionCount[1]) ? conversionCount[1] : conversionCount[0];
+        nIncorrectMatch += newXM;
+
         return true;
     }
 
@@ -728,19 +736,18 @@ public:
                         if (!newMD_String.empty() && isalpha(newMD_String.back())) {
                             newMD_String += '0';
                         }
-                        if (((readChar == convertedTo) && (refChar == convertedFrom) && planA) ||
-                                ((readChar == convertedToComplement) && (refChar == convertedFromComplement) && !planA)) {
-                            // converted base, output to MD, do not count as mismatch
-                            newMD_String += refChar;
-                            TC++;
+                        if ((readChar == convertedTo) && (refChar == convertedFrom)) {
+                            conversionCount[0]++;
+                        } else if ((readChar == convertedToComplement) && (refChar == convertedFromComplement)) {
+                            conversionCount[1]++;
                         } else {
                             // real mismatch
-                            newMD_String += refChar;
                             newXM++;
                         }
+                        newMD_String += refChar;
                         updateMP(refPos, readChar, refPos, refChar);
                     }
-                    if (newXM > readSequence.length()/25) {
+                    if (newXM + (conversionCount[0] >= conversionCount[1] ? conversionCount[1]:conversionCount[0])> readSequence.length()/25) {
                         return false;
                     }
                     updateRA(readChar, refChar);
@@ -772,10 +779,21 @@ public:
             newMD_String += '0';
         }
 
-        int nIncorrectMatch = newXM - XM;
-        NM += nIncorrectMatch;
-        XM = newXM;
-        AS = AS - 6*nIncorrectMatch;
+        int extraIncorrectMatch = 0;
+        if (conversionCount[0] >= conversionCount[1]) {
+            extraIncorrectMatch = conversionCount[1];
+            TC = conversionCount[0];
+        } else {
+            extraIncorrectMatch = conversionCount[0];
+            TC = conversionCount[1];
+        }
+
+        newXM -= XM; // find new mismatch;
+        extraIncorrectMatch += newXM;
+
+        NM += extraIncorrectMatch;
+        XM += extraIncorrectMatch;
+        AS = AS - 6*extraIncorrectMatch;
         MD = newMD_String;
         return true;
     }
@@ -1389,14 +1407,7 @@ public:
             } else {
                 nPair = 1;
             }
-        } else if (alignment1->planA != alignment2->planA) {
-            // both mapped, but they belong to different plan.
-            pairScore = numeric_limits<int>::min()/2;
-            if (alignment1->chromosomeName == alignment2->chromosomeName) {
-                pairScore += 1;
-            }
-            nPair = 1;
-        }else if ((alignment1->chromosomeName != alignment2->chromosomeName && ((alignment1->chromosomeName != alignment2->pairToChromosome) && (alignment1->pairToChromosome != alignment2->chromosomeName))) ||
+        } else if ((alignment1->chromosomeName != alignment2->chromosomeName && ((alignment1->chromosomeName != alignment2->pairToChromosome) && (alignment1->pairToChromosome != alignment2->chromosomeName))) ||
                     ((alignment1->location != alignment2->pairToLocation) && (alignment1->pairToLocation != alignment2->location))){
             // both mapped, but they do not pair to each other.
             pairScore = numeric_limits<int>::min()/2 + 2;
@@ -1635,6 +1646,14 @@ public:
             return;
         }
 
+        // check if alignment result exist
+        if(!existPositions.append(newAlignment)) {
+            newAlignment->initialize();
+            freeAlignments.push(newAlignment);
+            working = false;
+            return;
+        }
+
         paired = newAlignment->paired;
         int newAlignmentAS;
         if (newAlignment->repeat && expandRepeat) {
@@ -1658,14 +1677,6 @@ public:
                 }
             }
             newAlignmentAS = newAlignment->AS;
-        }
-
-        // check if alignment result exist
-        if(!existPositions.append(newAlignment)) {
-            newAlignment->initialize();
-            freeAlignments.push(newAlignment);
-            working = false;
-            return;
         }
 
         if (newAlignmentAS > bestAS) {
@@ -1712,6 +1723,16 @@ public:
             working = false;
             return;
         }
+
+        // check if alignment result exist
+        if(!existPositions.append(newAlignment)) {
+            newAlignment->initialize();
+            freeAlignments.push(newAlignment);
+            working = false;
+            return;
+        }
+
+
         // save read name, sequence, quality score information for output.
         int pairSegment = newAlignment->pairSegment;
         if (readName[pairSegment].empty()) {
@@ -1744,14 +1765,6 @@ public:
                     return;
                 }
             }
-        }
-
-        // check if alignment result exist
-        if(!existPositions.append(newAlignment)) {
-            newAlignment->initialize();
-            freeAlignments.push(newAlignment);
-            working = false;
-            return;
         }
 
         int bestNewPairScore = numeric_limits<int>::min();

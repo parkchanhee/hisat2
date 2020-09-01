@@ -3493,7 +3493,6 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                 msinkwrap.resetInit_();
                 if (!retry && (nCycle == 2))
                 {
-
                     ps->planB(); // use patFW1 for alignment
 
                     if(metricsIval > 0 &&

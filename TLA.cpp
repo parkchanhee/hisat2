@@ -12,7 +12,6 @@ bool MappingPositions::append (Alignment* newAlignment) {
     long long int location = newAlignment->location;
     string chromosome = newAlignment->chromosomeName.toZBuf();
     int pairSegment = newAlignment->pairSegment;
-    int AS = newAlignment->AS;
     bool concordant = newAlignment->concordant;
 
     if (newAlignment->repeat) {
@@ -20,11 +19,15 @@ bool MappingPositions::append (Alignment* newAlignment) {
     }
 
     int index;
-    if (positionExist(location, chromosome, pairSegment, AS, index)) {
+    if (positionExist(location, chromosome, pairSegment, index)) {
         return (!positions[index].concordant) && concordant;
     } else {
-        positions.push_back(MappingPosition(location, chromosome, AS, pairSegment, concordant));
+        positions.push_back(MappingPosition(location, chromosome, pairSegment, concordant));
         return true;
     }
+}
+
+bool positionExist (Alignment* newAlignment) {
+
 }
 
