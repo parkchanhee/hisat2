@@ -113,17 +113,63 @@ assert v == len(genes)
 print(len(transcripts))
 
 
+"""
 for gene in genes.items():
     print(gene)
+"""
 
-
+# Show first item
+print(next(iter(genes.items())))
+print(len(genes))
 print('-----------------')
 
-sorted_gene = sorted(genes, key=lambda gene: (gene[3], gene[4], gene[5])) # sort by start_pos, end, strand
+sorted_gene = sorted(genes.items(), key=lambda gene: (gene[1][3], gene[1][4], gene[1][5])) # sort by start_pos, end, strand
 
+"""
 for gene in genes.items():
     print(gene)
+"""
 
+print(sorted_gene[0])
+print(sorted_gene[1])
+print(sorted_gene[2])
+print(len(sorted_gene))
+
+
+unique_gene = set()
+for item in sorted_gene:
+    unique_gene.add(item[1][1])
+print('Total items in set:', len(unique_gene))
+
+dup_gene_list = list()
+dup_genes = dict()
+
+for item in sorted_gene:
+    gene_name = item[1][1]
+    gene_id = item[0]
+    if gene_name in dup_genes:
+        dup_genes[gene_name][0] += 1
+        dup_genes[gene_name][1].append(gene_id)
+    else:
+        dup_genes[gene_name] = [1, [gene_id]]
+
+c = 0
+for name, values in dup_genes.items():
+    if values[0] > 1:
+        dup_gene_list.append(tuple([name, values[1]]))
+        c += values[0]
+
+print('Dup gene count:', len(dup_gene_list), c)
+print(dup_gene_list)
+
+
+# for each dup genes
+for item in dup_gene_list:
+    gene_name = item[0]
+    gene_ids = item[1]
+    print('Gene name:', gene_name)
+    for gene_id in gene_ids:
+        print('\t', genes[gene_id])
 
 """
 for gene in genes:
