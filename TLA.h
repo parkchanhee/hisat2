@@ -186,6 +186,7 @@ public:
         pairScore = numeric_limits<int>::min();
         pairToLocation = 0;
         concordant = false;
+        YZ = "";
     }
 
     RepeatPosition(long long int &inputLocation, string &inputChromosome, string repeatYZ = ""):
