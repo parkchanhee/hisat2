@@ -180,6 +180,7 @@ public:
     int pairScore;
     long long int pairToLocation;
     bool concordant;
+    string YZ;
 
     void initialize() {
         pairScore = numeric_limits<int>::min();
@@ -187,7 +188,8 @@ public:
         concordant = false;
     }
 
-    RepeatPosition(long long int &inputLocation, string &inputChromosome):location(inputLocation), chromosome(inputChromosome) {
+    RepeatPosition(long long int &inputLocation, string &inputChromosome, string repeatYZ = ""):
+        location(inputLocation), chromosome(inputChromosome),YZ(repeatYZ) {
         initialize();
     }
 };
@@ -225,7 +227,7 @@ public:
         pairScore = numeric_limits<int>::min();
     }
 
-    MappingPosition (long long int inputLocation, string inputChromosome, string &inputRefSequence, int &inputAS, string &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &inputMP, int inputRA[5][5], int inputYS):
+    MappingPosition (long long int inputLocation, string inputChromosome, string &inputRefSequence, int &inputAS, string &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &inputMP, int inputRA[5][5], string &repeatYZ, int inputYS):
             location(inputLocation), chromosome(inputChromosome), refSequence(inputRefSequence), AS(inputAS), MD(inputMD), XM(inputXM), NM(inputNM), TC(inputTC), MP(inputMP), YS(inputYS){
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
@@ -233,11 +235,11 @@ public:
             }
         }
         pairScore = numeric_limits<int>::min();
-        addRepeatPosition(inputLocation, inputChromosome);
+        addRepeatPosition(inputLocation, inputChromosome, repeatYZ);
     }
 
-    void addRepeatPosition(long long int &inputLocation, string &inputChromosome) {
-        repeatPositions.push_back(RepeatPosition(inputLocation, inputChromosome));
+    void addRepeatPosition(long long int &inputLocation, string &inputChromosome, string repeatYZ) {
+        repeatPositions.push_back(RepeatPosition(inputLocation, inputChromosome, repeatYZ));
     }
 };
 
@@ -284,11 +286,11 @@ public:
     }
 
     void appendRepeat(string &chromosome, long long int &location, int &index) {
-        positions[index].addRepeatPosition(location, chromosome);
+        positions[index].addRepeatPosition(location, chromosome, positions[index].repeatPositions[0].YZ);
     }
 
-    void appendRepeat(long long int &location, string &chromosome, string &refSequence, int &AS, string &MD, int &XM, int &NM, int &TC, BTString &MP, int RA[5][5], int YS=0) {
-        positions.push_back(MappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, YS));
+    void appendRepeat(long long int &location, string &chromosome, string &refSequence, int &AS, string &MD, int &XM, int &NM, int &TC, BTString &MP, int RA[5][5], string &repeatYZ, int YS=0) {
+        positions.push_back(MappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS));
     }
 
     bool append(Alignment* newAlignment);
@@ -335,6 +337,11 @@ public:
     int TC;
     BTString MP;
     int RA_Array[5][5] = {{0,},};
+    string YZ;  // this tag shows alignment strand:
+                // Original top strand (OT)
+                // Complementary to original top strand (CTOT)
+                // Complementary to original bottom strand (CTOB)
+                // Original bottom strand (OB)
 
     // unChanged tags
     BTString unChangedTags;
@@ -395,6 +402,7 @@ public:
         repeatPositions.initialize();
         conversionCount[0] = 0;
         conversionCount[1] = 0;
+        YZ.clear();
 
         if (repeatResult != nullptr) {
             free(repeatResult);
@@ -525,6 +533,27 @@ public:
         }
     }
 
+    void makeYZ(string &YZ_string) {
+        if (TC == 0) {
+            // did not find any conversion
+            if (forward) {
+                YZ_string = "OT";
+            } else {
+                YZ_string = "OB";
+            }
+        } else {
+            if (forward && (conversionCount[0]<conversionCount[1])) {
+                YZ_string = "OT";
+            } else if (forward && (conversionCount[0]>=conversionCount[1])) {
+                YZ_string = "CTOB";
+            } else if (!forward && (conversionCount[0]<conversionCount[1])) {
+                YZ_string = "CTOT";
+            } else {
+                YZ_string = "OB";
+            }
+        }
+    }
+
     bool constructRepeatMD(MappingPositions &existPositions, bool &multipleAlignmentDetected) {
 
         string readSequence_string = readSequence.toZBuf();
@@ -572,7 +601,8 @@ public:
 
             string newMD;
             int nIncorrectMatch = 0;
-            if (!constructRepeatMD(readSequence_string, newMD, nIncorrectMatch)) {
+            string repeatYZ;
+            if (!constructRepeatMD(readSequence_string, newMD, nIncorrectMatch, repeatYZ)) {
                 continue;
             }
 
@@ -580,7 +610,7 @@ public:
             int newNM = NM + nIncorrectMatch;
             int newAS = AS - 6*nIncorrectMatch;
 
-            repeatPositions.appendRepeat(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, TC, MP, RA_Array);
+            repeatPositions.appendRepeat(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, TC, MP, RA_Array, repeatYZ);
             if (!paired) {
                 if (newAS > bestAS) {
                     bestAS = newAS;
@@ -608,7 +638,7 @@ public:
         }
     }
 
-    bool constructRepeatMD(string &readSequence_string, string &newMD_String, int &nIncorrectMatch) {
+    bool constructRepeatMD(string &readSequence_string, string &newMD_String, int &nIncorrectMatch, string &repeatYZ) {
         // construct new MD string, this function is for repeat read
         // return true, if the read is mapped to correct location.
         // return false, if the read is mapped to incorrect location.
@@ -689,8 +719,10 @@ public:
 
         newXM -= XM;
         nIncorrectMatch = (conversionCount[0] >= conversionCount[1]) ? conversionCount[1] : conversionCount[0];
+        TC = (conversionCount[0] >= conversionCount[1]) ? conversionCount[0] : conversionCount[1];
         nIncorrectMatch += newXM;
 
+        makeYZ(repeatYZ);
         return true;
     }
 
@@ -791,6 +823,7 @@ public:
         newXM -= XM; // find new mismatch;
         extraIncorrectMatch += newXM;
 
+        makeYZ(YZ);
         NM += extraIncorrectMatch;
         XM += extraIncorrectMatch;
         AS = AS - 6*extraIncorrectMatch;
@@ -839,6 +872,10 @@ public:
 
         if (mapped && !repeat) {
             o.append('\t');
+            // YZ
+            o.append("YZ:Z:");
+            o.append(YZ.c_str());
+            o.append('\t');
             // TC
             o.append("TC:i:");
             itoa10<int>(TC, buf);
@@ -865,7 +902,7 @@ public:
     }
 
     void outputRepeatFlags(BTString& o, int &inputAS, int &inputXM, int &inputNM, string &inputMD,
-            int &inputTC, int inputRA[5][5], BTString &inputMP) {
+            int &inputTC, int inputRA[5][5], BTString &inputMP, string &repeatYZ) {
         // this function is for repeat-expand alignment output.
         char buf[1024];
         // AS
@@ -901,6 +938,10 @@ public:
         }
         // unchanged Tags
         o.append(unChangedTags.toZBuf());
+        o.append('\t');
+        // YZ
+        o.append("YZ:i:");
+        o.append(repeatYZ.c_str());
         o.append('\t');
         // TC
         o.append("TC:i:");
@@ -1039,7 +1080,7 @@ public:
                     o.append('\t');
                     // tags
                     outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
-                                      currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+                                      currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                     o.append('\n');
                     return;
                 }
@@ -1109,7 +1150,7 @@ public:
                             o.append('\t');
                             // tags
                             outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
-                                              currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+                                              currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                             o.append('\n');
                             for (int k = 0; k < oppositePairAddresses.size(); k++) {
                                 if (oppositePairAddresses[k]->repeat) {
@@ -1187,7 +1228,7 @@ public:
                             o.append('\t');
                             // tags
                             outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
-                                              currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+                                              currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                             o.append('\n');
                         }
 
@@ -1229,7 +1270,7 @@ public:
                         o.append('\t');
                         // tags
                         outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
-                                          currentPosition->TC, currentPosition->RA_Array, currentPosition->MP);
+                                          currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                         o.append('\n');
                     }
                 }
