@@ -3728,7 +3728,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                         }
 
                         bool useRepeat = paired ? (ps->bufa().length() >= 100) && (ps->bufb().length() >= 100) :
-                                         true ;
+                                         ps->bufa().length() >= 80 ;
 
                         // for TLA only
                         ret = splicedAligner.go(
