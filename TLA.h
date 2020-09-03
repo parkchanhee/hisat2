@@ -1717,7 +1717,8 @@ public:
         working = true;
         // if there are too many alignment result, ignore it. otherwise it will consume hugh amount of time.
         // this could happen when we use repeat index.
-        if ((alignments.size() > poolLimit) || (uniqueOutputOnly && multipleAligned)) {
+        if (((alignments.size() > poolLimit) || (uniqueOutputOnly && multipleAligned)) &&
+            (!readName[0].empty() && !readName[1].empty())) {
             newAlignment->initialize();
             freeAlignments.push(newAlignment);
             working = false;
@@ -1767,65 +1768,55 @@ public:
             }
         }
 
-        int bestNewPairScore = numeric_limits<int>::min();
-        int tmp_nBestPair = 0;
+        int newPairScore = numeric_limits<int>::min();
+        int nPair = 0;
         int pairTo = -1;
 
-        if (alignments.empty()) {
-            // jump pairing process, directly push back
+        if (alignments.empty() || newAlignment->pairSegment == 0) {
+            // skip pairing process, directly push back
         } else{
-            for (int i = 0; i < alignments.size(); i++) {
-                // find it's pair and pairScore.
-                if ((alignments[i]->location != newAlignment->pairToLocation) || (alignments[i]->chromosomeName != newAlignment->chromosomeName)) {
-                    continue;
-                }
-                if (alignments[i]->pairSegment == newAlignment->pairSegment) {
-                    continue;
-                }
-                int nPair = 0;
-                int newPairScore = calculatePairScore(newAlignment, alignments[i], nPair);
-                if (newPairScore >= bestNewPairScore) {
-                    bestNewPairScore = newPairScore;
-                    tmp_nBestPair = nPair;
-                    pairTo = i;
-                }
+            // find pairScore.
+            if ((alignments.back()->location == newAlignment->pairToLocation) &&
+                (alignments.back()->chromosomeName == newAlignment->chromosomeName) &&
+                (alignments.back()->pairSegment != newAlignment->pairSegment)) {
+                newPairScore = calculatePairScore(newAlignment, alignments.back(), nPair);
+                pairTo = alignments.size() - 1;
             }
         }
         // update pair score and nBest pair information in this class.
-        if (bestNewPairScore > bestPairScore) {
-            bestPairScore = bestNewPairScore;
-            nBestPair = tmp_nBestPair;
-        } else if (bestNewPairScore == bestPairScore) {
-            nBestPair += tmp_nBestPair;
+        if (newPairScore > bestPairScore) {
+            bestPairScore = newPairScore;
+            nBestPair = nPair;
+        } else if (newPairScore == bestPairScore) {
+            nBestPair += nPair;
         }
         if (bestPairScore == maxPairScore && nBestPair > 1) {
             multipleAligned = true;
         }
         // update pair score, pair address information for paired alignment.
         if (pairTo > -1) {
-
             bool concordant = isConcordant(newAlignment, alignments[pairTo]);
-            if (bestNewPairScore >= bestPairScore) {
+            if (newPairScore == bestPairScore) {
                 concordantAlignmentExist = concordant;
             }
-            if (bestNewPairScore > newAlignment->pairScore) {
-                newAlignment->pairScore = bestNewPairScore;
+            if (newPairScore > newAlignment->pairScore) {
+                newAlignment->pairScore = newPairScore;
                 newAlignment->oppositePairAddresses.clear();
                 newAlignment->oppositePairAddresses.push_back(alignments[pairTo]);
                 newAlignment->pairToLocation = alignments[pairTo]->location;
                 newAlignment->setConcordant(concordant);
-            } else if (bestNewPairScore == newAlignment->pairScore) {
+            } else if (newPairScore == newAlignment->pairScore) {
                 newAlignment->oppositePairAddresses.push_back(alignments[pairTo]);
                 newAlignment->pairToLocation = alignments[pairTo]->location;
                 newAlignment->setConcordant(concordant);
             }
-            if (bestNewPairScore > alignments[pairTo]->pairScore) {
-                alignments[pairTo]->pairScore = bestNewPairScore;
+            if (newPairScore > alignments[pairTo]->pairScore) {
+                alignments[pairTo]->pairScore = newPairScore;
                 alignments[pairTo]->oppositePairAddresses.clear();
                 alignments[pairTo]->oppositePairAddresses.push_back(newAlignment);
                 alignments[pairTo]->pairToLocation = newAlignment->location;
                 alignments[pairTo]->setConcordant(concordant);
-            } else if (bestNewPairScore == alignments[pairTo]->pairScore) {
+            } else if (newPairScore == alignments[pairTo]->pairScore) {
                 alignments[pairTo]->oppositePairAddresses.push_back(newAlignment);
                 alignments[pairTo]->pairToLocation = newAlignment->location;
                 alignments[pairTo]->setConcordant(concordant);
