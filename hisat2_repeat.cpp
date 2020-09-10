@@ -40,6 +40,7 @@
 #include "scoring.h"
 #include "mask.h"
 #include "repeat_builder.h"
+#include "TLA.h"
 
 /**
  * \file Driver for the bowtie-build indexing tool.
@@ -503,67 +504,7 @@ static void parseOptions(int argc, const char **argv) {
 extern void initializeCntLut();
 extern void initializeCntBit();
 
-class ConvertMatrixTLA {
-    char convertFrom = 'A';
-    char convertTo = 'A';
-    string allBase = "ACGT";
-    string allBaseLower = "acgt";
-    int charToInt(char inputChar) {
-        return allBase.find(inputChar);
-    }
 
-    int complement(char inputChar) {
-        return allBase[3-charToInt(inputChar)];
-    }
-
-    void convertMatrix() {
-        restoreNormal();
-        for (int i = 0; i < 4; i++) {
-            char base = allBase[i];
-            char lowerBase = allBaseLower[i];
-            if (convertFrom == base) {
-                asc2dna[base] = charToInt(convertTo);
-                asc2dna[lowerBase] = charToInt(convertTo);
-            } else if (complement(convertFrom) == base) {
-                asc2dnacomp[base] = convertTo;
-                asc2dnacomp[lowerBase] = convertTo;
-                dnacomp[i] = charToInt(convertTo);
-            }
-        }
-    }
-public:
-    ConvertMatrixTLA(){
-
-    };
-
-    void convert(char from, char to)  {
-        convertFrom = from;
-        convertTo = to;
-        convertMatrix();
-    }
-
-    void inverseConversion() {
-        convertFrom = complement(convertFrom);
-        convertTo = complement(convertTo);
-        convertMatrix();
-    }
-
-    void restoreNormal() {
-        for (int i = 0; i < 4; i++) {
-            char base = allBase[i];
-            char lowerBase = allBaseLower[i];
-            asc2dna[base] = charToInt(base);
-            asc2dna[lowerBase] = charToInt(base);
-            asc2dnacomp[base] = complement(base);
-            asc2dnacomp[lowerBase] = complement(base);
-            dnacomp[i] = charToInt(complement(base));
-        }
-    }
-
-    void restoreConversion() {
-        convertMatrix();
-    }
-};
 ConvertMatrixTLA baseChange;
 /**
  * Drive the index construction process and optionally sanity-check the

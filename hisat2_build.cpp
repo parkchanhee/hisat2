@@ -35,6 +35,7 @@
 #include "gfm.h"
 #include "hgfm.h"
 #include "rfm.h"
+#include "TLA.h"
 
 /**
  * \file Driver for the bowtie-build indexing tool.
@@ -93,6 +94,8 @@ char convertedToComplement;
 char convertedFromComplement;
 
 bool autoRepeatIndex = false;
+
+ConvertMatrixTLA baseChange;
 
 static void resetOptions() {
 	verbose        = true;  // be talkative (default)
@@ -452,6 +455,7 @@ static void deleteIdxFiles(
 extern void initializeCntLut();
 extern void initializeCntBit();
 
+
 /**
  * Drive the index construction process and optionally sanity-check the
  * result.
@@ -534,6 +538,13 @@ static void driver(
             filesWritten.push_back(outfile + ".3." + gfm_ext);
             filesWritten.push_back(outfile + ".4." + gfm_ext);
             sztot = BitPairReference::szsFromFasta(is, outfile, bigEndian, refparams, szs, sanityCheck);
+            if (TLA) {
+                // save the unchanged reference in .3.ht2 and .4.ht2
+                baseChange.restoreNormal();
+                EList<RefRecord> tmp_szs(MISC_CAT);
+                BitPairReference::szsFromFasta(is, outfile, bigEndian, refparams, tmp_szs, sanityCheck);
+                baseChange.restoreConversion();
+            }
         } else {
             assert(false);
             sztot = BitPairReference::szsFromFasta(is, string(), bigEndian, refparams, szs, sanityCheck);
@@ -797,6 +808,7 @@ int hisat2_build(int argc, const char **argv) {
 		}
 		// Seed random number generator
         srand(seed);
+
         {
             Timer timer(cerr, "Total time for call to driver() for forward index: ", verbose);
             try {
@@ -806,19 +818,14 @@ int hisat2_build(int argc, const char **argv) {
 
                 int nloop = TLA ? 2 : 1; // if TLA == true, nloop = 2. else one loop
                 for (int i = 0; i < nloop; i++) {
-
                     string tag = "";
                     if (TLA) {
                         if (i == 0) {
                             tag = ".TLA.1";
-                            asc2dna[int('C')] = 3;
-                            asc2dna[int('c')] = 3;
+                            baseChange.convert('C', 'T');
                         } else {
                             tag = ".TLA.2";
-                            asc2dna[int('C')] = 1;
-                            asc2dna[int('c')] = 1;
-                            asc2dna[int('G')] = 0;
-                            asc2dna[int('g')] = 0;
+                            baseChange.convert('G', 'A');
                         }
                     }
 

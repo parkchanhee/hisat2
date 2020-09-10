@@ -302,8 +302,6 @@ static bool use_repeat_index;
 static EList<size_t> readLens;
 
 // TLA variable
-ReferenceGenome reference;
-string referenceAddress;
 char convertedFrom;
 char convertedTo;
 char convertedToComplement;
@@ -789,7 +787,6 @@ static struct option long_options[] = {
     {(char*)"read-lengths",    required_argument,  0,        ARG_READ_LENGTHS},
     {(char*)"TLA",             no_argument,        0,        ARG_TLA},
     {(char*)"base-change",     required_argument,  0,        ARG_BASE_CHANGE},
-    {(char*)"reference",       required_argument,  0,        ARG_REFERENCE},
     {(char*)"expand-repeat",   no_argument,        0,        ARG_EXPAND_REPEAT},
     {(char*)"repeat-limit",    required_argument,  0,        ARG_REPEAT_LIMIT},
     {(char*)"unique-only",     no_argument,        0,        ARG_UNIQUE_ONLY},
@@ -1837,10 +1834,6 @@ static void parseOption(int next_option, const char *arg) {
 
             break;
         }
-        case ARG_REFERENCE: {
-            referenceAddress = arg;
-            break;
-        }
         case ARG_EXPAND_REPEAT: {
             expandRepeat = true;
             break;
@@ -2101,7 +2094,7 @@ class referenceTLA {
 public:
     const HGFM<index_t>* multiseed_gfm[2];
     const RFM<index_t>* multiseed_rgfm[2];
-    const BitPairReference* multiseed_refs[2];
+    //const BitPairReference* multiseed_refs[2];
     const BitPairReference* multiseed_rrefs[2];
 
     referenceTLA() {
@@ -2110,11 +2103,11 @@ public:
 
     void load(vector<HGFM<index_t>* >& gfms_TLA,
               RFM<index_t>* rgfms_TLA[2],
-              auto_ptr<BitPairReference> refss[2],
+              //auto_ptr<BitPairReference> refss[2],
               BitPairReference* rrefss[2]) {
         for (int i = 0; i < 2; i++) {
             multiseed_gfm[i] = gfms_TLA[i];
-            multiseed_refs[i] =  refss[i].get();
+            //multiseed_refs[i] =  refss[i].get();
             multiseed_rgfm[i] = rgfms_TLA[i];
             multiseed_rrefs[i] = rrefss[i];
         }
@@ -3281,12 +3274,12 @@ static void multiseedSearchWorker_hisat2(void *vp) {
     // for Hisat-TLA
     const HGFM<index_t>* gfm_TLA[2];
     const RFM<index_t>* rgfm_TLA[2];
-    const BitPairReference* ref_TLA[2];
+    //const BitPairReference* ref_TLA[2];
     const BitPairReference* rref_TLA[2];
 
     for (int i = 0; i < 2; i++) {
         gfm_TLA[i] = refTLA.multiseed_gfm[i];
-        ref_TLA[i] = refTLA.multiseed_refs[i];
+        //ref_TLA[i] = refTLA.multiseed_refs[i];
         rgfm_TLA[i] = refTLA.multiseed_rgfm[i];
         rref_TLA[i] = refTLA.multiseed_rrefs[i];
     }
@@ -3741,7 +3734,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                 *altdbs_TLA[index],
                                 *repeatdbs_TLA[index],
                                 *raltdbs_TLA[index],
-                                *ref_TLA[index],
+                                ref,
                                 rref_TLA[index],
                                 sw,
                                 *ssdb,
@@ -3912,7 +3905,6 @@ static void multiseedSearch(
                             AlnSink<index_t>& msink,                // hit sink
                             vector<HGFM<index_t>* > gfms_TLA,           // TLA index of original text
                             RFM<index_t>* rgfms_TLA[2],                 // TLA index of repeat sequences
-                            auto_ptr<BitPairReference> refss[2],    // TLA base reference
                             BitPairReference* rrefss[2],            // TLA repeat reference
                             HGFM<index_t>* gfm,           // index of original text
                             RFM<index_t>* rgfm,           // index of repeat sequences
@@ -3926,12 +3918,12 @@ static void multiseedSearch(
     multiseed_tpol         = &tpol;
     gpol                   = &gp;
 	multiseed_metricsOfb   = metricsOfb;
+    multiseed_refs         = refs;
 	if (TLA) {
-        refTLA.load(gfms_TLA, rgfms_TLA, refss, rrefss);
+        refTLA.load(gfms_TLA, rgfms_TLA, rrefss);
 	} else {
         multiseed_gfm          = gfm;
         multiseed_rgfm         = rgfm;
-        multiseed_refs         = refs;
         multiseed_rrefs        = rrefs;
 	}
 
@@ -4026,11 +4018,6 @@ static void driver(
 		fout = new OutFileBuf(outfile.c_str(), false);
 	} else {
 		fout = new OutFileBuf();
-	}
-
-	// initialize reference genome
-	if (TLA) {
-        reference.load(referenceAddress);
 	}
 
 	// Initialize GFM object and read in header
@@ -4525,49 +4512,28 @@ static void driver(
 
         AlnSink<index_t> *mssink = NULL;
 
-        auto_ptr<BitPairReference> refss[2];
+        //auto_ptr<BitPairReference> refss[2];
         auto_ptr<BitPairReference> refs;
-        if (TLA) {
-            for (int j = 0; j < 2; j++) {
-                Timer *_tRef = new Timer(cerr, "Time loading reference: ", timing);
-                refss[j] = auto_ptr<BitPairReference> (
-                        new BitPairReference(
-                                adjIdxBases_TLA[j],
-                                NULL,
-                                false,
-                                sanityCheck,
-                                NULL,
-                                NULL,
-                                false,
-                                useMm,
-                                useShmem,
-                                mmSweep,
-                                gVerbose,
-                                startVerbose)
-                );
-                delete _tRef;
-                if(!refss[j]->loaded()) throw 1;
-            }
-        } else {
-            Timer *_tRef = new Timer(cerr, "Time loading reference: ", timing);
-            refs = auto_ptr<BitPairReference>(
-                    new BitPairReference(
-                            adjIdxBase,
-                            NULL,
-                            false,
-                            sanityCheck,
-                            NULL,
-                            NULL,
-                            false,
-                            useMm,
-                            useShmem,
-                            mmSweep,
-                            gVerbose,
-                            startVerbose)
-            );
-            delete _tRef;
-            if(!refs->loaded()) throw 1;
-        }
+
+        Timer *_tRef = new Timer(cerr, "Time loading reference: ", timing);
+        refs = auto_ptr<BitPairReference>(
+                new BitPairReference(
+                        TLA ? adjIdxBases_TLA[0] : adjIdxBase,
+                        NULL,
+                        false,
+                        sanityCheck,
+                        NULL,
+                        NULL,
+                        false,
+                        useMm,
+                        useShmem,
+                        mmSweep,
+                        gVerbose,
+                        startVerbose)
+        );
+        delete _tRef;
+        if(!refs->loaded()) throw 1;
+
 
 
         
@@ -4635,7 +4601,7 @@ static void driver(
         bool write = novelSpliceSiteOutfile != "" || useTempSpliceSite;
         bool read = knownSpliceSiteInfile != "" || novelSpliceSiteInfile != "" || useTempSpliceSite || altdbs_TLA[0]->hasSpliceSites();
         ssdb = new SpliceSiteDB(
-                                TLA ? *(refss[0].get()) : *(refs.get()),
+                                *(refs.get()),
                                 TLA ? refnames_TLA[0] : refnames,
                                 nthreads > 1, // thread-safe
                                 write, // write?
@@ -4668,6 +4634,7 @@ static void driver(
                             repnames_TLA[0],     // repeat names
                             gQuiet,       // don't print alignment summary at end
                             nthreads,
+                            refs.get(),
                             altdbs_TLA[0],
                             ssdb);
 			    } else {
@@ -4712,7 +4679,6 @@ static void driver(
                         *mssink, // hit sink
                         gfms_TLA,     // TLA BWT
                         rgfms_TLA,    // TLA
-                        refss,    // TLA
                         rrefss,   // TLA
                         gfm,     // BWT
                         rgfm,

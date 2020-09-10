@@ -16,6 +16,7 @@
 #include "hisat2lib/ht2.h"
 #include "read.h"
 #include "outq.h"
+#include "reference.h"
 #include <unistd.h>
 #include <queue>
 
@@ -30,12 +31,75 @@ extern vector<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
 extern bool uniqueOutputOnly;
+//extern BitPairReference*  multiseed_refs;
 
 using namespace std;
 
 class Alignment;
 
-class ChromosomeAddress{
+class ConvertMatrixTLA {
+    char convertFrom = 'A';
+    char convertTo = 'A';
+    string allBase = "ACGT";
+    string allBaseLower = "acgt";
+    int charToInt(char inputChar) {
+        return allBase.find(inputChar);
+    }
+
+    int complement(char inputChar) {
+        return allBase[3-charToInt(inputChar)];
+    }
+
+    void convertMatrix() {
+        restoreNormal();
+        for (int i = 0; i < 4; i++) {
+            char base = allBase[i];
+            char lowerBase = allBaseLower[i];
+            if (convertFrom == base) {
+                asc2dna[base] = charToInt(convertTo);
+                asc2dna[lowerBase] = charToInt(convertTo);
+            } else if (complement(convertFrom) == base) {
+                asc2dnacomp[base] = convertTo;
+                asc2dnacomp[lowerBase] = convertTo;
+                dnacomp[i] = charToInt(convertTo);
+            }
+        }
+    }
+public:
+    ConvertMatrixTLA(){
+
+    };
+
+    void convert(char from, char to)  {
+        convertFrom = from;
+        convertTo = to;
+        convertMatrix();
+    }
+
+    void inverseConversion() {
+        convertFrom = complement(convertFrom);
+        convertTo = complement(convertTo);
+        convertMatrix();
+    }
+
+    void restoreNormal() {
+        for (int i = 0; i < 4; i++) {
+            char base = allBase[i];
+            char lowerBase = allBaseLower[i];
+            asc2dna[base] = charToInt(base);
+            asc2dna[lowerBase] = charToInt(base);
+            asc2dnacomp[base] = complement(base);
+            asc2dnacomp[lowerBase] = complement(base);
+            dnacomp[i] = charToInt(complement(base));
+        }
+    }
+
+    void restoreConversion() {
+        convertMatrix();
+    }
+};
+
+/*class ChromosomeAddress{
     string chromosome;
     long long int startPosition;
 public:
@@ -154,7 +218,7 @@ public:
         // by input chromosome name and the location on that chromosome, return the char pointer point to the location.
         return refArray + searchChromosome(chromosome, 0, N_chromosome-1) + location;
     }
-};
+};*/
 
 class Cigar {
     int len;
@@ -313,14 +377,17 @@ public:
     BTString readName;
     int flag;
     BTString chromosomeName;
+    int chromosomeIndex;
     long long int location;
     BTString MAPQ;
     BTString cigarString;
+    int cigarLength; // this is the length that read could cover genome.
     BTString pairToChromosome;
     long long int pairToLocation;
     long long int pairingDistance;
     BTString readSequence;
     BTString readQuality;
+    vector<Cigar> cigarSegments;
 
     // save original sequence and quality score for output
     BTString originalFw;
@@ -348,7 +415,7 @@ public:
     BTString unChangedTags;
 
     // intermediate variable
-    char* locationPointer; // point to the first char for mapping location in genome.
+    //char* locationPointer; // point to the first char for mapping location in genome.
     bool planA;
     bool paired;
     bool forward;
@@ -368,7 +435,7 @@ public:
     int nBestRepeat;
 
     int conversionCount[2] = {0};
-
+    string intToBase = "ACGTN";
 
     void initialize() {
         readName.clear();
@@ -377,11 +444,14 @@ public:
         location = 0;
         MAPQ.clear();
         cigarString.clear();
+        cigarLength = 0;
         pairToChromosome.clear();
         pairToLocation = 0;
         pairingDistance = 0;
         readSequence.clear();
         readQuality.clear();
+        chromosomeIndex = -1;
+        cigarSegments.clear();
 
         AS = numeric_limits<int>::min();
         NH = 0;
@@ -486,22 +556,26 @@ public:
         return 4;
     }
 
-    vector<Cigar> getCigarSegments(string cigarString) {
+    void praseCigar() {
         // input the Cigar string from SAM information and split it into each segment.
         // this function run faster than regex.
-        vector<Cigar> outputCigar;
+
+        cigarSegments.clear();
+        cigarLength = 0;
+        string cigar_string = cigarString.toZBuf();
         int previousLocation = 0;
         int lenLength = 0;
-        for (int i = 0; i < cigarString.size(); i++) {
-            if (isalpha(cigarString[i])){
-                outputCigar.push_back(Cigar( stoi(cigarString.substr(previousLocation, lenLength)),cigarString[i]));
+        for (int i = 0; i < cigar_string.size(); i++) {
+            if (isalpha(cigar_string[i])){
+                int len = stoi(cigar_string.substr(previousLocation, lenLength));
+                cigarLength += len;
+                cigarSegments.push_back(Cigar( len, cigar_string[i]));
                 previousLocation = i + 1;
                 lenLength = 0;
             } else {
                 lenLength++;
             }
         }
-        return outputCigar;
     }
 
     void updateRA(char& read, char& ref) {
@@ -534,6 +608,33 @@ public:
         }
     }
 
+    /*int intChromosome(BTString &chromosomeName) {
+        for (int i = 0; i < refChromosomeNames.size(); i++) {
+            if (refChromosomeNames[i] == chromosomeName.toZBuf()) {
+                return i;
+            }
+        }
+        cerr << "cannot find chromosome: " << chromosomeName << endl;
+        throw(1);
+    }*/
+
+    /*char*  getReferenceSeq(BTString &chromosomeName, long long int location, int length) {
+        int int_Chromosome = intChromosome(chromosomeName);
+
+        ASSERT_ONLY(SStringExpandable<uint32_t> destU32);
+        SStringExpandable<char> raw_refbuf;
+        raw_refbuf.resize(length + 16);
+        raw_refbuf.clear();
+        location -= 1;
+        int off = bitReference->getStretch(
+                reinterpret_cast<uint32_t*>(raw_refbuf.wbuf()),
+                (size_t)int_Chromosome,
+                (size_t)max<int>(location, 0),
+                (size_t)length,
+                destU32);
+        return raw_refbuf.wbuf() + off;
+    }*/
+
     void makeYZ(string &YZ_string) {
         if (TC == 0) {
             // did not find any conversion
@@ -555,10 +656,11 @@ public:
         }
     }
 
-    bool constructRepeatMD(MappingPositions &existPositions, bool &multipleAlignmentDetected) {
+    bool constructRepeatMD(BitPairReference* bitReference, MappingPositions &existPositions, bool &multipleAlignmentDetected) {
 
         string readSequence_string = readSequence.toZBuf();
         int sequenceLength = readSequence_string.size();
+        praseCigar();
 
         ht2_error_t err = ht2_repeat_expand(planA ? repeatHandles[0] : repeatHandles[1],
                                             chromosomeName.toZBuf(),
@@ -588,8 +690,22 @@ public:
                 continue;
             }
 
-            locationPointer = reference.getPointer(chromosomeRepeat, locationRepeat-1);
-            string refSequence(locationPointer, sequenceLength);
+            ASSERT_ONLY(SStringExpandable<uint32_t> destU32);
+            SStringExpandable<char> raw_refbuf;
+            raw_refbuf.resize(cigarLength + 16);
+            raw_refbuf.clear();
+            int off = bitReference->getStretch(
+                    reinterpret_cast<uint32_t*>(raw_refbuf.wbuf()),
+                    (size_t)pos->chr_id,
+                    (size_t)max<int>(locationRepeat-1, 0),
+                    (size_t)cigarLength ASSERT_ONLY(, destU32));
+            char* refSeq = raw_refbuf.wbuf() + off;
+
+            string refSequence;
+            refSequence.resize(cigarLength);
+            for (int j = 0; j < cigarLength; j++) {
+                refSequence[j] = intToBase[*(refSeq + j)];
+            }
 
             int repeatPositionsIndex;
             if (repeatPositions.sequenceExist(refSequence, repeatPositionsIndex)) {
@@ -603,7 +719,7 @@ public:
             string newMD;
             int nIncorrectMatch = 0;
             string repeatYZ;
-            if (!constructRepeatMD(readSequence_string, newMD, nIncorrectMatch, repeatYZ)) {
+            if (!constructRepeatMD(readSequence_string, refSequence,newMD, nIncorrectMatch, repeatYZ)) {
                 continue;
             }
 
@@ -639,12 +755,11 @@ public:
         }
     }
 
-    bool constructRepeatMD(string &readSequence_string, string &newMD_String, int &nIncorrectMatch, string &repeatYZ) {
+    bool constructRepeatMD(string &readSequence_string, string &refSeq, string &newMD_String, int &nIncorrectMatch, string &repeatYZ) {
         // construct new MD string, this function is for repeat read
         // return true, if the read is mapped to correct location.
         // return false, if the read is mapped to incorrect location.
 
-        vector<Cigar> cigarSegments = getCigarSegments(cigarString.toZBuf());
         conversionCount[0] = 0;
         conversionCount[1] = 0;
 
@@ -666,7 +781,7 @@ public:
             } else if (cigarSymbol == 'M') {
                 for (int j = 0; j < cigarLen; j++) {
                     char readChar = readSequence_string[readPos];
-                    char refChar = *(locationPointer + refPos);
+                    char refChar = refSeq[refPos];
                     if (readChar == refChar || readChar == 'N' || refChar == 'N') {
                         count++;
                     } else {// mismatch
@@ -702,7 +817,7 @@ public:
             } else if (cigarSymbol == 'D') {
                 newMD_String += '^';
                 for (int j = 0; j < cigarLen; j++) {
-                    newMD_String += *(locationPointer + refPos);
+                    newMD_String += refSeq[refPos];
                     refPos++;
                 }
             }
@@ -727,16 +842,37 @@ public:
         return true;
     }
 
-    bool constructMD() {
+    bool constructMD(BitPairReference* bitReference) {
         // this funtction is for non-repeat alignment.
         // return true, if the read is mapped to correct location.
         // return false, if the alignment has too many mismatch.
         if (!mapped) {
             return true;
         }
-        vector<Cigar> cigarSegments = getCigarSegments(cigarString.toZBuf());
+        praseCigar();
         string newMD_String;
-        locationPointer = reference.getPointer(chromosomeName.toZBuf(), location-1);
+        //locationPointer = reference.getPointer(chromosomeName.toZBuf(), location-1);
+
+        ASSERT_ONLY(SStringExpandable<uint32_t> destU32);
+        SStringExpandable<char> raw_refbuf;
+        raw_refbuf.resize(cigarLength + 16);
+        raw_refbuf.clear();
+        int off = bitReference->getStretch(
+                reinterpret_cast<uint32_t*>(raw_refbuf.wbuf()),
+                (size_t)chromosomeIndex,
+                (size_t)max<int>(location-1, 0),
+                (size_t)cigarLength ASSERT_ONLY(, destU32));
+        char* refSeq = raw_refbuf.wbuf() + off;
+
+        /*string test_string = "";
+        string test_int_string = "";
+        string bases = "ACGTN";
+        for (int i = 0; i < readSequence.length(); i++) {
+            int a = refSeq[i];
+            test_int_string += to_string(a);
+            test_int_string += ',';
+            test_string += bases[a];
+        }*/
 
         int readPos = 0;
         long long int refPos = 0;
@@ -756,7 +892,7 @@ public:
             } else if (cigarSymbol == 'M') {
                 for (int j = 0; j < cigarLen; j++) {
                     char readChar = readSequence[readPos];
-                    char refChar = *(locationPointer + refPos);
+                    char refChar = intToBase[*(refSeq + refPos)];
                     if (readChar == refChar || readChar == 'N' || refChar == 'N') {
                         count++;
                     } else {// mismatch
@@ -796,7 +932,7 @@ public:
                 }
                 newMD_String += '^';
                 for (int j = 0; j < cigarLen; j++) {
-                    newMD_String += *(locationPointer + refPos);
+                    newMD_String += *(refSeq + refPos);
                     refPos++;
                 }
             }
@@ -1325,6 +1461,9 @@ public:
     bool multipleAligned = false;
     const int maxPairScore = 500000;
 
+    BitPairReference* bitReference;
+    EList<std::string> refChromosomeNames;
+
     void initialize() {
         bestAS = numeric_limits<int>::min();
         bestPairScore = numeric_limits<int>::min()+1;
@@ -1346,7 +1485,7 @@ public:
         }
     }
 
-    Alignments() {
+    Alignments(BitPairReference* ref, EList<std::string> refNames): bitReference(ref), refChromosomeNames(refNames) {
         initialize();
         for (int i = 0; i < 10; i++) {
             Alignment *newAlignment = new Alignment();
@@ -1696,10 +1835,12 @@ public:
             return;
         }
 
+        //newAlignment->loadRefInto(bitReference, refChromosomeNames);
+
         paired = newAlignment->paired;
         int newAlignmentAS;
         if (newAlignment->repeat && expandRepeat) {
-            if (!newAlignment->constructRepeatMD(existPositions, multipleAligned)) {
+            if (!newAlignment->constructRepeatMD(bitReference, existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
@@ -1711,7 +1852,7 @@ public:
                 addRepeatIndexTag(newAlignment);
             } else {
                 // check mismatch, update tags
-                if (!newAlignment->constructMD()) {
+                if (!newAlignment->constructMD(bitReference)) {
                     newAlignment->initialize();
                     freeAlignments.push(newAlignment);
                     working = false;
@@ -1775,6 +1916,7 @@ public:
             return;
         }
 
+        //newAlignment->loadRefInto(bitReference, refChromosomeNames);
 
         // save read name, sequence, quality score information for output.
         int pairSegment = newAlignment->pairSegment;
@@ -1790,7 +1932,7 @@ public:
         paired = newAlignment->paired;
 
         if (newAlignment->repeat && expandRepeat) {
-            if (!newAlignment->constructRepeatMD(existPositions, multipleAligned)) {
+            if (!newAlignment->constructRepeatMD(bitReference, existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
                 working = false;
@@ -1801,7 +1943,7 @@ public:
                 addRepeatIndexTag(newAlignment);
             } else {
                 // check mismatch, update tags
-                if (!newAlignment->constructMD()) {
+                if (!newAlignment->constructMD(bitReference)) {
                     newAlignment->initialize();
                     freeAlignments.push(newAlignment);
                     working = false;

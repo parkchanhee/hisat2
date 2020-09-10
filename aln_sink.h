@@ -1941,7 +1941,6 @@ public:
     int nThreads;
     vector<Alignments*> alignmentsEachThreads;
 
-
     AlnSinkTLASam(
             OutputQueue&     oq,            // output queue
             const SamConfig<index_t>& samc, // settings & routines for SAM output
@@ -1949,6 +1948,7 @@ public:
             const StrList&   repnames,      // repeat names
             bool             quiet,         // don't print alignment summary at end
             int              nthreads,
+            BitPairReference* ref,
             ALTDB<index_t>*  altdb = NULL,
             SpliceSiteDB*    ssdb  = NULL) :
             AlnSinkSam<index_t>(
@@ -1963,7 +1963,7 @@ public:
     {
         nThreads = nthreads;
         for (int i = 0; i < nThreads; i++) {
-            Alignments* newAlignments = new Alignments();
+            Alignments* newAlignments = new Alignments(ref, refnames);
             alignmentsEachThreads.push_back(newAlignments);
         }
     }
@@ -2132,6 +2132,7 @@ public:
         // RNAME
         if(rs != NULL) {
             samc_.printRefNameFromIndex(newAlignment->chromosomeName, (size_t)rs->refid(), rs->repeat());
+            newAlignment->chromosomeIndex = rs->refid();
             if (rs->repeat()) {
                 newAlignment->repeat = true;
             }
