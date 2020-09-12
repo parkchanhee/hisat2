@@ -2152,9 +2152,6 @@ public:
                 // mate's RNAME and POS as is customary
                 assert(flags.partOfPair());
                 samc_.printRefNameFromIndex(newAlignment->chromosomeName, (size_t)summ.orefid(), summ.repeat());
-                if (summ.repeat()) {
-                    newAlignment->repeat = true;
-                }
             } else {
                 // No alignment
                 newAlignment->chromosomeName = "*";
