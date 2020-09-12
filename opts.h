@@ -190,7 +190,6 @@ enum {
     ARG_READ_LENGTHS,
     ARG_TLA,
     ARG_BASE_CHANGE,    // --base-change
-    ARG_EXPAND_REPEAT,
     ARG_REPEAT_LIMIT,
     ARG_UNIQUE_ONLY
 };

@@ -26,12 +26,11 @@ extern char convertedFrom;
 extern char convertedTo;
 extern char convertedFromComplement;
 extern char convertedToComplement;
-extern bool expandRepeat;
+//extern bool expandRepeat;
 extern vector<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
 extern bool uniqueOutputOnly;
-//extern BitPairReference*  multiseed_refs;
 
 using namespace std;
 
@@ -486,33 +485,23 @@ public:
     }
 
     ~Alignment() {
-        if (repeatResult != nullptr) {
-            free(repeatResult);
-        }
+        if (repeatResult != nullptr) free(repeatResult);
     }
 
     void setConcordant(bool concordant_) {
         // change concordant status and flag
         concordant = concordant_;
-        if ((flag&2) && !concordant) {
-            flag -= 2;
-        } else if (!(flag&2) && concordant) {
-            flag += 2;
-        }
+        if ((flag&2) && !concordant) flag -= 2;
+        else if (!(flag&2) && concordant) flag += 2;
     }
     void updateNH(int nAlignment) {
-        if (!mapped) {
-            return;
-        }
+        if (!mapped) return;
+
         // update NH and MAPQ
         NH = nAlignment;
-        if (nAlignment == 0) {
-            return;
-        } else if (nAlignment == 1) {
-            MAPQ = "60";
-        } else {
-            MAPQ = "1";
-        }
+        if (nAlignment == 0) return;
+        else if (nAlignment == 1) MAPQ = "60";
+        else MAPQ = "1";
     }
 
     void extractFlagInfo() {
@@ -539,9 +528,10 @@ public:
         }
     }
 
-    int RA_Map(char &base) {
+    /*int RA_Map(char &base) {
         // this is a helper function for RA tag construction.
-        if (base == 'A') {
+        return asc2dna[base];
+        *//*if (base == 'A') {
             return 0;
         }
         if (base == 'C') {
@@ -553,8 +543,8 @@ public:
         if (base == 'T') {
             return 3;
         }
-        return 4;
-    }
+        return 4;*//*
+    }*/
 
     void praseCigar() {
         // input the Cigar string from SAM information and split it into each segment.
@@ -580,7 +570,7 @@ public:
 
     void updateRA(char& read, char& ref) {
         // update RA tag
-        RA_Array[RA_Map(ref)][RA_Map(read)]++;
+        RA_Array[asc2dna[ref]][asc2dna[read]]++;
     }
 
     void updateMP(int readLocation, char read, long long int refLocation, char ref) {
@@ -588,7 +578,7 @@ public:
         if (!MP.empty()) {
             MP.append(",");
         }
-        itoa10<int>(RA_Map(ref) * 5 + RA_Map(read), buf);
+        itoa10<int>(asc2dna[ref] * 5 + asc2dna[read], buf);
         MP.append(buf);
         MP.append(":");
         itoa10<int>(readLocation + 1, buf);
@@ -1425,7 +1415,7 @@ public:
                 primaryAlignment = false;
             }
         }
-        if (repeat && expandRepeat) {
+        if (repeat) {
             if (pairSegment == 0 || (pairSegment == 1 && !pairToRepeat)) {
                 nOutput = outputRepeatAlignment(o);
             } else {
@@ -1593,7 +1583,7 @@ public:
             // both mapped, but they do not pair to each other.
             pairScore = numeric_limits<int>::min()/2 + 2;
             nPair = 1;
-        } else if ((!alignment1->repeat && !alignment2->repeat) || !expandRepeat){
+        } else if ((!alignment1->repeat && !alignment2->repeat)){
             // both mapped and (both non-repeat or not expand repeat)
             pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
             if (pairScore > alignment1->pairScore) {
@@ -1738,27 +1728,20 @@ public:
         return score;
     }
 
-    int calculateNumAlignment(bool& repeat) {
+    int calculateNumAlignment() {
         // this function is to calculate number of alignment (NH) for single-end output.
         int nAlignment = 0;
-        if (expandRepeat) {
-            for (int i = 0; i < alignments.size(); i++) {
-                if (alignments[i]->repeat) {
-                    nAlignment += alignments[i]->nBestRepeat;
-                    repeat = true;
-                } else {
-                    if (alignments[i]->mapped) {
-                        nAlignment++;
-                    }
-                }
-            }
-        } else {
-            for (int i = 0; i < alignments.size(); i++) {
+
+        for (int i = 0; i < alignments.size(); i++) {
+            if (alignments[i]->repeat) {
+                nAlignment += alignments[i]->nBestRepeat;
+            } else {
                 if (alignments[i]->mapped) {
                     nAlignment++;
                 }
             }
         }
+
         return nAlignment;
     }
 
@@ -1768,7 +1751,7 @@ public:
         for (int i = 0; i < alignments.size(); i++) {
             if ((alignments[i]->pairScore == bestPairScore) && (alignments[i]->concordant == concordantAlignmentExist)) {
                 if (alignments[i]->pairSegment == 0) {
-                    if (alignments[i]->repeat && expandRepeat) {
+                    if (alignments[i]->repeat) {
                         MappingPositions repeatPositions = alignments[i]->repeatPositions;
                         for (int ii = 0; ii < repeatPositions.positions.size(); ii++) {
                             MappingPosition *currentPosition = &repeatPositions.positions[ii];
@@ -1839,7 +1822,7 @@ public:
 
         paired = newAlignment->paired;
         int newAlignmentAS;
-        if (newAlignment->repeat && expandRepeat) {
+        if (newAlignment->repeat) {
             if (!newAlignment->constructRepeatMD(bitReference, existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1848,16 +1831,12 @@ public:
             }
             newAlignmentAS = newAlignment->bestAS;
         } else {
-            if (newAlignment->repeat) {
-                addRepeatIndexTag(newAlignment);
-            } else {
-                // check mismatch, update tags
-                if (!newAlignment->constructMD(bitReference)) {
-                    newAlignment->initialize();
-                    freeAlignments.push(newAlignment);
-                    working = false;
-                    return;
-                }
+            // check mismatch, update tags
+            if (!newAlignment->constructMD(bitReference)) {
+                newAlignment->initialize();
+                freeAlignments.push(newAlignment);
+                working = false;
+                return;
             }
             newAlignmentAS = newAlignment->AS;
         }
@@ -1866,13 +1845,10 @@ public:
             // if new alignment has best AS, clear alignments, update best AS, push new alignment to alignments.
             if (!alignments.empty()) {
                 for (int i = alignments.size() - 1; i >= 0; i--) {
-                    if (alignments[i]->repeat && !expandRepeat) {
-                        continue;
-                    }
                     alignments[i]->initialize();
                     freeAlignments.push(alignments[i]);
-                    alignments.erase(alignments.begin() + i);
                 }
+                alignments.clear();
             }
             bestAS = newAlignment->AS;
             alignments.push_back(newAlignment);
@@ -1931,7 +1907,7 @@ public:
         }
         paired = newAlignment->paired;
 
-        if (newAlignment->repeat && expandRepeat) {
+        if (newAlignment->repeat) {
             if (!newAlignment->constructRepeatMD(bitReference, existPositions, multipleAligned)) {
                 newAlignment->initialize();
                 freeAlignments.push(newAlignment);
@@ -1939,16 +1915,12 @@ public:
                 return;
             }
         } else {
-            if (newAlignment->repeat) {
-                addRepeatIndexTag(newAlignment);
-            } else {
-                // check mismatch, update tags
-                if (!newAlignment->constructMD(bitReference)) {
-                    newAlignment->initialize();
-                    freeAlignments.push(newAlignment);
-                    working = false;
-                    return;
-                }
+            // check mismatch, update tags
+            if (!newAlignment->constructMD(bitReference)) {
+                newAlignment->initialize();
+                freeAlignments.push(newAlignment);
+                working = false;
+                return;
             }
         }
 
@@ -2040,12 +2012,10 @@ public:
     }
 
     void output_single(BTString& o, uint64_t &unAligned, uint64_t &nonRepeatAlignment, uint64_t &uniqueAlignment,
-                uint64_t &multipleAlignment, uint64_t &repeatAlignment) {
+                uint64_t &multipleAlignment) {
 
-
-        bool repeat = false;
         // find NH (nAlginment)
-        int nAlignment = calculateNumAlignment(repeat);
+        int nAlignment = calculateNumAlignment();
         if (uniqueOutputOnly && multipleAligned) {
             nAlignment = 999;
         }
@@ -2053,15 +2023,11 @@ public:
         if (nAlignment == 0) {
             unAligned++;
         } else {
-            if (repeat && nAlignment>1 && !expandRepeat) {
-                repeatAlignment++;
+            nonRepeatAlignment++;
+            if (nAlignment == 1) {
+                uniqueAlignment++;
             } else {
-                nonRepeatAlignment++;
-                if (nAlignment == 1) {
-                    uniqueAlignment++;
-                } else {
-                    multipleAlignment++;
-                }
+                multipleAlignment++;
             }
         }
         // output
@@ -2092,9 +2058,16 @@ public:
     }
 
     void
-    output_paired(BTString& o, uint64_t &unConcordant, uint64_t &uniqueConcordant, uint64_t &multipleConcordant, uint64_t &nonRepeatPairedAlignment,
-                       uint64_t &uniqueDiscordant, uint64_t &unAlignedPairRead, uint64_t &alignedPairRead, uint64_t &uniqueAlignedPairRead, uint64_t &multipleAlignedPairRead,
-                       uint64_t &concordantRepeat, uint64_t &disconcordantRepeatRead) {
+    output_paired(BTString& o,
+                  uint64_t &unConcordant,
+                  uint64_t &uniqueConcordant,
+                  uint64_t &multipleConcordant,
+                  uint64_t &nonRepeatPairedAlignment,
+                  uint64_t &uniqueDiscordant,
+                  uint64_t &unAlignedPairRead,
+                  uint64_t &alignedPairRead,
+                  uint64_t &uniqueAlignedPairRead,
+                  uint64_t &multipleAlignedPairRead) {
 
         //int testNumBestPair = calculateNumBestPair();
 
@@ -2102,7 +2075,6 @@ public:
         if (!concordantAlignmentExist) {
             unConcordant++;
             int nAlignment[2] = {0};
-            bool repeat[2] = {false};
             if (nBestPair == 0) {
                 unAlignedPairRead += 2;
             } else if (nBestPair == 1) {
@@ -2111,45 +2083,27 @@ public:
                 for (int i = 0; i < alignments.size(); i++) {
                     if (alignments[i]->pairScore == bestPairScore || alignments[i]->repeat) {
                         nAlignment[alignments[i]->pairSegment]++;
-                        if (alignments[i]->repeat) {
-                            repeat[alignments[i]->pairSegment] = true;
-                        }
                     }
                 }
                 for (int i = 0; i < 2; i++) {
-                    if (repeat[i] && !expandRepeat) {
-                        disconcordantRepeatRead++;
+                    if (nAlignment[i] == 0) {
+                        unAlignedPairRead++;
+                    } else if (nAlignment[i] == 1) {
+                        alignedPairRead++;
+                        uniqueAlignedPairRead++;
                     } else {
-                        if (nAlignment[i] == 0) {
-                            unAlignedPairRead++;
-                        } else if (nAlignment[i] == 1) {
-                            alignedPairRead++;
-                            uniqueAlignedPairRead++;
-                        } else {
-                            alignedPairRead++;
-                            multipleAlignedPairRead++;
-                        }
+                        alignedPairRead++;
+                        multipleAlignedPairRead++;
                     }
                 }
             }
         } else if (concordantAlignmentExist) {
-            bool repeat = false;
-            for (int i = 0; i < alignments.size(); i++) {
-                if ((alignments[i]->pairScore == bestPairScore || alignments[i]->repeat) && alignments[i]->concordant == concordantAlignmentExist) {
-                    if (alignments[i]->repeat && alignments[i]->nBestRepeat>1) {
-                        repeat = true;
-                    }
-                }
-            }
-            if (repeat && !expandRepeat) {
-                concordantRepeat++;
+            assert(nBestPair > 0);
+            nonRepeatPairedAlignment++;
+            if (nBestPair == 1) {
+                uniqueConcordant++;
             } else {
-                nonRepeatPairedAlignment++;
-                if (nBestPair == 1) {
-                    uniqueConcordant++;
-                } else {
-                    multipleConcordant++;
-                }
+                multipleConcordant++;
             }
         }
 
@@ -2219,11 +2173,21 @@ public:
     }
 
 
-    void output(OutputQueue& oq_, size_t threadid_, uint64_t &unAligned, uint64_t &nonRepeatAlignment, uint64_t &uniqueAlignment,
-                uint64_t &multipleAlignment, uint64_t &repeatAlignment,
-                uint64_t &unConcordant, uint64_t &uniqueConcordant, uint64_t &multipleConcordant, uint64_t &nonRepeatPairedAlignment,
-                uint64_t &uniqueDiscordant, uint64_t &unAlignedPairRead, uint64_t &alignedPairRead, uint64_t &uniqueAlignedPairRead, uint64_t &multipleAlignedPairRead,
-                uint64_t &concordantRepeat, uint64_t &disconcordantRepeatRead) {
+    void output(OutputQueue& oq_,
+                size_t threadid_,
+                uint64_t &unAligned,
+                uint64_t &nonRepeatAlignment,
+                uint64_t &uniqueAlignment,
+                uint64_t &multipleAlignment,
+                uint64_t &unConcordant,
+                uint64_t &uniqueConcordant,
+                uint64_t &multipleConcordant,
+                uint64_t &nonRepeatPairedAlignment,
+                uint64_t &uniqueDiscordant,
+                uint64_t &unAlignedPairRead,
+                uint64_t &alignedPairRead,
+                uint64_t &uniqueAlignedPairRead,
+                uint64_t &multipleAlignedPairRead) {
 
         while(working) {
             usleep(100);
@@ -2231,11 +2195,22 @@ public:
         BTString obuf_;
         OutputQueueMark qqm(oq_, obuf_, previousReadID, threadid_);
         if (paired) {
-            output_paired(obuf_, unConcordant, uniqueConcordant, multipleConcordant, nonRepeatPairedAlignment,
-                    uniqueDiscordant, unAlignedPairRead, alignedPairRead, uniqueAlignedPairRead, multipleAlignedPairRead,
-                    concordantRepeat, disconcordantRepeatRead);
+            output_paired(obuf_,
+                          unConcordant,
+                          uniqueConcordant,
+                          multipleConcordant,
+                          nonRepeatPairedAlignment,
+                          uniqueDiscordant,
+                          unAlignedPairRead,
+                          alignedPairRead,
+                          uniqueAlignedPairRead,
+                          multipleAlignedPairRead);
         } else {
-            output_single(obuf_, unAligned, nonRepeatAlignment, uniqueAlignment, multipleAlignment, repeatAlignment);
+            output_single(obuf_,
+                          unAligned,
+                          nonRepeatAlignment,
+                          uniqueAlignment,
+                          multipleAlignment);
         }
     }
 };

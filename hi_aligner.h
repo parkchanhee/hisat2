@@ -1655,25 +1655,25 @@ bool GenomeHit<index_t>::combineWith(
                 int64_t tempscore = temp_scores[i] + temp_scores2[i2];
                 char donor = 0xff, acceptor = 0xff;
                 if((index_t)(i + 2) < len + this_ref_ext) {
-                    donor = TLARefConversion[refbuf[i + 1]];
-                    donor = (donor << 4) | TLARefConversion[refbuf[i + 2]];
+                    donor = refbuf[i + 1];
+                    donor = (donor << 4) | refbuf[i + 2];
                 }
                 if(i2 - 2 >= -other_ref_ext) {
-                    acceptor = TLARefConversion[refbuf2[i2 - 2]];
-                    acceptor = (acceptor << 4) | TLARefConversion[refbuf2[i2 - 1]];
+                    acceptor = refbuf2[i2 - 2];
+                    acceptor = (acceptor << 4) | refbuf2[i2 - 1];
                 }
                 bool canonical = false, semi_canonical = false;
                 uint32_t spldir = SPL_UNKNOWN;
-                if((donor == GT && acceptor == AG) || (donor == AT && acceptor == AA)) {
+                if((donor == GT && acceptor == AG) /* || (donor == AT && acceptor == AC) */) {
                     spldir = SPL_FW;
                     canonical = true;
-                } else if((donor == AGrc && acceptor == GTrc) || (donor == AArc && acceptor == ATrc)) {
+                } else if((donor == AGrc && acceptor == GTrc) /* || (donor == ACrc && acceptor == ATrc) */) {
                     spldir = SPL_RC;
                     canonical = true;
-                } else if((donor == GT && acceptor == AG) || (donor == AT && acceptor == AT) || (donor == AC && acceptor == AA) || (donor == AT && acceptor == AC)) {
+                } else if((donor == GC && acceptor == AG) || (donor == AT && acceptor == AC)) {
                     spldir = SPL_SEMI_FW;
                     semi_canonical = true;
-                } else if((donor == AGrc && acceptor == GTrc) || (donor == ATrc && acceptor == ATrc) || (donor == AArc && acceptor == ACrc) || (donor == ACrc && acceptor == ATrc)) {
+                } else if((donor == AGrc && acceptor == GCrc) || (donor == ACrc && acceptor == ATrc)) {
                     spldir = SPL_SEMI_RC;
                     semi_canonical = true;
                 }
@@ -1693,7 +1693,7 @@ bool GenomeHit<index_t>::combineWith(
                             for(int j = from; j <= to; j++) {
                                 assert_geq(j, 0);
                                 assert_lt(j, (int)(len + this_ref_ext));
-                                int base = TLARefConversion[refbuf[j]];
+                                int base = refbuf[j];
                                 if(base > 3) base = 0;
                                 temp_donor_seq = temp_donor_seq << 2 | base;
                             }
@@ -1702,7 +1702,7 @@ bool GenomeHit<index_t>::combineWith(
                             for(int j = from; j <= to; j++) {
                                 assert_geq(j, -(int)other_ref_ext);
                                 assert_lt(j, (int)len);
-                                int base = TLARefConversion[refbuf2[j]];
+                                int base = refbuf2[j];
                                 if(base > 3) base = 0;
                                 temp_acceptor_seq = temp_acceptor_seq << 2 | base;
                             }
@@ -1717,7 +1717,7 @@ bool GenomeHit<index_t>::combineWith(
                             for(int j = to; j >= from; j--) {
                                 assert_geq(j, 0);
                                 assert_lt(j, (int)(len + this_ref_ext));
-                                int base = TLARefConversion[refbuf[j]];
+                                int base = refbuf[j];
                                 if(base > 3) base = 0;
                                 temp_acceptor_seq = temp_acceptor_seq << 2 | (base ^ 0x3);
                             }
@@ -1726,7 +1726,7 @@ bool GenomeHit<index_t>::combineWith(
                             for(int j = to; j >= from; j--) {
                                 assert_geq(j, -(int)other_ref_ext);
                                 assert_lt(j, (int)len);
-                                int base = TLARefConversion[refbuf2[j]];
+                                int base = refbuf2[j];
                                 if(base > 3) base = 0;
                                 temp_donor_seq = temp_donor_seq << 2 | (base ^ 0x3);
                             }

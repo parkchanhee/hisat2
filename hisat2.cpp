@@ -307,7 +307,6 @@ char convertedTo;
 char convertedToComplement;
 char convertedFromComplement;
 vector<ht2_handle_t> repeatHandles;
-bool expandRepeat;
 struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
 bool uniqueOutputOnly;
@@ -557,7 +556,6 @@ static void resetOptions() {
 
     refNameMap = NULL;
     repeatLimit = 1000;
-    expandRepeat = false;
     uniqueOutputOnly = false;
 }
 
@@ -787,7 +785,6 @@ static struct option long_options[] = {
     {(char*)"read-lengths",    required_argument,  0,        ARG_READ_LENGTHS},
     {(char*)"TLA",             no_argument,        0,        ARG_TLA},
     {(char*)"base-change",     required_argument,  0,        ARG_BASE_CHANGE},
-    {(char*)"expand-repeat",   no_argument,        0,        ARG_EXPAND_REPEAT},
     {(char*)"repeat-limit",    required_argument,  0,        ARG_REPEAT_LIMIT},
     {(char*)"unique-only",     no_argument,        0,        ARG_UNIQUE_ONLY},
     {(char*)0, 0, 0, 0} // terminator
@@ -1834,13 +1831,8 @@ static void parseOption(int next_option, const char *arg) {
 
             break;
         }
-        case ARG_EXPAND_REPEAT: {
-            expandRepeat = true;
-            break;
-        }
         case ARG_REPEAT_LIMIT: {
-            repeatLimit = stoi(arg);
-            assert(repeatLimit > 0);
+            repeatLimit = parseInt(1, "--min-intronlen arg must be at least 1", arg);;
             break;
         }
         case ARG_UNIQUE_ONLY: {
@@ -4177,7 +4169,7 @@ static void driver(
                     repeatdbs_TLA[j]->construct(gfms_TLA[j]->rstarts(), gfms_TLA[j]->nFrag());
                 }
 
-                if (TLA && expandRepeat) {
+                if (TLA) {
                     ht2_option_t option;
                     ht2_init_options(&option);
 
@@ -4749,27 +4741,22 @@ static void driver(
                 delete gfms_TLA[i];
                 delete altdbs_TLA[i];
             }
-            if(rep_index_exists_TLA[0] && use_repeat_index && expandRepeat){
+            if(rep_index_exists_TLA[0] && use_repeat_index){
                 for (int k = 0; k < 2; k++) {
                     ht2_close(repeatHandles[k]);
                 }
             }
-
 		} else {
             delete altdb;
             delete repeatdb;
             delete raltdb;
             delete rgfm;
             delete rrefs;
-            //delete refs;
             delete gfm;
 		}
-
         if (refNameMap != NULL) {
             free(refNameMap);
         }
-        //delete rgfm;
-        //delete rrefs;
 		if(fout != NULL) {
 			delete fout;
 		}
