@@ -114,7 +114,6 @@ def main():
         repeatArgv += ["-p", nThread]
         repeatArgv += ["--repeat-length", repeatLength]
         repeatArgv += ["--repeat-count", repeatCount]
-        repeatArgv += ["--save-sa"]
         if not TLA:
             repeatArgv += ["--no-base-change"]
         repeatArgv += [referenceName, outputName]
