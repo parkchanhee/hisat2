@@ -13,14 +13,13 @@ Build index for HISAT-3N
 ============
 hisat2-build
 -----------
-You need to run hisat2-build 2 times to build HISAT-3N index.
+You need to run hisat-3n-build to build HISAT-3N index.
 
 Sample argument for HISAT-3N index building without repeat index:  
 `hisat-3n-build -p 10 genome.fa genome`  
 
 Sample argument for HISAT-3N index building with repeat index:  
 `hisat-3n-build -p 10 --auto-repeat-index 100-300 genome.fa genome` 
-
 
 HISAT-3N index with splicing site information is under development!  
 PLEASE DO NOT USE THIS!
