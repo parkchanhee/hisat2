@@ -2,6 +2,7 @@
  * Copyright 2015, Daehwan Kim <infphilo@gmail.com>
  *
  * This file is part of HISAT 2.
+ * This file is edited by Yun (Leo) Zhang for HISAT-3N.
  *
  * HISAT 2 is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -311,10 +312,7 @@ struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
 bool uniqueOutputOnly;
 
-bool TLA = false;
-
-
-
+bool TLA = true;
 
 #define DMAX std::numeric_limits<double>::max()
 
@@ -555,7 +553,12 @@ static void resetOptions() {
     readLens.clear();
 
     refNameMap = NULL;
+    TLA = true;
     repeatLimit = 1000;
+    /*convertedFrom = 'C';
+    convertedTo = 'T';
+    convertedFromComplement = 'G';
+    convertedToComplement = 'A';*/
     uniqueOutputOnly = false;
 }
 
@@ -783,8 +786,8 @@ static struct option long_options[] = {
     {(char*)"repeat",          no_argument,        0,        ARG_REPEAT},
     {(char*)"no-repeat-index", no_argument,        0,        ARG_NO_REPEAT_INDEX},
     {(char*)"read-lengths",    required_argument,  0,        ARG_READ_LENGTHS},
-    {(char*)"TLA",             no_argument,        0,        ARG_TLA},
     {(char*)"base-change",     required_argument,  0,        ARG_BASE_CHANGE},
+    {(char*)"no-base-change",     required_argument,  0,        ARG_NO_BASE_CHANGE},
     {(char*)"repeat-limit",    required_argument,  0,        ARG_REPEAT_LIMIT},
     {(char*)"unique-only",     no_argument,        0,        ARG_UNIQUE_ONLY},
     {(char*)0, 0, 0, 0} // terminator
@@ -907,6 +910,12 @@ static void printUsage(ostream& out) {
 	    << "  --nofw             do not align forward (original) version of read (off)" << endl
 	    << "  --norc             do not align reverse-complement version of read (off)" << endl
         << "  --no-repeat-index  do not use repeat index" << endl
+        << endl
+        << " 3N-Alignment:" << endl
+        << "  --base-change <chr,chr>     the converted nucleotide and converted to nucleotide (C,T)" << endl
+        << "  --no-base-change            run hisat-3n as regular hisat2 (off)"
+        << "  --repeat-limit <int>        maximum number of repeat will be expanded for repeat alignment (1000)" << endl
+        << "  --unique-only               only output the reads have unique alignment (off)" << endl
 		<< endl
         << " Spliced Alignment:" << endl
         << "  --pen-cansplice <int>              penalty for a canonical splice site (0)" << endl
@@ -1812,27 +1821,31 @@ static void parseOption(int next_option, const char *arg) {
             readLens.sort();
             break;
         }
-        case ARG_TLA: {
-            TLA = true;
-            break;
-        }
         case ARG_BASE_CHANGE: {
-
-            string replaceRequest = arg;
-            convertedFrom = replaceRequest.at(0);
-            convertedTo = replaceRequest.at(1);
+            EList<string> args;
+            tokenize(arg, ",", args);
+            if(args.size() != 2) {
+                cerr << "Error: expected 1 comma-separated "
+                     << "arguments to --base-change option, got " << args.size() << endl;
+                throw 1;
+            }
+            TLA = true;
+            convertedFrom = args[0][0];
+            convertedTo = args[1][0];
             convertedFromComplement = asc2dnacomp[convertedFrom];
             convertedToComplement   = asc2dnacomp[convertedTo];
-
             asc2dna_TLA[0]['C'] = 3;
             asc2dna_TLA[0]['c'] = 3;
             asc2dna_TLA[1]['G'] = 0;
             asc2dna_TLA[1]['g'] = 0;
-
+            break;
+        }
+        case ARG_NO_BASE_CHANGE: {
+            TLA = false;
             break;
         }
         case ARG_REPEAT_LIMIT: {
-            repeatLimit = parseInt(1, "--min-intronlen arg must be at least 1", arg);;
+            repeatLimit = parseInt(1, "--repeat-limit arg must be at least 1", arg);;
             break;
         }
         case ARG_UNIQUE_ONLY: {
@@ -2051,8 +2064,6 @@ createPatsrcFactory(PairedPatternSource& _patsrc, int tid) {
 	assert(patsrcFact != NULL);
 	return patsrcFact;
 }
-
-
 
 #define PTHREAD_ATTRS (PTHREAD_CREATE_JOINABLE | PTHREAD_CREATE_DETACHED)
 
@@ -3476,10 +3487,9 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     gNorcTLA = false;
                 }
                 msinkwrap.resetInit_();
+                ps->changePlanTLA(nCycle);
                 if (!retry && (nCycle == 2))
                 {
-                    ps->planB(); // use patFW1 for alignment
-
                     if(metricsIval > 0 &&
                        (metricsOfb != NULL || metricsStderr) &&
                        !metricsPerRead &&
@@ -3706,7 +3716,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     int ret;
                     if (TLA) {
                         int index;
-                        if (nCycle<=1) {
+                        if (nCycle == 0 || nCycle == 3) {
                             index = 0;
                         } else{
                             index = 1;

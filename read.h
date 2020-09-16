@@ -2,6 +2,7 @@
  * Copyright 2011, Ben Langmead <langmea@cs.jhu.edu>
  *
  * This file is part of Bowtie 2.
+ * This file is edited by Yun (Leo) Zhang for HISAT-3N.
  *
  * Bowtie 2 is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -80,7 +81,8 @@ struct Read {
 		filter = '?';
 		seed = 0;
 		ns_ = 0;
-		plan = 'A';
+		TLAcycle = 0;
+        TLAoppositeConversion = false;
 	}
 
 	/**
@@ -96,7 +98,7 @@ struct Read {
 		constructReverses();
 	}
 
-    // use pathFW1 for alignment
+    /*// use pathFW1 for alignment
     void planB(){
         if(name.length()>0){
             ns_ = 0;
@@ -104,13 +106,29 @@ struct Read {
             plan = 'B';
             finalize();
         }
+    }*/
+
+    void changePlanTLA(int nCycle) {
+	    if (name.length() == 0) return;
+	    if ((TLAcycle < 2 && nCycle >= 2) || (TLAcycle >= 2 && nCycle < 2)) {
+            ns_ = 0;
+            swap(patFw, patFw1);
+            finalize();
+	    }
+        TLAcycle = nCycle;
+        TLAoppositeConversion = false;
+	}
+
+    /*void changeTLAoppositeConversion(bool opposite) {
+        TLAoppositeConversion = opposite;
+    }*/
+
+    void changePlanTLA() {
+        ns_ = 0;
+        swap(patFw, patFw1);
+        finalize();
     }
 
-    bool isPlanA(){
-	    if (plan == 'A')
-	        return true;
-	    return false;
-	}
 	/**
 	 * Simple init function, used for testing.
 	 */
@@ -155,15 +173,14 @@ struct Read {
 	 * them.
 	 */
 	void constructRevComps() {
-
 		if(color) {
-			patRc.installReverse(patFw1);
+			patRc.installReverse(patFw);
 			for(int j = 0; j < alts; j++) {
 				altPatRc[j].installReverse(altPatFw[j]);
 			}
             originalRc.installReverse(originalFw);
 		} else {
-			patRc.installReverseComp(patFw1);
+			patRc.installReverseComp(patFw);
 			for(int j = 0; j < alts; j++) {
 				altPatRc[j].installReverseComp(altPatFw[j]);
 			}
@@ -367,7 +384,7 @@ struct Read {
 	// For remembering the exact input text used to define a read
 	SStringExpandable<char> readOrigBuf;
 
-	BTString name;      // read nameplanB
+	BTString name;      // read name
 	TReadId  rdid;      // 0-based id based on pair's offset in read file(s)
 	TReadId  endid;     // 0-based id based on pair's offset in read file(s)
 	                    // and which mate ("end") this is
@@ -384,7 +401,9 @@ struct Read {
 	int      trimmed3;  // amount actually trimmed off 3' end
 	HitSet  *hitset;    // holds previously-found hits; for chaining
 
-	char plan;          // which plan is it. Default is plan A.
+	//char plan;          // which plan is it. Default is plan A.
+	int TLAcycle;
+	bool TLAoppositeConversion;
 };
 
 /**

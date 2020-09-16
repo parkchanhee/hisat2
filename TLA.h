@@ -1,7 +1,21 @@
-//
-// Created by Yun (Leo) Zhang on 1/10/20.
-// This script is made for HISAT-3N (HISAT-TLA).
-//
+/*
+ * Copyright 2020, Yun (Leo) Zhang <imzhangyun@gmail.com>
+ *
+ * This file is part of HISAT-3N.
+ *
+ * HISAT-3N is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HISAT-3N is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #ifndef HISAT2_TLA_H
 #define HISAT2_TLA_H
@@ -415,7 +429,8 @@ public:
 
     // intermediate variable
     //char* locationPointer; // point to the first char for mapping location in genome.
-    bool planA;
+    //bool planA;
+    int TLAcycle;
     bool paired;
     bool forward;
     bool primaryAlignment; // this is for output flag adjustment.
@@ -473,6 +488,7 @@ public:
         conversionCount[0] = 0;
         conversionCount[1] = 0;
         YZ.clear();
+        TLAcycle = -1;
 
         if (repeatResult != nullptr) {
             free(repeatResult);
@@ -652,7 +668,7 @@ public:
         int sequenceLength = readSequence_string.size();
         praseCigar();
 
-        ht2_error_t err = ht2_repeat_expand(planA ? repeatHandles[0] : repeatHandles[1],
+        ht2_error_t err = ht2_repeat_expand((TLAcycle == 0 || TLAcycle == 3) ? repeatHandles[0] : repeatHandles[1],
                                             chromosomeName.toZBuf(),
                                             location - 1,
                                             sequenceLength,
@@ -668,17 +684,16 @@ public:
             if (chromosomeRepeat.find(' ', 0) != string::npos) {
                 chromosomeRepeat = chromosomeRepeat.substr(0, chromosomeRepeat.find(' ', 0));
             }
+            locationRepeat = (pos->pos) + 1;
             bool genomeForward = pos->direction == 0;
             if (!genomeForward) {
                 //cerr << readName << endl;
                 continue;
             }
 
-            locationRepeat = (pos->pos) + 1;
-
-            if (!existPositions.append(chromosomeRepeat, locationRepeat)){
+            /*if (!existPositions.append(chromosomeRepeat, locationRepeat)){
                 continue;
-            }
+            }*/
 
             ASSERT_ONLY(SStringExpandable<uint32_t> destU32);
             SStringExpandable<char> raw_refbuf;
@@ -738,7 +753,7 @@ public:
                 }
             }
         }
-        if (nBestRepeat == 0 && !paired) {
+        if ((nBestRepeat == 0 && !paired) || (paired && repeatPositions.positions.size() == 0)) {
             return false;
         } else {
             return true;
@@ -1770,23 +1785,6 @@ public:
         return numBestPair;
     }
 
-    void addRepeatIndexTag(Alignment *newAlignment) {
-        // add a extra tag if the read is aligned on repeat index. this tag will show which repeat index is used.
-        // XR:Z:TC means the read aligned on TC conversion repeat index.
-        string tag = "";
-        if (newAlignment->planA) {
-            tag += convertedFrom;
-            tag += convertedTo;
-        } else {
-            tag += convertedFromComplement;
-            tag += convertedToComplement;
-        }
-        if (!newAlignment->unChangedTags.empty()) {
-            newAlignment->unChangedTags.append('\t');
-        }
-        newAlignment->unChangedTags.append("XR:Z:");
-        newAlignment->unChangedTags.append(tag.c_str());
-    }
 
     void addNewAlignment_single(Alignment *newAlignment) {
         // add new single-end alignment into pool.
@@ -1936,8 +1934,16 @@ public:
                 (alignments.back()->chromosomeName == newAlignment->chromosomeName) &&
                 (alignments.back()->pairSegment != newAlignment->pairSegment)) {
                 newPairScore = calculatePairScore(newAlignment, alignments.back(), nPair);
-                pairTo = alignments.size() - 1;
+                if (nPair > 0) {
+                    pairTo = alignments.size() - 1;
+                }
             }
+            /*for (int i = 0; i < alignments.size(); i++) {
+                int tmpPairScore = calculatePairScore(newAlignment, alignments.back(), nPair);
+                if (tmpPairScore > newPairScore) {
+                    newPairScore = tmpPairScore;
+                }
+            }*/
         }
         // update pair score and nBest pair information in this class.
         if (newPairScore > bestPairScore) {

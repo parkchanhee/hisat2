@@ -2,6 +2,7 @@
  * Copyright 2011, Ben Langmead <langmea@cs.jhu.edu>
  *
  * This file is part of Bowtie 2.
+ * This file is edited by Yun (Leo) Zhang for HISAT-3N.
  *
  * Bowtie 2 is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -2090,10 +2091,9 @@ public:
             size_t        threadId0)    // which thread am I?
     {
         // this funtion is for HLA alignment result report.
-        bool planA = rd.plan == 'A';
         Alignment* newAlignment;
         alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
-        newAlignment->planA = planA;
+        newAlignment->TLAcycle = rd.TLAcycle;
 
         if(rs == NULL && samc_.omitUnalignedReads()) {
             delete newAlignment;

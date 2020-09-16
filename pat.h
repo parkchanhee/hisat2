@@ -520,12 +520,14 @@ public:
 
 	virtual ~PatternSourcePerThread() { }
 
-    bool isPlanA;
-
-	void planB(){
+	/*void planB(){
 	    buf1_.planB();
         buf2_.planB();
-        isPlanA = false;
+	}*/
+
+	void changePlanTLA(int nCycle) {
+        buf1_.changePlanTLA(nCycle);
+        buf2_.changePlanTLA(3-nCycle);
 	}
 
 	/**
@@ -537,7 +539,6 @@ public:
 		bool& paired,
 		bool fixName)
 	{
-	    isPlanA = true;
 		return success;
 	}
 

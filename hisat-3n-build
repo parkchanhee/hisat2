@@ -95,10 +95,10 @@ def main():
         repeatLength = "100-300"
         repeatCount = "5"
         referenceName = ""
-        TLA = False
+        TLA = True
         for i in range(len(argv)):
-            if argv[i] == "--TLA":
-                TLA = True
+            if argv[i] == "--no-base-change":
+                TLA = False
             elif argv[i] == "-p":
                 nThread = argv[i+1]
             elif argv[i] == "-f":
@@ -115,8 +115,8 @@ def main():
         repeatArgv += ["--repeat-length", repeatLength]
         repeatArgv += ["--repeat-count", repeatCount]
         repeatArgv += ["--save-sa"]
-        if TLA:
-            repeatArgv += ["--TLA"]
+        if not TLA:
+            repeatArgv += ["--no-base-change"]
         repeatArgv += [referenceName, outputName]
         os.system(" ".join(repeatArgv))
 

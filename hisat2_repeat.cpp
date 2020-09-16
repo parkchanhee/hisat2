@@ -98,10 +98,6 @@ static bool save_sa;
 static bool load_sa;
 
 bool TLA;
-char convertedFrom;
-char convertedTo;
-char convertedToComplement;
-char convertedFromComplement;
 
 static void resetOptions() {
 	verbose        = true;  // be talkative (default)
@@ -144,6 +140,7 @@ static void resetOptions() {
     save_sa = false;
     load_sa = false;
     wrapper.clear();
+    TLA = true;
 }
 
 // Argument constants for getopts
@@ -179,7 +176,7 @@ enum {
     ARG_MAX_SEED_EXTLEN,
     ARG_SAVE_SA,
     ARG_LOAD_SA,
-    ARG_TLA
+    ARG_NO_BASE_CHANGE
 };
 
 /**
@@ -223,6 +220,7 @@ static void printUsage(ostream& out) {
         << "    --max-seed-extlen <int>" << endl
         << "    --save-sa" << endl
         << "    --load-sa" << endl
+        << "    --no-base-change        make regular repeat index as hisat2, without base change"
 	    << "    -q/--quiet              disable verbose output (for debugging)" << endl
 	    << "    -h/--help               print detailed description of tool and its options" << endl
 	    << "    --usage                 print this usage message" << endl
@@ -271,7 +269,7 @@ static struct option long_options[] = {
 	{(char*)"max-seed-extlen",required_argument, 0,            ARG_MAX_SEED_EXTLEN},
 	{(char*)"save-sa",        no_argument,       0,            ARG_SAVE_SA},
     {(char*)"load-sa",        no_argument,       0,            ARG_LOAD_SA},
-    {(char*)"TLA",            no_argument,       0,            ARG_TLA},
+    {(char*)"no-base-change", no_argument,       0,            ARG_NO_BASE_CHANGE},
 	{(char*)0, 0, 0, 0} // terminator
 };
 
@@ -468,8 +466,8 @@ static void parseOptions(int argc, const char **argv) {
             case ARG_LOAD_SA:
                 load_sa = true;
                 break;
-            case ARG_TLA: {
-                TLA = true;
+            case ARG_NO_BASE_CHANGE: {
+                TLA = false;
                 break;
             }
 			case 'a': autoMem = false; break;

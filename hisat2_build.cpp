@@ -87,12 +87,7 @@ static string repeat_info_fname;
 static string repeat_snp_fname;
 static string repeat_haplotype_fname;
 
-bool TLA = false;
-char convertedFrom;
-char convertedTo;
-char convertedToComplement;
-char convertedFromComplement;
-
+bool TLA = true;
 bool autoRepeatIndex = false;
 
 ConvertMatrixTLA baseChange;
@@ -135,6 +130,8 @@ static void resetOptions() {
     repeat_info_fname = "";
     repeat_snp_fname = "";
     repeat_haplotype_fname = "";
+    TLA = true;
+    autoRepeatIndex = false;
 }
 
 // Argument constants for getopts
@@ -162,7 +159,7 @@ enum {
     ARG_REPEAT_INFO,
     ARG_REPEAT_SNP,
     ARG_REPEAT_HAPLOTYPE,
-    ARG_TLA,
+    ARG_NO_BASE_CHANGE,
     ARG_AUTO_REPEAT_INDEX
 };
 
@@ -212,6 +209,8 @@ static void printUsage(ostream& out) {
         << "    --repeat-snp <path>     Repeat snp file name" << endl
         << "    --repeat-haplotype <path>   Repeat haplotype file name" << endl
 	    << "    --seed <int>            seed for random number generator" << endl
+	    << "    --no-base-change        build index for regular hisat2, to build hisat-3n index do not use this option" << endl
+	    << "    --auto-repeat-index<int>-<int>  automatically build repeat database and repeat index, enter the minimum-maximum repeat length pairs "
 	    << "    -q/--quiet              disable verbose output (for debugging)" << endl
 	    << "    -h/--help               print detailed description of tool and its options" << endl
 	    << "    --usage                 print this usage message" << endl
@@ -268,7 +267,7 @@ static struct option long_options[] = {
 	{(char*)"reverse-each",   no_argument,       0,            ARG_REVERSE_EACH},
 	{(char*)"usage",          no_argument,       0,            ARG_USAGE},
     {(char*)"wrapper",        required_argument, 0,            ARG_WRAPPER},
-    {(char*)"TLA",            no_argument,        0,        ARG_TLA},
+    {(char*)"no-base-change",            no_argument,        0,        ARG_NO_BASE_CHANGE},
     {(char*)"auto-repeat-index",   required_argument,        0,        ARG_AUTO_REPEAT_INDEX},
 	{(char*)0, 0, 0, 0} // terminator
 };
@@ -400,8 +399,8 @@ static void parseOptions(int argc, const char **argv) {
 				reverseEach = true;
 				break;
 			case ARG_NTOA: nsToAs = true; break;
-            case ARG_TLA: {
-                TLA = true;
+            case ARG_NO_BASE_CHANGE: {
+                TLA = false;
                 break;
             }
             case ARG_AUTO_REPEAT_INDEX: {

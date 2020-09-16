@@ -1,7 +1,21 @@
-//
-// Created by Yun (Leo) Zhang on 1/10/20.
-// This script is made for HISAT-3N (HISAT-TLA).
-//
+/*
+ * Copyright 2020, Yun (Leo) Zhang <imzhangyun@gmail.com>
+ *
+ * This file is part of HISAT-3N.
+ *
+ * HISAT-3N is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 3 of the License, or
+ * (at your option) any later version.
+ *
+ * HISAT-3N is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ *
+ * You should have received a copy of the GNU General Public License
+ * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
+ */
 
 #include "TLA.h"
 
@@ -14,9 +28,9 @@ bool MappingPositions::append (Alignment* newAlignment) {
     int pairSegment = newAlignment->pairSegment;
     bool concordant = newAlignment->concordant;
 
-    if (newAlignment->repeat) {
+    /*if (newAlignment->repeat) {
         return true;
-    }
+    }*/
 
     int index;
     if (positionExist(location, chromosome, pairSegment, index)) {

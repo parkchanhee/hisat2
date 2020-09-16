@@ -2,6 +2,7 @@
  * Copyright 2015, Daehwan Kim <infphilo@gmail.com>
  *
  * This file is part of HISAT 2.
+ * This file is edited by Yun (Leo) Zhang for HISAT-3N.
  *
  * HISAT 2 is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -701,7 +702,7 @@ struct GenomeHit {
                                  ELList<pair<index_t, index_t> >&  ht_llist,
                                  EList<pair<index_t, index_t> >&   ht_list,
                                  Haplotype<index_t>&               cmp_ht,
-                                 bool                              TLA_conversionTypeA = true,
+                                 int                               TLAcycle,
                                  ELList<Edit, 128, 4>*             candidate_edits = NULL,
                                  index_t                           mm = 0,
                                  index_t*                          numNs = NULL)
@@ -745,7 +746,7 @@ struct GenomeHit {
                             0,    /* dep */
                             gpol,
                             numALTsTried,
-                            TLA_conversionTypeA);
+                            TLAcycle);
         index_t extlen = 0;
         if(left) {
             assert_geq(best_rdoff, -1);
@@ -818,7 +819,7 @@ struct GenomeHit {
                                        index_t                           dep,
                                        const GraphPolicy&                gpol,
                                        index_t&                          numALTsTried,
-                                       bool                              TLA_conversionTypeA = true,
+                                       int                               TLAcycle,
                                        ALT_TYPE                          prev_alt_type = ALT_NONE);
     
     /**
@@ -1579,7 +1580,8 @@ bool GenomeHit<index_t>::combineWith(
 
     int TLARefConversion[5] = {0, 1, 2, 3, 4};
     if (TLA){
-        if (rd.plan == 'A') {
+        if (((rd.TLAcycle == 0 || rd.TLAcycle == 3) && !rd.TLAoppositeConversion) ||
+            ((rd.TLAcycle == 1 || rd.TLAcycle == 2) && rd.TLAoppositeConversion)) {
             // C to T conversion
             TLARefConversion[1] = 3;
         } else {
@@ -1961,7 +1963,7 @@ bool GenomeHit<index_t>::combineWith(
                     for(index_t j = 0; j < skipLen; j++) {
                         int temp_rfc;
                         if(i + 1 + j < len) temp_rfc = TLARefConversion[refbuf[i + 1 + j]];
-                        else                temp_rfc = ref.getBase(this->_tidx, this_toff + i + 1 + j);
+                        else                temp_rfc = TLARefConversion[ref.getBase(this->_tidx, this_toff + i + 1 + j)];
                         assert_range(0, 4, temp_rfc);
                         Edit e((uint32_t)(i + 1 + addoff), "ACGTN"[temp_rfc], '-', EDIT_TYPE_READ_GAP);
                         _edits->push_back(e);
@@ -2118,7 +2120,7 @@ bool GenomeHit<index_t>::extend(
                                          _sharedVars->ht_llist,
                                          *this->_ht_list,
                                          _sharedVars->cmp_ht,
-                                         rd.plan == 'A',
+                                         rd.TLAcycle,
                                          NULL,
                                          mm,
                                          &numNs);
@@ -2201,7 +2203,7 @@ bool GenomeHit<index_t>::extend(
                                              _sharedVars->ht_llist,
                                              *this->_ht_list,
                                              _sharedVars->cmp_ht,
-                                             rd.plan == 'A',
+                                             rd.TLAcycle,
                                              NULL,
                                              mm);
             // Do not allow for any edits including known snps and splice sites when extending zero-length hit
@@ -2374,7 +2376,7 @@ bool GenomeHit<index_t>::adjustWithALT(
                                                sharedVars.ht_llist,
                                                *genomeHit._ht_list,
                                                sharedVars.cmp_ht,
-                                               rd.plan == 'A',
+                                               rd.TLAcycle,
                                                &candidate_edits);
             if(alignedLen == genomeHit._len) {
                 found2 = true;
@@ -2481,7 +2483,7 @@ bool GenomeHit<index_t>::adjustWithALT(
                                            _sharedVars->ht_llist,
                                            *this->_ht_list,
                                            _sharedVars->cmp_ht,
-                                           rd.plan == 'A',
+                                           rd.TLAcycle,
                                            &_sharedVars->candidate_edits);
         if(alignedLen == this->_len) {
             found = true;
@@ -2811,7 +2813,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                                                 index_t                           dep,
                                                 const GraphPolicy&                gpol,
                                                 index_t&                          numALTsTried,
-                                                bool                              TLA_conversionTypeA,
+                                                int                               TLAcycle,
                                                 ALT_TYPE                          prev_alt_type)
 {
     if(numALTsTried > gpol.maxAltsTried() + dep) return 0;
@@ -2844,7 +2846,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
 
     int TLARefConversion[5] = {0, 1, 2, 3, 4};
     if (TLA){
-        if (TLA_conversionTypeA) {
+        if (TLAcycle == 0 || TLAcycle == 3) {
             // C to T conversion
             TLARefConversion[1] = 3;
         } else {
@@ -3191,7 +3193,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                                                          dep + 1,
                                                          gpol,
                                                          numALTsTried,
-                                                         TLA_conversionTypeA,
+                                                         TLAcycle,
                                                          alt.type);
                 if(alignedLen == next_rdlen) return rdlen;
             }
@@ -3551,7 +3553,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                                                          dep + 1,
                                                          gpol,
                                                          numALTsTried,
-                                                         TLA_conversionTypeA,
+                                                         TLAcycle,
                                                          alt.type);
                 if(alignedLen > 0) {
                     assert_leq(rdoff + rd_i + alignedLen, best_rdoff);
@@ -3707,7 +3709,8 @@ bool GenomeHit<index_t>::repOk(const Read& rd, const BitPairReference& ref)
 
     int TLARefConversion[5] = {0, 1, 2, 3, 4};
     if (TLA){
-        if (rd.plan == 'A') {
+        if (((rd.TLAcycle == 0 || rd.TLAcycle == 3) && !rd.TLAoppositeConversion) ||
+            ((rd.TLAcycle == 1 || rd.TLAcycle == 2) && rd.TLAoppositeConversion)) {
             // C to T conversion
             TLARefConversion[1] = 3;
         } else {
@@ -3741,26 +3744,6 @@ bool GenomeHit<index_t>::repOk(const Read& rd, const BitPairReference& ref)
             int a = bufA[k];
             test_string += bases[a];
         }
-
-        ASSERT_ONLY(SStringExpandable<uint32_t> destU32A);
-
-        string test_string2 = "";
-        SStringExpandable<char> raw_refbufA;
-        raw_refbufA.resize(reflens[i] + 16);
-        raw_refbufA.clear();
-        int off2 = ref.getStretch(
-                reinterpret_cast<uint32_t*>(raw_refbufA.wbuf()),
-                0,
-                max<TRefOff>(refoffs[i], 0),
-                reflens[i],
-                destU32A);
-        char *refbufB = raw_refbufA.wbuf() + off2;
-        for (int k = 0; k < reflens[i]; k++) {
-            int a = refbufB[k];
-            test_string2 += bases[a];
-        }
-
-        int ttt = 0;
     }
     if(refstr != editstr) {
         cerr << "Decoded nucleotides and edits don't match reference:" << endl;
@@ -4496,6 +4479,9 @@ public:
                             _genomeHits.back()._joinedOff = positions[p].first.joinedOff;
                             if(!positions[p].first.fw) {
                                 _genomeHits.back().reverse(*_rds[rdi]);
+                                _rds[rdi]->TLAoppositeConversion = true;
+                            } else {
+                                _rds[rdi]->TLAoppositeConversion = false;
                             }
                             
                             // extend the partial alignments bidirectionally using
@@ -4576,6 +4562,9 @@ public:
                                 _genomeHits.back()._joinedOff = positions[p].first.joinedOff;
                                 if(!positions[p].first.fw) {
                                     _genomeHits.back().reverse(*_rds[0]);
+                                    _rds[0]->TLAoppositeConversion = true;
+                                } else {
+                                    _rds[0]->TLAoppositeConversion = false;
                                 }
                                 
                                 // extend the partial alignments bidirectionally using
@@ -4607,6 +4596,9 @@ public:
                                 _genomeHits.back()._joinedOff = positions[p].second.joinedOff;
                                 if(!positions[p].second.fw) {
                                     _genomeHits.back().reverse(*_rds[1]);
+                                    _rds[1]->TLAoppositeConversion = true;
+                                } else {
+                                    _rds[1]->TLAoppositeConversion = false;
                                 }
                                 
                                 // extend the partial alignments bidirectionally using
@@ -4662,7 +4654,12 @@ public:
                     assert(rs != NULL);
                     align2repeat = (rs->size() == 0 || sink.numBestUnp(rdi).first > rp.khits);
                 }
-                
+
+                _rds[0]->TLAoppositeConversion = false;
+                if (_paired) {
+                    _rds[1]->TLAoppositeConversion = false;
+                }
+
                 if(align2repeat) {
                     for(size_t i = 0; i < _genomeHits_rep[rdi].size(); i++) {
                         _genomeHits.clear();
