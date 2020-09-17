@@ -34,8 +34,8 @@
 #include <unistd.h>
 #include <queue>
 
-class ReferenceGenome;
-extern ReferenceGenome reference;
+//class ReferenceGenome;
+//extern ReferenceGenome reference;
 extern char convertedFrom;
 extern char convertedTo;
 extern char convertedFromComplement;
@@ -45,6 +45,7 @@ extern vector<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
 extern bool uniqueOutputOnly;
+//extern bool no_spliced_alignment;
 
 using namespace std;
 
@@ -55,6 +56,7 @@ class ConvertMatrixTLA {
     char convertTo = 'A';
     string allBase = "ACGT";
     string allBaseLower = "acgt";
+
     int charToInt(char inputChar) {
         return allBase.find(inputChar);
     }
@@ -1467,7 +1469,8 @@ public:
     const int maxPairScore = 500000;
 
     BitPairReference* bitReference;
-    EList<std::string> refChromosomeNames;
+    bool DNA = false;
+    //EList<std::string> refChromosomeNames;
 
     void initialize() {
         bestAS = numeric_limits<int>::min();
@@ -1490,7 +1493,7 @@ public:
         }
     }
 
-    Alignments(BitPairReference* ref, EList<std::string> refNames): bitReference(ref), refChromosomeNames(refNames) {
+    Alignments(BitPairReference* ref, bool inputDNA): bitReference(ref), DNA(inputDNA) {
         initialize();
         for (int i = 0; i < 10; i++) {
             Alignment *newAlignment = new Alignment();
@@ -1600,7 +1603,22 @@ public:
             nPair = 1;
         } else if ((!alignment1->repeat && !alignment2->repeat)){
             // both mapped and (both non-repeat or not expand repeat)
-            pairScore = calculatePairScore(alignment1->location, alignment1->AS, alignment1->forward, alignment2->location, alignment2->AS, alignment2->forward);
+            if (DNA) {
+                pairScore = calculatePairScore_DNA(alignment1->location,
+                                                   alignment1->AS,
+                                                   alignment1->forward,
+                                                   alignment2->location,
+                                                   alignment2->AS,
+                                                   alignment2->forward);
+            } else {
+                pairScore = calculatePairScore_RNA(alignment1->location,
+                                                   alignment1->XM,
+                                                   alignment1->forward,
+                                                   alignment2->location,
+                                                   alignment2->XM,
+                                                   alignment2->forward);
+            }
+
             if (pairScore > alignment1->pairScore) {
                 alignment1->pairToLocation = alignment2->location;
             }
@@ -1612,6 +1630,7 @@ public:
             // 1st alignment is repeat, 2nd alignment is not repeat.
             int tmpPairScore;
             int AS2 = alignment2->AS;
+            int XM2 = alignment2->XM;
             long long int location2 = alignment2->location;
             bool forward1 = alignment1->forward;
             bool forward2 = alignment2->forward;
@@ -1624,7 +1643,22 @@ public:
                     if(repeatPosition->chromosome != chrmosome2) {
                         continue;
                     }
-                    tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward1, location2, AS2, forward2);
+                    if (DNA) {
+                        tmpPairScore = calculatePairScore_DNA(repeatPosition->location,
+                                                              repeatPositions->AS,
+                                                              forward1,
+                                                              location2,
+                                                              AS2,
+                                                              forward2);
+                    } else {
+                        tmpPairScore = calculatePairScore_RNA(repeatPosition->location,
+                                                              repeatPositions->XM,
+                                                              forward1,
+                                                              location2,
+                                                              XM2,
+                                                              forward2);
+                    }
+
                     if (tmpPairScore >= alignment1->pairScore) {
                         repeatPositions->pairScore = tmpPairScore;
                         repeatPosition->pairScore = tmpPairScore;
@@ -1646,6 +1680,7 @@ public:
 
             int tmpPairScore;
             int AS1 = alignment1->AS;
+            int XM1 = alignment1->XM;
             long long int location1 = alignment1->location;
             string chromosome1 = alignment1->chromosomeName.toZBuf();
             bool forward1 = alignment1->forward;
@@ -1658,7 +1693,22 @@ public:
                     if(chromosome1 != repeatPosition->chromosome) {
                         continue;
                     }
-                    tmpPairScore = calculatePairScore(repeatPosition->location, repeatPositions->AS, forward2, location1, AS1, forward1);
+                    if (DNA) {
+                        tmpPairScore = calculatePairScore_DNA(repeatPosition->location,
+                                                              repeatPositions->AS,
+                                                              forward2,
+                                                              location1,
+                                                              AS1,
+                                                              forward1);
+                    } else {
+                        tmpPairScore = calculatePairScore_RNA(repeatPosition->location,
+                                                              repeatPositions->XM,
+                                                              forward2,
+                                                              location1,
+                                                              XM1,
+                                                              forward1);
+                    }
+
                     if (tmpPairScore >= alignment1->pairScore) {
                         alignment1->pairToLocation = repeatPosition->location;
                     }
@@ -1694,7 +1744,21 @@ public:
                             if(repeatPosition1->chromosome != repeatPosition2->chromosome) {
                                 continue;
                             }
-                            tmpPairScore = calculatePairScore(repeatPosition1->location, repeatPositions1->AS, forward1, repeatPosition2->location, repeatPositions2->AS, forward2);
+                            if (DNA) {
+                                tmpPairScore = calculatePairScore_DNA(repeatPosition1->location,
+                                                                      repeatPositions1->AS,
+                                                                      forward1,
+                                                                      repeatPosition2->location,
+                                                                      repeatPositions2->AS,
+                                                                      forward2);
+                            } else {
+                                tmpPairScore = calculatePairScore_RNA(repeatPosition1->location,
+                                                                      repeatPositions1->XM,
+                                                                      forward1,
+                                                                      repeatPosition2->location,
+                                                                      repeatPositions2->XM,
+                                                                      forward2);
+                            }
                             if (tmpPairScore > pairScore) {
                                 pairScore = tmpPairScore;
                                 nPair = 1;
@@ -1724,15 +1788,32 @@ public:
         return pairScore;
     }
 
-
-    int calculatePairScore(long long int &location1, int &AS1, bool &forward1, long long int &location2, int &AS2, bool &forward2) {
+    int calculatePairScore_DNA(long long int &location1, int &AS1, bool &forward1, long long int &location2, int &AS2, bool &forward2) {
         // this is the basic function to calculate pair score.
-        // if the distance between 2 alignment is more than 1000, we reduce the score by the distance.
+        // if the distance between 2 alignment is more than 1000, we reduce the score by the distance/10.
         // if two alignment is concordant we add 500000 to make sure to select the concordant pair as best pair.
         int score = 100*AS1 + 100*AS2;
         int distance = abs(location1 - location2);
         if (distance > 1000) {
-            score -= distance;
+            score -= distance/10;
+        }
+        if (distance > 500000) {
+            return numeric_limits<int>::min();
+        }
+        if (isConcordant(location1, forward1, location2, forward2)) {
+            score += 500000;
+        }
+        return score;
+    }
+
+    int calculatePairScore_RNA(long long int &location1, int &XM1, bool &forward1, long long int &location2, int &XM2, bool &forward2) {
+        // this is the basic function to calculate pair score.
+        // if the distance between 2 alignment is more than 100,000, we reduce the score by the distance/10.
+        // if two alignment is concordant we add 500,000 to make sure to select the concordant pair as best pair.
+        int score = -100*XM1 + -100*XM2;
+        int distance = abs(location1 - location2);
+        if (distance > 100000) {
+            score -= distance/10;
         }
         if (distance > 500000) {
             return numeric_limits<int>::min();

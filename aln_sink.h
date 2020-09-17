@@ -1948,6 +1948,7 @@ public:
             bool             quiet,         // don't print alignment summary at end
             int              nthreads,
             BitPairReference* ref,
+            bool             DNA,
             ALTDB<index_t>*  altdb = NULL,
             SpliceSiteDB*    ssdb  = NULL) :
             AlnSinkSam<index_t>(
@@ -1962,7 +1963,7 @@ public:
     {
         nThreads = nthreads;
         for (int i = 0; i < nThreads; i++) {
-            Alignments* newAlignments = new Alignments(ref, refnames);
+            Alignments* newAlignments = new Alignments(ref, DNA);
             alignmentsEachThreads.push_back(newAlignments);
         }
     }

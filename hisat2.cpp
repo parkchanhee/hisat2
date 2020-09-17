@@ -1822,6 +1822,7 @@ static void parseOption(int next_option, const char *arg) {
             break;
         }
         case ARG_BASE_CHANGE: {
+            // Split argument by comma
             EList<string> args;
             tokenize(arg, ",", args);
             if(args.size() != 2) {
@@ -4637,6 +4638,7 @@ static void driver(
                             gQuiet,       // don't print alignment summary at end
                             nthreads,
                             refs.get(),
+                            no_spliced_alignment,
                             altdbs_TLA[0],
                             ssdb);
 			    } else {
