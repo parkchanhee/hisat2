@@ -4833,8 +4833,8 @@ int hisat2(int argc, const char **argv) {
                     bt2indexs[0] = argv[optind++];
                 }
                 bt2indexs[1] = bt2indexs[0];
-                bt2indexs[0] += ".TLA.1";
-                bt2indexs[1] += ".TLA.2";
+                bt2indexs[0] += ".3N.1";
+                bt2indexs[1] += ".3N.2";
 			} else {
                 if(bt2indexs[0].empty()) {
                     if(optind >= argc) {

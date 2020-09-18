@@ -903,10 +903,10 @@ int hisat2_repeat(int argc, const char **argv) {
                     string tag = "";
                     if (TLA) {
                         if (i == 0) {
-                            tag = ".TLA.1";
+                            tag = ".3N.1";
                             baseChange.convert('C', 'T');
                         } else {
-                            tag = ".TLA.2";
+                            tag = ".3N.2";
                             baseChange.convert('G', 'A');
                         }
                     }

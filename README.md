@@ -56,7 +56,7 @@ For human genome reference, HISAT-3N took about 9GB for alignment.
     Align reads as regular hisat2. 
        
 * `--index/-x`  
-    The index for HISAT-3N.  The basename is the name of the index files up to but not including the final `TLA.1.1.ht2` / etc. 
+    The index for HISAT-3N.  The basename is the name of the index files up to but not including the suffix `.3N.1.1.ht2` / etc. 
     For example, you build your index with basename 'genome' by HISAT-3N-build, please enter `--index genome`.
       
 * `--repeat-limit` 
