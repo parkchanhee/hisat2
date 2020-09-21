@@ -87,8 +87,8 @@ static string repeat_info_fname;
 static string repeat_snp_fname;
 static string repeat_haplotype_fname;
 
-bool TLA = true;
-bool autoRepeatIndex = false;
+bool TLA = false;
+bool repeatIndex = false;
 
 ConvertMatrixTLA baseChange;
 
@@ -130,8 +130,8 @@ static void resetOptions() {
     repeat_info_fname = "";
     repeat_snp_fname = "";
     repeat_haplotype_fname = "";
-    TLA = true;
-    autoRepeatIndex = false;
+    TLA = false;
+    repeatIndex = false;
 }
 
 // Argument constants for getopts
@@ -159,8 +159,8 @@ enum {
     ARG_REPEAT_INFO,
     ARG_REPEAT_SNP,
     ARG_REPEAT_HAPLOTYPE,
-    ARG_NO_BASE_CHANGE,
-    ARG_AUTO_REPEAT_INDEX
+    ARG_TLA,
+    ARG_REPEAT_INDEX
 };
 
 /**
@@ -210,7 +210,7 @@ static void printUsage(ostream& out) {
         << "    --repeat-haplotype <path>   Repeat haplotype file name" << endl
 	    << "    --seed <int>            seed for random number generator" << endl
 	    << "    --no-base-change        build index for regular hisat2, to build hisat-3n index do not use this option" << endl
-	    << "    --auto-repeat-index<int>-<int>  automatically build repeat database and repeat index, enter the minimum-maximum repeat length pairs "
+	    << "    --repeat-index<int>-<int>[,<int>-<int>]  automatically build repeat database and repeat index, enter the minimum-maximum repeat length pairs (default: 100-300)"
 	    << "    -q/--quiet              disable verbose output (for debugging)" << endl
 	    << "    -h/--help               print detailed description of tool and its options" << endl
 	    << "    --usage                 print this usage message" << endl
@@ -267,8 +267,8 @@ static struct option long_options[] = {
 	{(char*)"reverse-each",   no_argument,       0,            ARG_REVERSE_EACH},
 	{(char*)"usage",          no_argument,       0,            ARG_USAGE},
     {(char*)"wrapper",        required_argument, 0,            ARG_WRAPPER},
-    {(char*)"no-base-change",            no_argument,        0,        ARG_NO_BASE_CHANGE},
-    {(char*)"auto-repeat-index",   required_argument,        0,        ARG_AUTO_REPEAT_INDEX},
+    {(char*)"TLA",            no_argument,       0,            ARG_TLA},
+    {(char*)"repeat-index",   no_argument, 0,            ARG_REPEAT_INDEX},
 	{(char*)0, 0, 0, 0} // terminator
 };
 
@@ -399,14 +399,8 @@ static void parseOptions(int argc, const char **argv) {
 				reverseEach = true;
 				break;
 			case ARG_NTOA: nsToAs = true; break;
-            case ARG_NO_BASE_CHANGE: {
-                TLA = false;
-                break;
-            }
-            case ARG_AUTO_REPEAT_INDEX: {
-                autoRepeatIndex = true;
-                break;
-            }
+            case ARG_TLA: TLA = true; break;
+            case ARG_REPEAT_INDEX: repeatIndex = true; break;
 			case 'a': autoMem = false; break;
 			case 'q': verbose = false; break;
 			case 's': sanityCheck = true; break;
@@ -820,10 +814,10 @@ int hisat2_build(int argc, const char **argv) {
                     string tag = "";
                     if (TLA) {
                         if (i == 0) {
-                            tag = ".3N.1";
+                            tag = ".3n.1";
                             baseChange.convert('C', 'T');
                         } else {
-                            tag = ".3N.2";
+                            tag = ".3n.2";
                             baseChange.convert('G', 'A');
                         }
                     }
@@ -868,7 +862,7 @@ int hisat2_build(int argc, const char **argv) {
                                                true, // create local index?
                                                &parent_szs,
                                                &parent_refnames);
-                    } else if (autoRepeatIndex) {
+                    } else if (repeatIndex) {
                         string repeat_ref_fname_TLA = outfile + tag + ".rep.fa";
                         string repeat_info_fname_TLA = outfile + tag + ".rep.info";
                         EList<string> repeat_infiles(MISC_CAT);

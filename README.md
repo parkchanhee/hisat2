@@ -19,7 +19,7 @@ Sample argument for HISAT-3N index building without repeat index:
 `hisat-3n-build -p 10 genome.fa genome`  
 
 Sample argument for HISAT-3N index building with repeat index:  
-`hisat-3n-build -p 10 --auto-repeat-index 100-300 genome.fa genome` 
+`hisat-3n-build -p 10 --repeat-index genome.fa genome` 
 
 HISAT-3N index with splicing site information is under development!  
 PLEASE DO NOT USE THIS!
@@ -38,7 +38,6 @@ Sample argument for HISAT-3N index building with splicing site information:
 `hisat-3n-build genome.fa genome -p 10 --ss genome.ss --exons genome.exon`   
  
 
-
 Use HISAT-3N for alignment
 ============
 After we build HISAT-3N index, you are ready to use HISAT-3N for alignemnt.
@@ -46,22 +45,26 @@ HISAT-3N use HISAT2 argument but has some extra argument.
 
 For human genome reference, HISAT-3N took about 9GB for alignment.
 
+HISAT-3N share basic argument with HISAT2, please check the [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/).
+There are some addional argument for HISAT-3N. 
+
 * `--base-change`  
     Provide which base is converted in sequencing process to other base. Please enter
     2 letter seperated by ',' for this argument. First letter should be the converted base, second letter should be
     the converted to base. For example, during slam-seq, some 'T' is converted to 'C',
     please enter `--base-change T,C`. During bisulfite-seq, some 'C' is converted to 'T', please enter `--base-change C,T`.
- 
-* `--no-base-change`    
-    Align reads as regular hisat2. 
+    If you want to align non-converted reads to regular HISAT2 index, do not use this option.
        
 * `--index/-x`  
-    The index for HISAT-3N.  The basename is the name of the index files up to but not including the suffix `.3N.1.1.ht2` / etc. 
+    The index for HISAT-3N.  The basename is the name of the index files up to but not including the suffix `.3n.1.1.ht2` / etc. 
     For example, you build your index with basename 'genome' by HISAT-3N-build, please enter `--index genome`.
       
 * `--repeat-limit` 
     You could set up number of alignment will be check for each repeat alignment. default: 1000.
 
+* `--unique-only` 
+    Only output uniquely aligned reads.
+    
 Sample argument:  
 * If you want to align your slam-seq reads:  
 `--hisat-3n  --index genome -f -1 read_1.fa -2 read_2.fa -S output.sam --base-change T,C -p 10`

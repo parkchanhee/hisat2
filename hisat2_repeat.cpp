@@ -140,7 +140,7 @@ static void resetOptions() {
     save_sa = false;
     load_sa = false;
     wrapper.clear();
-    TLA = true;
+    TLA = false;
 }
 
 // Argument constants for getopts
@@ -176,7 +176,7 @@ enum {
     ARG_MAX_SEED_EXTLEN,
     ARG_SAVE_SA,
     ARG_LOAD_SA,
-    ARG_NO_BASE_CHANGE
+    ARG_TLA
 };
 
 /**
@@ -220,7 +220,7 @@ static void printUsage(ostream& out) {
         << "    --max-seed-extlen <int>" << endl
         << "    --save-sa" << endl
         << "    --load-sa" << endl
-        << "    --no-base-change        make regular repeat index as hisat2, without base change"
+        << "    --base-change           make hisat-3n repeat basease with C->T"
 	    << "    -q/--quiet              disable verbose output (for debugging)" << endl
 	    << "    -h/--help               print detailed description of tool and its options" << endl
 	    << "    --usage                 print this usage message" << endl
@@ -269,7 +269,7 @@ static struct option long_options[] = {
 	{(char*)"max-seed-extlen",required_argument, 0,            ARG_MAX_SEED_EXTLEN},
 	{(char*)"save-sa",        no_argument,       0,            ARG_SAVE_SA},
     {(char*)"load-sa",        no_argument,       0,            ARG_LOAD_SA},
-    {(char*)"no-base-change", no_argument,       0,            ARG_NO_BASE_CHANGE},
+    {(char*)"TLA",            no_argument,       0,            ARG_TLA},
 	{(char*)0, 0, 0, 0} // terminator
 };
 
@@ -466,8 +466,8 @@ static void parseOptions(int argc, const char **argv) {
             case ARG_LOAD_SA:
                 load_sa = true;
                 break;
-            case ARG_NO_BASE_CHANGE: {
-                TLA = false;
+            case ARG_TLA: {
+                TLA = true;
                 break;
             }
 			case 'a': autoMem = false; break;
@@ -903,10 +903,10 @@ int hisat2_repeat(int argc, const char **argv) {
                     string tag = "";
                     if (TLA) {
                         if (i == 0) {
-                            tag = ".3N.1";
+                            tag = ".3n.1";
                             baseChange.convert('C', 'T');
                         } else {
-                            tag = ".3N.2";
+                            tag = ".3n.2";
                             baseChange.convert('G', 'A');
                         }
                     }

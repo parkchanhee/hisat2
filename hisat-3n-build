@@ -88,7 +88,7 @@ def main():
             build_bin_spec = os.path.join(ex_path, build_bin_l)
 
 
-    if "--auto-repeat-index" in argv:
+    if "--repeat-index" in argv:
         #build repeat index first
         outputName = argv[-1]
         nThread = "1"
@@ -99,12 +99,14 @@ def main():
         for i in range(len(argv)):
             if argv[i] == "--no-base-change":
                 TLA = False
-            elif argv[i] == "-p":
+            if argv[i] == "-p":
                 nThread = argv[i+1]
             elif argv[i] == "-f":
                 referenceName = argv[i+1]
-            elif argv[i] == "--auto-repeat-index":
-                repeatLength = argv[i+1]
+            elif argv[i] == "--repeat-index":
+                if not argv[i+1].startswith('-'): # use default (100-300) for repeat length.
+                    repeatLength = argv[i+1]
+        argv.remove(repeatLength)
         if len(referenceName) == 0:
             referenceName = argv[-2]
         cwd = sys.path[0]
@@ -114,10 +116,16 @@ def main():
         repeatArgv += ["-p", nThread]
         repeatArgv += ["--repeat-length", repeatLength]
         repeatArgv += ["--repeat-count", repeatCount]
-        if not TLA:
-            repeatArgv += ["--no-base-change"]
+        if TLA:
+            repeatArgv += ["--TLA"]
         repeatArgv += [referenceName, outputName]
         os.system(" ".join(repeatArgv))
+
+
+    if "--no-base-change" in argv:
+        argv.remove("--no-base-change")
+    else:
+        argv.append("--TLA")
 
     argv[0] = build_bin_name
     argv.insert(1, 'basic-0')

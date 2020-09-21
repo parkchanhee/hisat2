@@ -312,7 +312,7 @@ struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
 bool uniqueOutputOnly;
 
-bool TLA = true;
+bool TLA = false;
 
 #define DMAX std::numeric_limits<double>::max()
 
@@ -553,7 +553,7 @@ static void resetOptions() {
     readLens.clear();
 
     refNameMap = NULL;
-    TLA = true;
+    TLA = false;
     repeatLimit = 1000;
     /*convertedFrom = 'C';
     convertedTo = 'T';
@@ -787,7 +787,6 @@ static struct option long_options[] = {
     {(char*)"no-repeat-index", no_argument,        0,        ARG_NO_REPEAT_INDEX},
     {(char*)"read-lengths",    required_argument,  0,        ARG_READ_LENGTHS},
     {(char*)"base-change",     required_argument,  0,        ARG_BASE_CHANGE},
-    {(char*)"no-base-change",     required_argument,  0,        ARG_NO_BASE_CHANGE},
     {(char*)"repeat-limit",    required_argument,  0,        ARG_REPEAT_LIMIT},
     {(char*)"unique-only",     no_argument,        0,        ARG_UNIQUE_ONLY},
     {(char*)0, 0, 0, 0} // terminator
@@ -1839,10 +1838,6 @@ static void parseOption(int next_option, const char *arg) {
             asc2dna_TLA[0]['c'] = 3;
             asc2dna_TLA[1]['G'] = 0;
             asc2dna_TLA[1]['g'] = 0;
-            break;
-        }
-        case ARG_NO_BASE_CHANGE: {
-            TLA = false;
             break;
         }
         case ARG_REPEAT_LIMIT: {
@@ -4833,8 +4828,8 @@ int hisat2(int argc, const char **argv) {
                     bt2indexs[0] = argv[optind++];
                 }
                 bt2indexs[1] = bt2indexs[0];
-                bt2indexs[0] += ".3N.1";
-                bt2indexs[1] += ".3N.2";
+                bt2indexs[0] += ".3n.1";
+                bt2indexs[1] += ".3n.2";
 			} else {
                 if(bt2indexs[0].empty()) {
                     if(optind >= argc) {

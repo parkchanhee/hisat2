@@ -1795,7 +1795,7 @@ public:
         int score = 100*AS1 + 100*AS2;
         int distance = abs(location1 - location2);
         if (distance > 1000) {
-            score -= distance/10;
+            score -= distance/100;
         }
         if (distance > 500000) {
             return numeric_limits<int>::min();
@@ -1813,7 +1813,7 @@ public:
         int score = -100*XM1 + -100*XM2;
         int distance = abs(location1 - location2);
         if (distance > 100000) {
-            score -= distance/10;
+            score -= distance/1000;
         }
         if (distance > 500000) {
             return numeric_limits<int>::min();
@@ -2120,10 +2120,12 @@ public:
         // output
         bool primaryAlignment = true;
         int nOutput = 0;
-        if (alignments.empty()) {
+        if (uniqueOutputOnly && nAlignment != 1) {
             // make a unalignment result and output it.
-            outputUnAlignmentRead(o);
-        } else if (uniqueOutputOnly && nAlignment > 1) {
+            //outputUnAlignmentRead(o);
+            initialize();
+            return;
+        } else if (alignments.empty()) {
             // make a unalignment result and output it.
             outputUnAlignmentRead(o);
         } else {
@@ -2197,10 +2199,12 @@ public:
         // output
         int nOutput = 0;
         bool primaryAlignment = true;
-        if (alignments.empty() || nBestPair == 0) {
+        if (uniqueOutputOnly && (nBestPair != 1 || multipleAligned)) {
             // make a unalignment result and output it.
-            outputUnAlignmentRead(o);
-        } else if (uniqueOutputOnly && (nBestPair > 1 || multipleAligned)) {
+            //outputUnAlignmentRead(o);
+            initialize();
+            return;
+        } else if (alignments.empty() || nBestPair == 0) {
             // make a unalignment result and output it.
             outputUnAlignmentRead(o);
         } else {
