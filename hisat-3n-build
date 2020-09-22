@@ -24,6 +24,7 @@ import os
 import sys
 import inspect
 import logging
+import re
 
 
 
@@ -96,6 +97,7 @@ def main():
         repeatCount = "5"
         referenceName = ""
         TLA = True
+        removeRepeatLength = False
         for i in range(len(argv)):
             if argv[i] == "--no-base-change":
                 TLA = False
@@ -104,9 +106,12 @@ def main():
             elif argv[i] == "-f":
                 referenceName = argv[i+1]
             elif argv[i] == "--repeat-index":
-                if not argv[i+1].startswith('-'): # use default (100-300) for repeat length.
+                match = re.match(r'\d+-\d+', argv[i+1])
+                if match:
                     repeatLength = argv[i+1]
-        argv.remove(repeatLength)
+                    removeRepeatLength = True
+        if removeRepeatLength:
+            argv.remove(repeatLength)
         if len(referenceName) == 0:
             referenceName = argv[-2]
         cwd = sys.path[0]
