@@ -58,6 +58,10 @@
 #include "outq.h"
 #include "repeat_kmer.h"
 
+#ifdef CP_DEBUG
+#include <malloc.h>
+#endif
+
 using namespace std;
 
 MemoryTally gMemTally;
@@ -3787,6 +3791,12 @@ static void driver(
     repeatdb = new RepeatDB<index_t>();
     raltdb = new ALTDB<index_t>();
 	adjIdxBase = adjustEbwtBase(argv0, bt2indexBase, gVerbose);
+#ifdef CP_DEBUG
+    {
+        fprintf(stderr, "Before gfm\n");
+        malloc_stats();
+    }
+#endif
 	HGFM<index_t, local_index_t> gfm(
                                      adjIdxBase,
                                      altdb,
@@ -3809,6 +3819,12 @@ static void driver(
                                      false /*passMemExc*/,
                                      sanityCheck,
                                      use_haplotype); //use haplotypes?
+#ifdef CP_DEBUG
+    {
+        fprintf(stderr, "After gfm\n");
+        malloc_stats();
+    }
+#endif
 	if(sanityCheck && !os.empty()) {
 		// Sanity check number of patterns and pattern lengths in GFM
 		// against original strings
@@ -3841,6 +3857,12 @@ static void driver(
                            !noRefNames,  // load names?
                            startVerbose);
     }
+#ifdef CP_DEBUG
+    {
+        fprintf(stderr, "After loadIntoMemory\n");
+        malloc_stats();
+    }
+#endif
     RFM<index_t>* rgfm = NULL;
     string rep_adjIdxBase = adjIdxBase + ".rep";
     bool rep_index_exists = false;
@@ -4108,7 +4130,24 @@ static void driver(
                                 nthreads > 1, // thread-safe
                                 write, // write?
                                 read);  // read?
+
+#ifdef CP_DEBUG
+        {
+            fprintf(stderr, "After new SSDB\n");
+            malloc_stats();
+        }
+#endif
         ssdb->read(gfm, altdb->alts());
+
+#ifdef CP_DEBUG
+        {
+            fprintf(stderr, "After ssdb->read\n");
+            malloc_stats();
+
+            ssdb->show_mem_usage();
+        }
+#endif
+
         if(knownSpliceSiteInfile != "") {
             ifstream ssdb_file(knownSpliceSiteInfile.c_str(), ios::in);
             if(ssdb_file.is_open()) {
@@ -4364,6 +4403,12 @@ int hisat2(int argc, const char **argv) {
 			}
 			driver<SString<char> >("DNA", bt2index, outfile);
 		}
+#ifdef CP_DEBUG
+        {
+            fprintf(stderr, "Before ending\n");
+            malloc_stats();
+        }
+#endif
 		return 0;
 	} catch(std::exception& e) {
 		cerr << "Error: Encountered exception: '" << e.what() << "'" << endl;
