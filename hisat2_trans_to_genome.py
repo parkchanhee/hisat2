@@ -64,7 +64,31 @@ def read_transinfo(info_fp):
     return tbl
 
 
-def translate_position(trans_tbl, tid, tr_pos, cigars):
+def map_position(trans_tbl, tid, tr_pos):
+    trans = trans_tbl[tid]
+
+    new_chr = trans[0]
+    exons = trans[3]
+
+    assert len(exons) >= 1
+
+    e_idx = -1
+    new_pos = 0
+    for i, exon in enumerate(exons):
+        # find first exon
+        if tr_pos >= exon[1]:
+            tr_pos -= exon[1]
+        else:
+            new_pos = exon[0] + tr_pos
+            e_idx = i
+            break
+
+    assert e_idx >= 0
+
+    return new_chr, new_pos
+
+
+def translate_pos_cigar(trans_tbl, tid, tr_pos, cigars):
 
     trans = trans_tbl[tid]
     read_len = read_len_cigar(cigars)
@@ -179,9 +203,15 @@ class OutputQueue:
 
         for item, value in self.alignments.items():
             fields = value[1]
+            if item[0] == value[2]:
+                new_pair_chr = '='
+            else:
+                new_pair_chr = value[2]
+            new_pair_pos = value[3]
 
             flag = int(fields[1])
             mapq = 60
+
             if count == 1:
                 mapq = 60
             else:
@@ -192,20 +222,20 @@ class OutputQueue:
 
             assert self.current_rid == '' or self.current_rid == fields[0]
 
-            print('\t'.join([fields[0], str(flag), item[0], str(item[1] + 1), str(mapq), item[2], *fields[6:]]), file=self.fp)
-
+            print('\t'.join([fields[0], str(flag), item[0], str(item[1] + 1), str(mapq), item[2], new_pair_chr, str(new_pair_pos), *fields[8:]]), file=self.fp)
 
     """
     """
-    def add(self, new_rid, new_chr, new_pos, new_cigar, sam_fields):
-        new_key = (new_chr, new_pos, new_cigar)
+    def add(self, flag, new_rid, new_chr, new_pos, new_cigar, sam_fields, new_pair_chr, new_pair_pos):
+        segment = flag & 0x40
+        new_key = (new_chr, new_pos, new_cigar, segment)
 
         assert self.current_rid == '' or self.current_rid == new_rid
 
         if new_key in self.alignments:
             self.alignments[new_key][0] += 1
         else:
-            self.alignments[new_key] = [1, sam_fields]
+            self.alignments[new_key] = [1, sam_fields, new_pair_chr, new_pair_pos]
 
     """
     """
@@ -217,24 +247,25 @@ class OutputQueue:
 
     """
     """
-    def push(self, new_rid, new_chr, new_pos, new_cigar, sam_fields):
+    def push(self, flag, new_rid, new_chr, new_pos, new_cigar, sam_fields, new_pair_chr, new_pair_pos):
         if self.current_rid != new_rid:
             self.flush()
             self.current_rid = new_rid
 
-        self.add(new_rid, new_chr, new_pos, new_cigar, sam_fields)
+        self.add(flag, new_rid, new_chr, new_pos, new_cigar, sam_fields, new_pair_chr, new_pair_pos)
         return
+
 
 def main(sam_file, transinfo_file):
     transinfo_table = read_transinfo(transinfo_file)
 
     outq = OutputQueue()
-    #pprint.pprint(transinfo_table)
 
     for line in sam_file:
         line = line.strip()
         if not line:
             continue
+
         if line.startswith('@'):
             outq.flush()
             print(line)
@@ -257,9 +288,25 @@ def main(sam_file, transinfo_file):
         cigars = cigar_re.findall(cigar_str)
         cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
 
-        new_chr, new_pos, new_cigar = translate_position(transinfo_table, tid, tr_pos, cigars)
+        new_chr, new_pos, new_cigar = translate_pos_cigar(transinfo_table, tid, tr_pos, cigars)
 
-        outq.push(rid, new_chr, new_pos, new_cigar, fields)
+        new_pair_chr = '*'
+        new_pair_pos = 0
+        # update pair-read
+        if flag & 0x1:
+            old_pair_chr = fields[6]
+            old_pair_pos = int(fields[7])
+
+            if old_pair_chr == '*':
+                assert False
+
+            if old_pair_chr == '=':
+                old_pair_chr = tid
+
+            if old_pair_pos > 0:
+                new_pair_chr, new_pair_pos = map_position(transinfo_table, old_pair_chr, old_pair_pos)
+
+        outq.push(flag, rid, new_chr, new_pos, new_cigar, fields, new_pair_chr, new_pair_pos)
 
 
         #print(fields[0], new_chr, new_pos + 1, new_cigar)
