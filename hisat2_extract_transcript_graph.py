@@ -317,12 +317,12 @@ def write_transcripts_ss(fp, gene_id, trans_ids, transcripts, exon_list):
         for i in range(1, len(new_exons)):
             gap = new_exons[i][0] - new_exons[i - 1][1] - 1
             if gap > 0:
-                ss.add((new_exons[i - 1][1], new_exons[i][0]))
+                ss.add((new_exons[i - 1][1], new_exons[i][0], trans[1]))
 
     ss_list = sorted(list(ss))
 
     for s in ss_list:
-        print('{}\t{}\t{}\t{}'.format(gene_id, s[0], s[1], '+'), file=fp)
+        print('{}\t{}\t{}\t{}'.format(gene_id, s[0], s[1], s[2]), file=fp)
 
     return
 

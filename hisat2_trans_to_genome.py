@@ -88,13 +88,9 @@ def map_position(trans_tbl, tid, tr_pos):
     return new_chr, new_pos
 
 
-def translate_pos_cigar(trans_tbl, tid, tr_pos, cigars):
+def translate_pos_cigar(trans_tbl, tid, tr_pos, cigar_str):
 
     trans = trans_tbl[tid]
-    read_len = read_len_cigar(cigars)
-   
-    #print(tr_pos, read_len, trans[2], cigars)
-    assert tr_pos + read_len <= trans[2]
 
     new_chr = trans[0]
 
@@ -113,6 +109,17 @@ def translate_pos_cigar(trans_tbl, tid, tr_pos, cigars):
             break
 
     assert e_idx >= 0
+
+
+    if cigar_str == "*":
+        return new_chr, new_pos, cigar_str
+
+    cigars = cigar_re.findall(cigar_str)
+    cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
+
+    read_len = read_len_cigar(cigars)
+    assert tr_pos + read_len <= trans[2]
+
 
     tmp_cigar = list()
 
@@ -179,12 +186,15 @@ class OutputQueue:
         # read id
         self.current_rid = ''
         # key = [new_chr, new_pos, new_cigar], value = [count, samline_fields]
-        self.alignments = {}
+        #self.alignments = {}
+        self.alignments = list()
+        self.NH = 0
 
     def reset(self):
         self.current_rid = ''
-        self.alignments = {}
-
+        #self.alignments = {}
+        self.alignments = list()
+        self.NH = 0
         return
 
     """
@@ -197,17 +207,68 @@ class OutputQueue:
 
         return
 
+    def remove_dup(self):
+        # not empty
+        assert self.alignments
+
+        #self.alignments.append([new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, flag, sam_fields])
+
+        flag = self.alignments[0][5]
+        if flag & 0x1:
+            # paired-end
+            tmp_alignments = self.alignments
+
+            self.alignments = list()
+
+            if len(tmp_alignments) % 2 > 0:
+                print(tmp_alignments)
+
+            assert len(tmp_alignments) % 2 == 0
+            positions_set = set()
+
+            for i in range(0, len(tmp_alignments), 2):
+                left_alignment = tmp_alignments[i]
+                right_aligment = tmp_alignments[i+1]
+
+                assert left_alignment[4] == right_aligment[1]
+                assert right_aligment[4] == left_alignment[1]
+
+                key = (left_alignment[0], left_alignment[1], left_alignment[2], right_aligment[0], right_aligment[1], right_aligment[2])
+                if key not in positions_set:
+                    positions_set.add(key)
+                    self.alignments.append(left_alignment)
+                    self.alignments.append(right_aligment)
+
+            self.NH = len(self.alignments) // 2
+
+        else:
+            # single-end
+            tmp_alignments = self.alignments
+            self.alignments = list()
+            positions_set = set()
+
+            for alignment in tmp_alignments:
+                key = (alignment[0], alignment[1], alignment[2]) # new_chr, new_pos, new_cigar
+                if key not in positions_set:
+                    positions_set.add(key)
+                    self.alignments.append(alignment)
+
+            self.NH = len(self.alignments)
+        return
+
     def print_sam(self):
 
-        count = len(self.alignments)
+        count = self.NH
 
-        for item, value in self.alignments.items():
-            fields = value[1]
-            if item[0] == value[2]:
+        #        self.alignments.append([new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, flag, sam_fields])
+
+        for alignment in self.alignments:
+            fields = alignment[6]
+            if alignment[0] == alignment[3]:
                 new_pair_chr = '='
             else:
-                new_pair_chr = value[2]
-            new_pair_pos = value[3]
+                new_pair_chr = alignment[3]
+            new_pair_pos = alignment[4]
 
             flag = int(fields[1])
             mapq = 60
@@ -222,32 +283,38 @@ class OutputQueue:
 
             assert self.current_rid == '' or self.current_rid == fields[0]
 
-            print('\t'.join([fields[0], str(flag), item[0], str(item[1] + 1), str(mapq), item[2], new_pair_chr, str(new_pair_pos), *fields[8:]]), file=self.fp)
+            print('\t'.join([fields[0], str(flag), alignment[0], str(alignment[1] + 1), str(mapq), alignment[2], new_pair_chr, str(new_pair_pos + 1), *fields[8:]]), file=self.fp)
 
     """
     """
     def add(self, flag, new_rid, new_chr, new_pos, new_cigar, sam_fields, new_pair_chr, new_pair_pos):
-        segment = flag & 0x40
-        new_key = (new_chr, new_pos, new_cigar, segment)
+        primary = flag & 0x900
+        #new_key = (new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, primary)
 
         assert self.current_rid == '' or self.current_rid == new_rid
 
+        self.alignments.append([new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, flag, sam_fields])
+
+        """
         if new_key in self.alignments:
             self.alignments[new_key][0] += 1
         else:
             self.alignments[new_key] = [1, sam_fields, new_pair_chr, new_pair_pos]
+        """
+
 
     """
     """
     def flush(self):
         if self.alignments:
+            self.remove_dup()
             self.print_sam()
 
         self.reset()
 
     """
     """
-    def push(self, flag, new_rid, new_chr, new_pos, new_cigar, sam_fields, new_pair_chr, new_pair_pos):
+    def push(self, flag, new_rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, sam_fields):
         if self.current_rid != new_rid:
             self.flush()
             self.current_rid = new_rid
@@ -274,43 +341,68 @@ def main(sam_file, transinfo_file):
         fields = line.split('\t')
 
         flag = int(fields[1])
+        """
         if flag & 0x04:
             # unmapped
             outq.flush()
             print(line)
             continue
+        """
 
         rid = fields[0]
         tid = fields[2]
-        tr_pos = int(fields[3]) - 1
-        cigar_str = fields[5]
 
-        cigars = cigar_re.findall(cigar_str)
-        cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
+        if rid == '858144':
+            print(rid)
 
-        new_chr, new_pos, new_cigar = translate_pos_cigar(transinfo_table, tid, tr_pos, cigars)
-
-        new_pair_chr = '*'
-        new_pair_pos = 0
         # update pair-read
         if flag & 0x1:
-            old_pair_chr = fields[6]
-            old_pair_pos = int(fields[7])
+            if flag & 0xc == 0xc:
+                rid = fields[2]
+                new_chr = tid
+                new_pos = 0
+                new_cigar = "*"
+                new_pair_chr = "*"
+                new_pair_pos = 0
+            else:
+                old_pair_chr = fields[6]
+                old_pair_pos = int(fields[7]) - 1
 
-            if old_pair_chr == '*':
-                assert False
+                tr_pos = int(fields[3]) - 1
+                cigar_str = fields[5]
 
-            if old_pair_chr == '=':
-                old_pair_chr = tid
+                if old_pair_chr == '*':
+                    assert False
 
-            if old_pair_pos > 0:
+                if old_pair_chr == "=":
+                    old_pair_chr = tid
+
+                new_chr, new_pos, new_cigar = translate_pos_cigar(transinfo_table, tid, tr_pos, cigar_str)
                 new_pair_chr, new_pair_pos = map_position(transinfo_table, old_pair_chr, old_pair_pos)
 
-        outq.push(flag, rid, new_chr, new_pos, new_cigar, fields, new_pair_chr, new_pair_pos)
+            outq.push(flag, rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, fields)
 
+        else:
+            # single
+            if flag & 0x04:
+                # unmapped
+                outq.flush()
+                print(line)
+                continue
 
-        #print(fields[0], new_chr, new_pos + 1, new_cigar)
-        
+            tr_pos = int(fields[3]) - 1
+            cigar_str = fields[5]
+
+            new_chr, new_pos, new_cigar = translate_pos_cigar(transinfo_table, tid, tr_pos, cigar_str)
+
+            new_pair_chr = '*'
+            new_pair_pos = 0
+
+            outq.push(flag, rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, fields)
+
+            #print(fields[0], new_chr, new_pos + 1, new_cigar)
+
+    # end
     outq.flush()
 
     return
