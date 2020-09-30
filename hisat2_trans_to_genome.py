@@ -180,6 +180,7 @@ def translate_pos_cigar(trans_tbl, tid, tr_pos, cigar_str):
 
 
 class OutputQueue:
+
     def __init__(self, fp=sys.stdout):
         self.fp = fp
 
@@ -189,12 +190,16 @@ class OutputQueue:
         #self.alignments = {}
         self.alignments = list()
         self.NH = 0
+        self.left_NH = 0
+        self.right_NH = 0
 
     def reset(self):
         self.current_rid = ''
         #self.alignments = {}
         self.alignments = list()
         self.NH = 0
+        self.left_NH = 0
+        self.right_NH = 0
         return
 
     """
@@ -221,25 +226,52 @@ class OutputQueue:
             self.alignments = list()
 
             if len(tmp_alignments) % 2 > 0:
-                print(tmp_alignments)
+                print(tmp_alignments, file=sys.stderr)
 
-            assert len(tmp_alignments) % 2 == 0
+            #assert len(tmp_alignments) % 2 == 0
             positions_set = set()
 
-            for i in range(0, len(tmp_alignments), 2):
-                left_alignment = tmp_alignments[i]
-                right_aligment = tmp_alignments[i+1]
+            left_alignments_list = list()
+            right_alignments_list = list()
 
-                assert left_alignment[4] == right_aligment[1]
-                assert right_aligment[4] == left_alignment[1]
+            def check_dup_append(alignments_list, key, value):
+                for item in alignments_list:
+                    if key == item[0]:
+                        return
 
-                key = (left_alignment[0], left_alignment[1], left_alignment[2], right_aligment[0], right_aligment[1], right_aligment[2])
-                if key not in positions_set:
-                    positions_set.add(key)
-                    self.alignments.append(left_alignment)
-                    self.alignments.append(right_aligment)
+                alignments_list.append([key, value])
+                return
 
-            self.NH = len(self.alignments) // 2
+            for i in range(0, len(tmp_alignments)):
+                alignment = tmp_alignments[i]
+
+                # chr_name, pos, cigar, pair_chr, pair_pos
+                key = (alignment[0], alignment[1], alignment[2], alignment[3], alignment[4])
+                value = alignment
+                flag = alignment[5]
+
+                # check_dup
+                if flag & 0x40:
+                    # first, left
+                    check_dup_append(left_alignments_list, key, value)
+
+                elif flag & 0x80:
+                    # last, right
+                    check_dup_append(right_alignments_list, key, value)
+
+                else:
+                    assert False
+
+            #self.NH = len(self.alignments) // 2
+            self.left_NH = len(left_alignments_list)
+            self.right_NH = len(right_alignments_list)
+
+            # make paires
+            i = 0
+            j = 0
+            while i < len(left_alignments_list) and j < len(right_alignments_list):
+
+                pass
 
         else:
             # single-end
