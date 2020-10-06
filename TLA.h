@@ -34,18 +34,14 @@
 #include <unistd.h>
 #include <queue>
 
-//class ReferenceGenome;
-//extern ReferenceGenome reference;
 extern char convertedFrom;
 extern char convertedTo;
 extern char convertedFromComplement;
 extern char convertedToComplement;
-//extern bool expandRepeat;
-extern vector<ht2_handle_t> repeatHandles;
+extern EList<ht2_handle_t> repeatHandles;
 extern struct ht2_index_getrefnames_result *refNameMap;
 extern int repeatLimit;
 extern bool uniqueOutputOnly;
-//extern bool no_spliced_alignment;
 
 using namespace std;
 
@@ -114,131 +110,14 @@ public:
     }
 };
 
-/*class ChromosomeAddress{
-    string chromosome;
-    long long int startPosition;
-public:
-    ChromosomeAddress(string inputChromosome, long long int inputPosition):
-            chromosome(inputChromosome), startPosition(inputPosition) {
-    }
-
-    const string& getChromosome() const {
-        return chromosome;
-    }
-
-    long long int& getPosition() {
-        return startPosition;
-    }
-};
-
-class ReferenceGenome{
-    // store reference genome in this class as a big character array for sequence and vector for chromosome start location
-
-    char * refArray; // char array for reference genome storage.
-    vector<ChromosomeAddress> chromosomeInfo; // vector to indicate start location (on refArray) for each chromosome.
-    int N_chromosome = 0; // number of total chromosome. this is the right bondary for binary search.
-
-    static bool sortChromosomeAddress(const ChromosomeAddress& first, const ChromosomeAddress& second) {
-        // ascending sort rule by chromosome name
-        return (first.getChromosome() < second.getChromosome());
-    }
-
-    void sortByChromosome() {
-        // ascending sort by chromosome name
-        sort(chromosomeInfo.begin(), chromosomeInfo.end(), sortChromosomeAddress);
-    }
-
-    long long int searchChromosome(string &chromosome, int left, int right) {
-        // given chromosome name and search range, perform binary search to location chromosome in chromosomeInfo.
-
-        if (left <= right) {
-            int middle = (right + left) / 2;
-
-            if (chromosomeInfo[middle].getChromosome() == chromosome) {
-                return chromosomeInfo[middle].getPosition();
-            }
-            if (chromosomeInfo[middle].getChromosome() > chromosome) {
-                return searchChromosome(chromosome, left, middle-1);
-            }
-            return searchChromosome(chromosome, middle+1, right);
-        }
-
-        throw "wrong chromosome name";
-    }
-
-    ifstream::pos_type getFileSize(string filename) {
-        ifstream in(filename, std::ios::binary | std::ios::ate);
-        return in.tellg();
-    }
-
-    vector<string> splitString(string &inputString, string delimiter) {
-        vector<string> outputVector;
-        size_t startPosition = 0;
-        size_t endPosition = 0;
-        string info;
-
-        while ((endPosition = inputString.find(delimiter, startPosition)) != string::npos) {
-            info = inputString.substr(startPosition, endPosition-startPosition);
-            outputVector.push_back(info);
-            startPosition = endPosition + delimiter.length();
-        }
-        outputVector.push_back(inputString.substr(startPosition));
-        return outputVector;
-    }
-public:
-
-    ReferenceGenome() {
-    }
-
-    ~ReferenceGenome() {
-        free(refArray);
-    }
-
-    void load(string &referenceFileName) {
-        // load genome reference sequence from disk to memory.
-        // malloc a large memory with file size and write sequence into it.
-
-        ifstream refFile;
-        refFile.open(referenceFileName, ios_base::in);
-
-        string chromosome;
-        long long int n = 0; //this indicate current location in refArray.
-        ifstream::pos_type filesize = getFileSize(referenceFileName);
-        char* refArray_tmp = (char*) malloc(filesize);
-
-        if (refFile.is_open()) {
-            string line;
-
-            while (refFile.good()) {
-                getline(refFile, line);
-                if (line.front() == '>') { // this line is chromosome name
-                    chromosome = splitString(line, " ")[0].substr(1);
-                    chromosomeInfo.push_back(ChromosomeAddress(chromosome, n));
-                    N_chromosome = chromosomeInfo.size();
-                } else {
-                    for (int i = 0; i < line.size(); i++) {
-                        *(refArray_tmp+n+i) = toupper(line[i]);
-                    }
-                    n += line.size();
-                }
-            }
-        }
-
-        refArray = (char*) realloc(refArray_tmp, n);
-        sortByChromosome(); // sort my chromosome name for binary search.
-        refFile.close();
-    }
-
-    char* getPointer(string chromosome, long long int location) {
-        // by input chromosome name and the location on that chromosome, return the char pointer point to the location.
-        return refArray + searchChromosome(chromosome, 0, N_chromosome-1) + location;
-    }
-};*/
-
 class Cigar {
     int len;
     char label;
 public:
+
+    Cigar() {
+
+    }
 
     Cigar(int inputLen, char inputLabel): len(inputLen), label(inputLabel) {
     }
@@ -255,7 +134,7 @@ public:
 class RepeatPosition{
 public:
     long long int location;
-    string chromosome;
+    BTString chromosome;
     int pairScore;
     long long int pairToLocation;
     bool concordant;
@@ -265,10 +144,12 @@ public:
         pairScore = numeric_limits<int>::min();
         pairToLocation = 0;
         concordant = false;
-        YZ = "";
     }
 
-    RepeatPosition(long long int &inputLocation, string &inputChromosome, BTString &repeatYZ):
+    RepeatPosition() {
+        initialize();
+    }
+    RepeatPosition(long long int &inputLocation, BTString &inputChromosome, BTString &repeatYZ):
         location(inputLocation), chromosome(inputChromosome),YZ(repeatYZ) {
         initialize();
     }
@@ -277,7 +158,7 @@ public:
 class MappingPosition {
 public:
     long long int location;
-    string chromosome;
+    BTString chromosome;
     int AS;
     int pairScore;
     int pairSegment;
@@ -285,29 +166,29 @@ public:
     bool concordant;
 
     // for repeat alignment only
-    string MD;
-    //int AS;
+    BTString MD;
     int XM;
     int NM;
     int YS;
     int TC;
     BTString MP;
     int RA_Array[5][5] = {{0,},};
-    string refSequence;
-    vector<RepeatPosition> repeatPositions;
+    BTString refSequence;
+    EList<RepeatPosition> repeatPositions;
 
-    MappingPosition (long long int inputLocation, string inputChromosome, int inputReadSegment=0, bool inputConcordant=false,
-                     int inputPairScore=numeric_limits<int>::min(), long long int inputPairToLocation = -1){
+    MappingPosition() {
+
+    }
+
+    MappingPosition (long long int inputLocation, BTString inputChromosome, int inputReadSegment=0, bool inputConcordant=false){
         concordant = inputConcordant;
         location = inputLocation;
         chromosome = inputChromosome;
-        pairScore = inputPairScore;
         pairSegment = inputReadSegment;
-        pairToLocation = inputPairToLocation;
         pairScore = numeric_limits<int>::min();
     }
 
-    MappingPosition (long long int inputLocation, string inputChromosome, string &inputRefSequence, int &inputAS, string &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &inputMP, int inputRA[5][5], BTString &repeatYZ, int inputYS):
+    MappingPosition (long long int inputLocation, BTString inputChromosome, BTString &inputRefSequence, int &inputAS, BTString &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &inputMP, int inputRA[5][5], BTString &repeatYZ, int inputYS):
             location(inputLocation), chromosome(inputChromosome), refSequence(inputRefSequence), AS(inputAS), MD(inputMD), XM(inputXM), NM(inputNM), TC(inputTC), MP(inputMP), YS(inputYS){
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
@@ -318,14 +199,14 @@ public:
         addRepeatPosition(inputLocation, inputChromosome, repeatYZ);
     }
 
-    void addRepeatPosition(long long int &inputLocation, string &inputChromosome, BTString repeatYZ) {
+    void addRepeatPosition(long long int &inputLocation, BTString &inputChromosome, BTString repeatYZ) {
         repeatPositions.push_back(RepeatPosition(inputLocation, inputChromosome, repeatYZ));
     }
 };
 
 class MappingPositions {
 public:
-    vector<MappingPosition> positions;
+    EList<MappingPosition> positions;
     int bestPairScore;
     int nPair;
 
@@ -339,7 +220,7 @@ public:
         initialize();
     };
 
-    bool sequenceExist (string& refSequence, int &index) {
+    bool sequenceExist (BTString & refSequence, int &index) {
         // return true if reference sequence is exist, else, return false.
         for (int i = 0; i < positions.size(); i++) {
             if (refSequence == positions[i].refSequence) {
@@ -350,9 +231,9 @@ public:
         return false;
     }
 
-    bool positionExist (Alignment* newAlignment);
+    bool positionExist (Alignment* newAlignment, int& index);
 
-    bool positionExist (long long int &location, string &chromosome, int pairSegment, int &index) {
+    /*bool positionExist (long long int &location, string &chromosome, int pairSegment, int &index) {
         // return true if position is exist, else, return false.
         for (int i = 0; i < positions.size(); i++) {
             if ((positions[i].location == location) &&
@@ -363,19 +244,19 @@ public:
             }
         }
         return false;
-    }
+    }*/
 
-    void appendRepeat(string &chromosome, long long int &location, int &index) {
+    void appendRepeat(BTString &chromosome, long long int &location, int &index) {
         positions[index].addRepeatPosition(location, chromosome, positions[index].repeatPositions[0].YZ);
     }
 
-    void appendRepeat(long long int &location, string &chromosome, string &refSequence, int &AS, string &MD, int &XM, int &NM, int &TC, BTString &MP, int RA[5][5], BTString &repeatYZ, int YS=0) {
+    void appendRepeat(long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &MP, int RA[5][5], BTString &repeatYZ, int YS=0) {
         positions.push_back(MappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS));
     }
 
     bool append(Alignment* newAlignment);
 
-    bool append (string chromosome, long long int location, int pairSegment=0) {
+    /*bool append (string chromosome, long long int location, int pairSegment=0) {
         // return true if the position is not exist and will append to positions, else, false.
         int index;
         if (positionExist(location, chromosome, pairSegment, index)) {
@@ -384,7 +265,7 @@ public:
             positions.emplace_back(location, chromosome);
             return true;
         }
-    }
+    }*/
 };
 
 class Alignment {
@@ -402,7 +283,7 @@ public:
     long long int pairingDistance;
     BTString readSequence;
     BTString readQuality;
-    vector<Cigar> cigarSegments;
+    EList<Cigar> cigarSegments;
 
     // save original sequence and quality score for output
     BTString originalFw;
@@ -442,7 +323,7 @@ public:
     struct ht2_repeat_expand_result *repeatResult = nullptr;
     int pairScore; // to identify the better pair
 
-    vector<Alignment*> oppositePairAddresses;
+    EList<Alignment*> oppositePairAddresses;
     // for repeatAlignment only
     bool repeat;
     bool pairToRepeat;
@@ -559,7 +440,7 @@ public:
             if (isalpha(cigar_string[i])){
                 int len = stoi(cigar_string.substr(previousLocation, lenLength));
                 cigarLength += len;
-                cigarSegments.push_back(Cigar( len, cigar_string[i]));
+                cigarSegments.push_back(Cigar(len, cigar_string[i]));
                 previousLocation = i + 1;
                 lenLength = 0;
             } else {
@@ -629,15 +510,18 @@ public:
                                             readSequence.length(),
                                             &repeatResult);
 
-        string chromosomeRepeat;
+        BTString chromosomeRepeat;
         long long int locationRepeat;
         for (int i = 0; i < repeatResult->count; i++) {
             clearExtraTags();
 
             struct ht2_position *pos = &repeatResult->positions[i];
             chromosomeRepeat = refNameMap->names[pos->chr_id];
-            if (chromosomeRepeat.find(' ', 0) != string::npos) {
-                chromosomeRepeat = chromosomeRepeat.substr(0, chromosomeRepeat.find(' ', 0));
+            for (int j = 0; j < chromosomeRepeat.length(); j++) {
+                if (chromosomeRepeat[j] == ' ') {
+                    chromosomeRepeat.trimEnd(chromosomeRepeat.length() - j);
+                    break;
+                }
             }
             locationRepeat = (pos->pos) + 1;
             bool genomeForward = pos->direction == 0;
@@ -661,10 +545,11 @@ public:
                     (size_t)cigarLength ASSERT_ONLY(, destU32));
             char* refSeq = raw_refbuf.wbuf() + off;
 
-            string refSequence;
+            BTString refSequence;
             refSequence.resize(cigarLength);
             for (int j = 0; j < cigarLength; j++) {
-                refSequence[j] = intToBase[*(refSeq + j)];
+                //refSequence[j] = intToBase[*(refSeq + j)];
+                refSequence.set(intToBase[*(refSeq + j)], j);
             }
 
             int repeatPositionsIndex;
@@ -676,10 +561,10 @@ public:
                 continue;
             }
 
-            string newMD;
+            BTString newMD;
             int nIncorrectMatch = 0;
             BTString repeatYZ;
-            if (!constructRepeatMD(refSequence,newMD, nIncorrectMatch, repeatYZ)) {
+            if (!constructRepeatMD(refSequence, newMD, nIncorrectMatch, repeatYZ)) {
                 continue;
             }
 
@@ -715,10 +600,12 @@ public:
         }
     }
 
-    bool constructRepeatMD(string &refSeq, string &newMD_String, int &nIncorrectMatch, BTString &repeatYZ) {
+    bool constructRepeatMD(BTString &refSeq, BTString &newMD_String, int &nIncorrectMatch, BTString &repeatYZ) {
         // construct new MD string, this function is for repeat read
         // return true, if the read is mapped to correct location.
         // return false, if the read is mapped to incorrect location.
+
+        char buf[1024];
 
         conversionCount[0] = 0;
         conversionCount[1] = 0;
@@ -747,12 +634,17 @@ public:
                     } else {// mismatch
                         // output matched count
                         if (count != 0) {
-                            newMD_String += to_string(count);
+                            //std::stringstream ss;
+                            //ss << count;
+                            //newMD_String.append(ss.str().c_str());
+                            itoa10<int>(count, buf);
+                            newMD_String.append(buf);
                             count = 0;
                         }
                         // output mismatch
-                        if (!newMD_String.empty() && isalpha(newMD_String.back())) {
-                            newMD_String += '0';
+                        if (!newMD_String.empty() && isalpha(newMD_String[newMD_String.length()-1])) {
+                            char test = newMD_String[newMD_String.length()-1];
+                            newMD_String.append('0');
                         }
                         if ((readChar == convertedTo) && (refChar == convertedFrom)) {
                             conversionCount[0]++;
@@ -762,7 +654,8 @@ public:
                             // real mismatch
                             newXM++;
                         }
-                        newMD_String += refChar;
+                        //newMD_String += refChar;
+                        newMD_String.append(refChar);
                         updateMP(refPos, readChar, refPos, refChar);
                     }
                     if (newXM + (conversionCount[0] >= conversionCount[1] ? conversionCount[1]:conversionCount[0])> readSequence.length()/25) {
@@ -775,22 +668,31 @@ public:
             } else if (cigarSymbol == 'I') {
                 readPos += cigarLen;
             } else if (cigarSymbol == 'D') {
-                newMD_String += '^';
+                //newMD_String += '^';
+                newMD_String.append('^');
                 for (int j = 0; j < cigarLen; j++) {
-                    newMD_String += refSeq[refPos];
+                    //newMD_String += refSeq[refPos];
+                    newMD_String.append(refSeq[refPos]);
                     refPos++;
                 }
             }
         }
 
         if (count != 0) {
-            newMD_String += to_string(count);
+            //newMD_String += to_string(count);
+            //std::stringstream ss;
+            //ss << count;
+            //newMD_String.append(ss.str().c_str());
+            itoa10<int>(count, buf);
+            newMD_String.append(buf);
         }
-        if (isalpha(newMD_String.front())) {
-            newMD_String = '0' + newMD_String;
+        if (isalpha(newMD_String[0])) {
+            // = '0' + newMD_String;
+            newMD_String.insert('0', 0);
         }
-        if (isalpha(newMD_String.back())) {
-            newMD_String += '0';
+        if (isalpha(newMD_String[newMD_String.length()-1])) {
+            //newMD_String += '0';
+            newMD_String.append('0');
         }
 
         newXM -= XM;
@@ -809,8 +711,10 @@ public:
         if (!mapped) {
             return true;
         }
+        char buf[1024];
         praseCigar();
-        string newMD_String;
+        //BTString newMD_String;
+        MD.clear();
         //locationPointer = reference.getPointer(chromosomeName.toZBuf(), location-1);
 
         ASSERT_ONLY(SStringExpandable<uint32_t> destU32);
@@ -848,12 +752,18 @@ public:
                     } else {// mismatch
                         // output matched count
                         if (count != 0) {
-                            newMD_String += to_string(count);
+                            //newMD_String += to_string(count);
+                            //std::stringstream ss;
+                            //ss << count;
+                            //MD.append(ss.str().c_str());
+                            itoa10<int>(count, buf);
+                            MD.append(buf);
                             count = 0;
                         }
                         // output mismatch
-                        if (!newMD_String.empty() && isalpha(newMD_String.back())) {
-                            newMD_String += '0';
+                        if (!MD.empty() && isalpha(isalpha(MD[MD.length()-1]))) {
+                            //newMD_String += '0';
+                            MD.append('0');
                         }
                         if ((readChar == convertedTo) && (refChar == convertedFrom)) {
                             conversionCount[0]++;
@@ -863,7 +773,8 @@ public:
                             // real mismatch
                             newXM++;
                         }
-                        newMD_String += refChar;
+                        //newMD_String += refChar;
+                        MD.append(refChar);
                         updateMP(refPos, readChar, refPos, refChar);
                     }
                     if (newXM + (conversionCount[0] >= conversionCount[1] ? conversionCount[1]:conversionCount[0])> readSequence.length()/25) {
@@ -877,25 +788,38 @@ public:
                 readPos += cigarLen;
             } else if (cigarSymbol == 'D') {
                 if (count != 0) {
-                    newMD_String += to_string(count);
+                    //std::stringstream ss;
+                    //ss << count;
+                    //MD.append(ss.str().c_str());
+                    itoa10<int>(count, buf);
+                    MD.append(buf);
                     count = 0;
                 }
-                newMD_String += '^';
+                //newMD_String += '^';
+                MD.append('^');
                 for (int j = 0; j < cigarLen; j++) {
-                    newMD_String += *(refSeq + refPos);
+                    //newMD_String += *(refSeq + refPos);
+                    MD.append(*(refSeq + refPos));
                     refPos++;
                 }
             }
         }
 
         if (count != 0) {
-            newMD_String += to_string(count);
+            //newMD_String += to_string(count);
+            //std::stringstream ss;
+            //ss << count;
+            //MD.append(ss.str().c_str());
+            itoa10<int>(count, buf);
+            MD.append(buf);
         }
-        if (isalpha(newMD_String.front())) {
-            newMD_String = '0' + newMD_String;
+        if (isalpha(MD[0])) {
+            //newMD_String = '0' + newMD_String;
+            MD.insert('0', 0);
         }
-        if (isalpha(newMD_String.back())) {
-            newMD_String += '0';
+        if (isalpha(MD[MD.length()-1])) {
+            //newMD_String += '0';
+            MD.append('0');
         }
 
         int extraIncorrectMatch = 0;
@@ -914,7 +838,7 @@ public:
         NM += extraIncorrectMatch;
         XM += extraIncorrectMatch;
         AS = AS - 6*extraIncorrectMatch;
-        MD = newMD_String;
+        //MD = newMD_String;
         return true;
     }
 
@@ -988,7 +912,7 @@ public:
         }
     }
 
-    void outputRepeatFlags(BTString& o, int &inputAS, int &inputXM, int &inputNM, string &inputMD,
+    void outputRepeatFlags(BTString& o, int &inputAS, int &inputXM, int &inputNM, BTString &inputMD,
             int &inputTC, int inputRA[5][5], BTString &inputMP, BTString &repeatYZ) {
         // this function is for repeat-expand alignment output.
         char buf[1024];
@@ -1014,7 +938,7 @@ public:
         o.append('\t');
         // MD
         o.append("MD:Z:");
-        o.append(inputMD.c_str());
+        o.append(inputMD.toZBuf());
         o.append('\t');
         // YS
         if (paired) {
@@ -1121,7 +1045,7 @@ public:
         o.append('\n');
     }
 
-    void outputRepeatOppositePair(BTString& o, Alignment* oppositeAlignment, string &chromosome, long long int &location, long long int &oppoLocation, bool primary) {
+    void outputRepeatOppositePair(BTString& o, Alignment* oppositeAlignment, BTString &chromosome, long long int &location, long long int &oppoLocation, bool primary) {
         char buf[1024];
 
         for (int i = 0; i < oppositeAlignment->repeatPositions.positions.size(); i++) {
@@ -1136,7 +1060,7 @@ public:
                     o.append(buf);
                     o.append('\t');
                     // chromosome
-                    o.append(chromosome.c_str());
+                    o.append(chromosome.toZBuf());
                     o.append('\t');
                     // location
                     itoa10<int>(location, buf);
@@ -1194,7 +1118,7 @@ public:
                             o.append(buf);
                             o.append('\t');
                             // chromosome
-                            o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                            o.append(currentPosition->repeatPositions[j].chromosome.toZBuf());
                             o.append('\t');
                             // location
                             itoa10<int>(currentPosition->repeatPositions[j].location, buf);
@@ -1244,7 +1168,7 @@ public:
                                     outputRepeatOppositePair(o, oppositePairAddresses[k], currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, currentPosition->repeatPositions[j].location, (nOutput==1 && primaryAlignment));
                                 } else {
                                     if (!oppositePairAddresses[k]->mapped) {
-                                        oppositePairAddresses[k]->chromosomeName = currentPosition->repeatPositions[j].chromosome.c_str();
+                                        oppositePairAddresses[k]->chromosomeName = currentPosition->repeatPositions[j].chromosome.toZBuf();
                                         oppositePairAddresses[k]->location = currentPosition->repeatPositions[j].location;
                                         oppositePairAddresses[k]->pairToLocation = currentPosition->repeatPositions[j].location;
                                     }
@@ -1257,7 +1181,7 @@ public:
                                     outputRepeatOppositePair(o, oppositePairAddresses[k], currentPosition->repeatPositions[j].chromosome, currentPosition->repeatPositions[j].pairToLocation, currentPosition->repeatPositions[j].location, (nOutput==1 && primaryAlignment));
                                 } else {
                                     if (!oppositePairAddresses[k]->mapped) {
-                                        oppositePairAddresses[k]->chromosomeName = currentPosition->repeatPositions[j].chromosome.c_str();
+                                        oppositePairAddresses[k]->chromosomeName = currentPosition->repeatPositions[j].chromosome.toZBuf();
                                         oppositePairAddresses[k]->location = currentPosition->repeatPositions[j].location;
                                         oppositePairAddresses[k]->pairToLocation = currentPosition->repeatPositions[j].location;
                                     }
@@ -1272,7 +1196,7 @@ public:
                             o.append(buf);
                             o.append('\t');
                             // chromosome
-                            o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                            o.append(currentPosition->repeatPositions[j].chromosome.toZBuf());
                             o.append('\t');
                             // location
                             itoa10<int>(currentPosition->repeatPositions[j].location, buf);
@@ -1328,7 +1252,7 @@ public:
                         o.append(buf);
                         o.append('\t');
                         // chromosome
-                        o.append(currentPosition->repeatPositions[j].chromosome.c_str());
+                        o.append(currentPosition->repeatPositions[j].chromosome.toZBuf());
                         o.append('\t');
                         // location
                         itoa10<int>(currentPosition->repeatPositions[j].location, buf);
@@ -1391,7 +1315,7 @@ public:
 
 class Alignments {
 public:
-    vector<Alignment*> alignments; // pool to store current alignment result.
+    EList<Alignment*> alignments; // pool to store current alignment result.
     queue<Alignment*> freeAlignments; // free pointer pool for new alignment result. after output a alignment, return the pointer back to this pool.
 
     TReadId previousReadID;
@@ -1433,7 +1357,7 @@ public:
         while(!alignments.empty()){
             alignments[0]->initialize();
             freeAlignments.push(alignments[0]);
-            alignments.erase(alignments.begin());
+            alignments.erase(0);
         }
     }
 
@@ -1578,7 +1502,7 @@ public:
             long long int location2 = alignment2->location;
             bool forward1 = alignment1->forward;
             bool forward2 = alignment2->forward;
-            string chrmosome2 = alignment2->chromosomeName.toZBuf();
+            BTString chrmosome2 = alignment2->chromosomeName;
 
             for (int i = 0; i < alignment1->repeatPositions.positions.size(); i++) {
                 MappingPosition *repeatPositions = &alignment1->repeatPositions.positions[i];
@@ -1626,7 +1550,7 @@ public:
             int AS1 = alignment1->AS;
             int XM1 = alignment1->XM;
             long long int location1 = alignment1->location;
-            string chromosome1 = alignment1->chromosomeName.toZBuf();
+            BTString chromosome1 = alignment1->chromosomeName;
             bool forward1 = alignment1->forward;
             bool forward2 = alignment2->forward;
 

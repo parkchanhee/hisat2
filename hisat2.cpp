@@ -307,7 +307,7 @@ char convertedFrom;
 char convertedTo;
 char convertedToComplement;
 char convertedFromComplement;
-vector<ht2_handle_t> repeatHandles;
+EList<ht2_handle_t> repeatHandles;
 struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
 bool uniqueOutputOnly;
@@ -2093,25 +2093,21 @@ class referenceTLA {
 public:
     const HGFM<index_t>* multiseed_gfm[2];
     const RFM<index_t>* multiseed_rgfm[2];
-    //const BitPairReference* multiseed_refs[2];
     const BitPairReference* multiseed_rrefs[2];
 
     referenceTLA() {
 
     }
 
-    void load(vector<HGFM<index_t>* >& gfms_TLA,
+    void load(EList<HGFM<index_t>* >& gfms_TLA,
               RFM<index_t>* rgfms_TLA[2],
-              //auto_ptr<BitPairReference> refss[2],
               BitPairReference* rrefss[2]) {
         for (int i = 0; i < 2; i++) {
             multiseed_gfm[i] = gfms_TLA[i];
-            //multiseed_refs[i] =  refss[i].get();
             multiseed_rgfm[i] = rgfms_TLA[i];
             multiseed_rrefs[i] = rrefss[i];
         }
     }
-
 };
 
 referenceTLA refTLA;
@@ -3324,8 +3320,6 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                    no_spliced_alignment ? NULL : ssdb,
                                    thread_rids_mindist);
 
-	//vector<AlnSinkWrap<index_t> > msinkwraps;
-
     SplicedAligner<index_t, local_index_t> splicedAligner(TLA? *gfm_TLA[0]: gfm,
                                                           anchorStop,
                                                           thread_rids_mindist);
@@ -3901,7 +3895,7 @@ static void multiseedSearch(
                             GraphPolicy& gp,
                             PairedPatternSource& patsrc,            // pattern source
                             AlnSink<index_t>& msink,                // hit sink
-                            vector<HGFM<index_t>* > gfms_TLA,           // TLA index of original text
+                            EList<HGFM<index_t>* > gfms_TLA,           // TLA index of original text
                             RFM<index_t>* rgfms_TLA[2],                 // TLA index of repeat sequences
                             BitPairReference* rrefss[2],            // TLA repeat reference
                             HGFM<index_t>* gfm,           // index of original text
@@ -4032,7 +4026,7 @@ static void driver(
         }
     }
 
-    vector<HGFM<index_t>* >gfms_TLA;
+    EList<HGFM<index_t>* >gfms_TLA;
     RFM<index_t>* rgfms_TLA[2];
     for (int i = 0; i < 2; i++) {
         rgfms_TLA[i] = NULL;

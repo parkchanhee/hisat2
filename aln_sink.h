@@ -29,7 +29,6 @@
 #include "simple_func.h"
 #include "outq.h"
 #include <utility>
-#include <vector>
 #include "alt.h"
 #include "splice_site.h"
 //#include "TLA.h"
@@ -1601,83 +1600,6 @@ public:
         return pair<index_t, index_t>(numGenome, numRepeat);
     }
 
-    /*pair<EList<AlnRes>, EList<AlnRes> > getAlignmentResult() {
-        return make_pair(rs1u_, rs2u_);
-    } */
-
-    /*void combineAlignmentResult(AlnSinkWrap<index_t> mSinkWarp) {
-
-        if (this->rs1u_.empty() && this->rs1u_.empty()) {
-            //return;
-        } else if (!this->rs1u_.empty() && mSinkWarp.rs1u_.empty()) {
-            //return;
-        } else if (this->rs1u_.empty() && !mSinkWarp.rs1u_.empty()){
-            this->rs1u_ = mSinkWarp.rs1u_;
-            this->rs1_ = mSinkWarp.rs1_;
-            this->st_ = mSinkWarp.st_;
-        } else if (this->rs1u_[0].score() > mSinkWarp.rs1u_[0].score()) {
-            //return;
-        }  else if (this->rs1u_[0].score() < mSinkWarp.rs1u_[0].score()) {
-            this->rs1u_ = mSinkWarp.rs1u_;
-            this->rs1_ = mSinkWarp.rs1_;
-            this->st_ = mSinkWarp.st_;
-        } else {
-            vector<int> addVector;
-            for (int i = 0; i < mSinkWarp.rs1u_.size(); i++) {
-                auto coord = mSinkWarp.rs1u_[i].refcoord();
-                for (int j = 0; j < this->rs1u_.size(); j++) {
-                    if (coord == this->rs1u_[j].refcoord()) {
-                        break;
-                    }
-                    if (j == this->rs1u_.size()-1) {
-                        addVector.push_back(i);
-                    }
-                }
-            }
-            if (!addVector.empty()) {
-                for (int i = 0; i < addVector.size(); i++) {
-                    this->rs1u_.push_back(mSinkWarp.rs1u_[addVector[i]]);
-                    this->st_.addNumUnpaired1();
-                }
-            }
-        }
-
-        if (this->rs2u_.empty() && this->rs2u_.empty()) {
-            //return;
-        } else if (!this->rs2u_.empty() && mSinkWarp.rs2u_.empty()) {
-            //return;
-        } else if (this->rs2u_.empty() && !mSinkWarp.rs2u_.empty()){
-            this->rs2u_ = mSinkWarp.rs2u_;
-            this->rs2_ = mSinkWarp.rs2_;
-            this->st_ = mSinkWarp.st_;
-        } else if (this->rs2u_[0].score() > mSinkWarp.rs2u_[0].score()) {
-            //return;
-        }  else if (this->rs2u_[0].score() < mSinkWarp.rs2u_[0].score()) {
-            this->rs2u_ = mSinkWarp.rs2u_;
-            this->rs2_ = mSinkWarp.rs2_;
-            this->st_ = mSinkWarp.st_;
-        } else {
-            vector<int> addVector;
-            for (int i = 0; i < mSinkWarp.rs2u_.size(); i++) {
-                auto coord = mSinkWarp.rs2u_[i].refcoord();
-                for (int j = 0; j < this->rs2u_.size(); j++) {
-                    if (coord == this->rs2u_[j].refcoord()) {
-                        break;
-                    }
-                    if (j == this->rs2u_.size()-1) {
-                        addVector.push_back(i);
-                    }
-                }
-            }
-            if (!addVector.empty()) {
-                for (int i = 0; i < addVector.size(); i++) {
-                    this->rs2u_.push_back(mSinkWarp.rs2u_[addVector[i]]);
-                    this->st_.addNumUnpaired2();
-                }
-            }
-        }
-    }*/
-
 protected:
 
 	/**
@@ -1938,7 +1860,7 @@ public:
     using AlnSink<index_t>::oq_;
 
     int nThreads;
-    vector<Alignments*> alignmentsEachThreads;
+    EList<Alignments*> alignmentsEachThreads;
 
     AlnSinkTLASam(
             OutputQueue&     oq,            // output queue

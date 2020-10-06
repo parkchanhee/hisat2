@@ -19,29 +19,29 @@
 
 #include "TLA.h"
 
+bool MappingPositions::positionExist (Alignment* newAlignment, int& index) {
+    for (int i = 0; i < positions.size(); i++) {
+        if ((positions[i].location == newAlignment->location) &&
+            (positions[i].chromosome == newAlignment->chromosomeName) &&
+            (positions[i].pairSegment == newAlignment->pairSegment)) {
+            index = i;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool MappingPositions::append (Alignment* newAlignment) {
-    // return true if the position is not exist and will append to positions, else, false.
-    // if alignment is repeat (mapped to repeat index), don't push to positions, return true.
-
-    long long int location = newAlignment->location;
-    string chromosome = newAlignment->chromosomeName.toZBuf();
-    int pairSegment = newAlignment->pairSegment;
-    bool concordant = newAlignment->concordant;
-
-    /*if (newAlignment->repeat) {
-        return true;
-    }*/
+    // return true if the position is not exist and will append to positions, else return false.
 
     int index;
-    if (positionExist(location, chromosome, pairSegment, index)) {
-        return (!positions[index].concordant) && concordant;
+    if (positionExist(newAlignment, index)) {
+        return (!positions[index].concordant) && newAlignment->concordant;
     } else {
-        positions.push_back(MappingPosition(location, chromosome, pairSegment, concordant));
+        positions.push_back(MappingPosition(newAlignment->location, newAlignment->chromosomeName, newAlignment->pairSegment, newAlignment->concordant));
         return true;
     }
 }
 
-bool positionExist (Alignment* newAlignment) {
 
-}
 
