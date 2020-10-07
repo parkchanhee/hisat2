@@ -31,6 +31,17 @@ bool MappingPositions::positionExist (Alignment* newAlignment, int& index) {
     return false;
 }
 
+bool MappingPositions::positionExist (Alignment* newAlignment) {
+    for (int i = 0; i < positions.size(); i++) {
+        if ((positions[i].location == newAlignment->location) &&
+            (positions[i].chromosome == newAlignment->chromosomeName) &&
+            (positions[i].pairSegment == newAlignment->pairSegment)) {
+            return (!positions[i].concordant) && newAlignment->concordant;
+        }
+    }
+    return false;
+}
+
 bool MappingPositions::append (Alignment* newAlignment) {
     // return true if the position is not exist and will append to positions, else return false.
 
@@ -41,6 +52,10 @@ bool MappingPositions::append (Alignment* newAlignment) {
         positions.push_back(MappingPosition(newAlignment->location, newAlignment->chromosomeName, newAlignment->pairSegment, newAlignment->concordant));
         return true;
     }
+}
+
+void MappingPositions::directAppend(Alignment *newAlignment) {
+    positions.push_back(MappingPosition(newAlignment->location, newAlignment->chromosomeName, newAlignment->pairSegment, newAlignment->concordant));
 }
 
 

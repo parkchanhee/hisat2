@@ -149,9 +149,12 @@ public:
     RepeatPosition() {
         initialize();
     }
-    RepeatPosition(long long int &inputLocation, BTString &inputChromosome, BTString &repeatYZ):
-        location(inputLocation), chromosome(inputChromosome),YZ(repeatYZ) {
+
+    RepeatPosition(long long int &inputLocation, BTString &inputChromosome, BTString &repeatYZ) {
         initialize();
+        location = inputLocation;
+        chromosome = inputChromosome;
+        YZ = repeatYZ;
     }
 };
 
@@ -233,6 +236,8 @@ public:
 
     bool positionExist (Alignment* newAlignment, int& index);
 
+    bool positionExist (Alignment* newAlignment);
+
     /*bool positionExist (long long int &location, string &chromosome, int pairSegment, int &index) {
         // return true if position is exist, else, return false.
         for (int i = 0; i < positions.size(); i++) {
@@ -252,9 +257,12 @@ public:
 
     void appendRepeat(long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &MP, int RA[5][5], BTString &repeatYZ, int YS=0) {
         positions.push_back(MappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS));
+        //positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS);
     }
 
     bool append(Alignment* newAlignment);
+
+    void directAppend(Alignment* newAlignment);
 
     /*bool append (string chromosome, long long int location, int pairSegment=0) {
         // return true if the position is not exist and will append to positions, else, false.
@@ -503,6 +511,7 @@ public:
     bool constructRepeatMD(BitPairReference* bitReference, MappingPositions &existPositions, bool &multipleAlignmentDetected) {
 
         praseCigar();
+        repeatPositions.positions.resize(1000);
 
         ht2_error_t err = ht2_repeat_expand((TLAcycle == 0 || TLAcycle == 3) ? repeatHandles[0] : repeatHandles[1],
                                             chromosomeName.toZBuf(),
@@ -842,9 +851,9 @@ public:
         return true;
     }
 
-    void outputFlags(BTString& o) {
+    void outputTags(BTString& o) {
         // this function is for non-repeat or repeat-non-expand output.
-        // for repeat-expand output, use outputRepeatFlags function.
+        // for repeat-expand output, use outputRepeatTags function.
         char buf[1024];
         if (mapped) {
             // AS
@@ -912,7 +921,7 @@ public:
         }
     }
 
-    void outputRepeatFlags(BTString& o, int &inputAS, int &inputXM, int &inputNM, BTString &inputMD,
+    void outputRepeatTags(BTString& o, int &inputAS, int &inputXM, int &inputNM, BTString &inputMD,
             int &inputTC, int inputRA[5][5], BTString &inputMP, BTString &repeatYZ) {
         // this function is for repeat-expand alignment output.
         char buf[1024];
@@ -1041,7 +1050,7 @@ public:
         o.append(readQuality.toZBuf());
         o.append('\t');
         // tags
-        outputFlags(o);
+        outputTags(o);
         o.append('\n');
     }
 
@@ -1090,7 +1099,7 @@ public:
                     o.append(oppositeAlignment->readQuality.toZBuf());
                     o.append('\t');
                     // tags
-                    outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                    outputRepeatTags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                       currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                     o.append('\n');
                     return;
@@ -1160,7 +1169,7 @@ public:
                             o.append(readQuality.toZBuf());
                             o.append('\t');
                             // tags
-                            outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                            outputRepeatTags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                               currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                             o.append('\n');
                             for (int k = 0; k < oppositePairAddresses.size(); k++) {
@@ -1238,7 +1247,7 @@ public:
                             o.append(readQuality.toZBuf());
                             o.append('\t');
                             // tags
-                            outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                            outputRepeatTags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                               currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                             o.append('\n');
                         }
@@ -1280,7 +1289,7 @@ public:
                         o.append(readQuality.toZBuf());
                         o.append('\t');
                         // tags
-                        outputRepeatFlags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
+                        outputRepeatTags(o, currentPosition->AS, currentPosition->XM, currentPosition->NM, currentPosition->MD,
                                           currentPosition->TC, currentPosition->RA_Array, currentPosition->MP, currentPosition->repeatPositions[j].YZ);
                         o.append('\n');
                     }
@@ -1338,6 +1347,7 @@ public:
     BitPairReference* bitReference;
     bool DNA = false;
     int nRepeatAlignment = 0;
+    bool lastAlignmentPass = true;
 
     void initialize() {
         bestAS = numeric_limits<int>::min();
@@ -1349,16 +1359,17 @@ public:
         paired = false;
         multipleAligned = false;
         nRepeatAlignment = 0;
+        lastAlignmentPass = true;
         for (int i = 0; i < 2; i++) {
             readName[i].clear();
             readSequence[i].clear();
             qualityScore[i].clear();
         }
-        while(!alignments.empty()){
-            alignments[0]->initialize();
-            freeAlignments.push(alignments[0]);
-            alignments.erase(0);
+        for (int i = 0; i < alignments.size(); i++) {
+            alignments[i]->initialize();
+            freeAlignments.push(alignments[i]);
         }
+        alignments.clear();
     }
 
     Alignments(BitPairReference* ref, bool inputDNA): bitReference(ref), DNA(inputDNA) {
@@ -1376,6 +1387,19 @@ public:
         for (int i = 0; i < alignments.size(); i++) {
             delete alignments[i];
         }
+    }
+
+    void returnToFreeAlignments (Alignment* &currentAlignment) {
+        currentAlignment->initialize();
+        freeAlignments.push(currentAlignment);
+    }
+
+    void freeLastAlignment(){
+        if (alignments.empty()) {
+            return;
+        }
+        returnToFreeAlignments(alignments.back());
+        alignments.pop_back();
     }
 
     void getFreeAlignmentPointer(Alignment* &newAlignment) {
@@ -1834,22 +1858,34 @@ public:
             qualityScore[pairSegment] = newAlignment->readQualityFw;
         }
 
+        if (!lastAlignmentPass && newAlignment->pairSegment == 1) {
+            returnToFreeAlignments(newAlignment);
+            lastAlignmentPass = false;
+            working = false;
+            return;
+        }
+
         // if there are too many repeat alignment result, ignore it. otherwise it will consume hugh amount of time.
         // this could happen when we use repeat index.
-        if (newAlignment->repeat) {
-            nRepeatAlignment++;
-        }
         if (((nRepeatAlignment > repeatPoolLimit) || (uniqueOutputOnly && multipleAligned))) {
-            newAlignment->initialize();
-            freeAlignments.push(newAlignment);
+            returnToFreeAlignments(newAlignment);
             working = false;
             return;
         }
 
         // check if alignment result exist
-        if(!existPositions.append(newAlignment)) {
+        /*if(!existPositions.append(newAlignment)) {
             newAlignment->initialize();
             freeAlignments.push(newAlignment);
+            working = false;
+            return;
+        }*/
+        if (existPositions.positionExist(newAlignment)) {
+            if (newAlignment->pairSegment == 1) {
+                freeLastAlignment();
+            }
+            returnToFreeAlignments(newAlignment);
+            lastAlignmentPass = false;
             working = false;
             return;
         }
@@ -1858,19 +1894,26 @@ public:
 
         if (newAlignment->repeat) {
             if (!newAlignment->constructRepeatMD(bitReference, existPositions, multipleAligned)) {
-                newAlignment->initialize();
-                freeAlignments.push(newAlignment);
+                if (newAlignment->pairSegment == 1) {
+                    freeLastAlignment();
+                }
+                returnToFreeAlignments(newAlignment);
+                lastAlignmentPass = false;
                 working = false;
                 return;
             }
         } else {
             // check mismatch, update tags
             if (!newAlignment->constructMD(bitReference)) {
-                newAlignment->initialize();
-                freeAlignments.push(newAlignment);
+                if (newAlignment->pairSegment == 1) {
+                    freeLastAlignment();
+                }
+                returnToFreeAlignments(newAlignment);
+                lastAlignmentPass = false;
                 working = false;
                 return;
             }
+            nRepeatAlignment++;
         }
 
         int newPairScore = numeric_limits<int>::min();
@@ -1902,7 +1945,16 @@ public:
             nBestPair = nPair;
         } else if (newPairScore == bestPairScore) {
             nBestPair += nPair;
+        } else if (newAlignment->pairSegment == 1) { // the newPair Score is less than bestPairScore, delete it
+            if (newAlignment->pairSegment == 1) {
+                freeLastAlignment();
+            }
+            returnToFreeAlignments(newAlignment);
+            lastAlignmentPass = false;
+            working = false;
+            return;
         }
+
         if (bestPairScore == maxPairScore && nBestPair > 1) {
             multipleAligned = true;
         }
@@ -1934,10 +1986,12 @@ public:
                 alignments[pairTo]->pairToLocation = newAlignment->location;
                 alignments[pairTo]->setConcordant(concordant);
             }
-            alignments.push_back(newAlignment);
-        } else {
-            alignments.push_back(newAlignment);
         }
+
+        alignments.push_back(newAlignment);
+        existPositions.directAppend(newAlignment);
+
+        lastAlignmentPass = true;
         working = false;
     }
 
