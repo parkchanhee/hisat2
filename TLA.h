@@ -122,13 +122,9 @@ public:
     Cigar(int inputLen, char inputLabel): len(inputLen), label(inputLabel) {
     }
 
-    int& getLen() {
-        return len;
-    };
+    int& getLen() { return len; }
 
-    char& getLabel() {
-        return label;
-    }
+    char& getLabel() { return label; }
 };
 
 class RepeatPosition{
@@ -161,12 +157,14 @@ public:
 class MappingPosition {
 public:
     long long int location;
+    long long int location0;
+    long long int location1;
     BTString chromosome;
     int AS;
     int pairScore;
-    int pairSegment;
-    long long int pairToLocation;
-    bool concordant;
+    bool segmentExist[2] = {false};
+    //long long int pairToLocation;
+    //bool concordant;
 
     // for repeat alignment only
     BTString MD;
@@ -177,17 +175,22 @@ public:
     BTString MP;
     int RA_Array[5][5] = {{0,},};
     BTString refSequence;
-    EList<RepeatPosition> repeatPositions;
+    vector<RepeatPosition> repeatPositions;
 
     MappingPosition() {
 
     }
 
-    MappingPosition (long long int inputLocation, BTString inputChromosome, int inputReadSegment=0, bool inputConcordant=false){
-        concordant = inputConcordant;
-        location = inputLocation;
+    MappingPosition (long long int &inputLocation, long long int &inputPairedLocation, BTString &inputChromosome, int &pairSegment){
+        if (pairSegment == 0) {
+            location0 = inputLocation;
+            location1 = inputPairedLocation;
+        } else {
+            location0 = inputPairedLocation;
+            location1 = inputLocation;
+        }
+        segmentExist[pairSegment] = true;
         chromosome = inputChromosome;
-        pairSegment = inputReadSegment;
         pairScore = numeric_limits<int>::min();
     }
 
@@ -209,7 +212,7 @@ public:
 
 class MappingPositions {
 public:
-    EList<MappingPosition> positions;
+    vector<MappingPosition> positions;
     int bestPairScore;
     int nPair;
 
@@ -262,7 +265,14 @@ public:
 
     bool append(Alignment* newAlignment);
 
-    void directAppend(Alignment* newAlignment);
+    void directAppend(Alignment* newAlignment, int &index);
+
+    /*void removeLastPosition() {
+        if (positions.empty()) {
+            return;
+        }
+        positions.pop_back();
+    }*/
 
     /*bool append (string chromosome, long long int location, int pairSegment=0) {
         // return true if the position is not exist and will append to positions, else, false.
@@ -291,7 +301,7 @@ public:
     long long int pairingDistance;
     BTString readSequence;
     BTString readQuality;
-    EList<Cigar> cigarSegments;
+    vector<Cigar> cigarSegments;
 
     // save original sequence and quality score for output
     BTString originalFw;
@@ -331,7 +341,7 @@ public:
     struct ht2_repeat_expand_result *repeatResult = nullptr;
     int pairScore; // to identify the better pair
 
-    EList<Alignment*> oppositePairAddresses;
+    vector<Alignment*> oppositePairAddresses;
     // for repeatAlignment only
     bool repeat;
     bool pairToRepeat;
@@ -1324,7 +1334,7 @@ public:
 
 class Alignments {
 public:
-    EList<Alignment*> alignments; // pool to store current alignment result.
+    vector<Alignment*> alignments; // pool to store current alignment result.
     queue<Alignment*> freeAlignments; // free pointer pool for new alignment result. after output a alignment, return the pointer back to this pool.
 
     TReadId previousReadID;
@@ -1880,14 +1890,18 @@ public:
             working = false;
             return;
         }*/
-        if (existPositions.positionExist(newAlignment)) {
+        int index = -1;
+        if (existPositions.positionExist(newAlignment, index)) {
             if (newAlignment->pairSegment == 1) {
                 freeLastAlignment();
+                //existPositions.removeLastPosition();
             }
             returnToFreeAlignments(newAlignment);
             lastAlignmentPass = false;
             working = false;
             return;
+        } else {
+            existPositions.directAppend(newAlignment, index);
         }
 
         paired = newAlignment->paired;
@@ -1896,6 +1910,7 @@ public:
             if (!newAlignment->constructRepeatMD(bitReference, existPositions, multipleAligned)) {
                 if (newAlignment->pairSegment == 1) {
                     freeLastAlignment();
+                    //existPositions.removeLastPosition();
                 }
                 returnToFreeAlignments(newAlignment);
                 lastAlignmentPass = false;
@@ -1907,6 +1922,7 @@ public:
             if (!newAlignment->constructMD(bitReference)) {
                 if (newAlignment->pairSegment == 1) {
                     freeLastAlignment();
+                    //existPositions.removeLastPosition();
                 }
                 returnToFreeAlignments(newAlignment);
                 lastAlignmentPass = false;
@@ -1915,6 +1931,7 @@ public:
             }
             nRepeatAlignment++;
         }
+
 
         int newPairScore = numeric_limits<int>::min();
         int nPair = 0;
@@ -1932,12 +1949,6 @@ public:
                     pairTo = alignments.size() - 1;
                 }
             }
-            /*for (int i = 0; i < alignments.size(); i++) {
-                int tmpPairScore = calculatePairScore(newAlignment, alignments.back(), nPair);
-                if (tmpPairScore > newPairScore) {
-                    newPairScore = tmpPairScore;
-                }
-            }*/
         }
         // update pair score and nBest pair information in this class.
         if (newPairScore > bestPairScore) {
@@ -1948,7 +1959,9 @@ public:
         } else if (newAlignment->pairSegment == 1) { // the newPair Score is less than bestPairScore, delete it
             if (newAlignment->pairSegment == 1) {
                 freeLastAlignment();
+                //existPositions.removeLastPosition();
             }
+            //existPositions.removeLastPosition();
             returnToFreeAlignments(newAlignment);
             lastAlignmentPass = false;
             working = false;
@@ -1989,7 +2002,6 @@ public:
         }
 
         alignments.push_back(newAlignment);
-        existPositions.directAppend(newAlignment);
 
         lastAlignmentPass = true;
         working = false;

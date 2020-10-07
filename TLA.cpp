@@ -20,10 +20,27 @@
 #include "TLA.h"
 
 bool MappingPositions::positionExist (Alignment* newAlignment, int& index) {
+    if (positions.empty()) {
+        return false;
+    }
+
+    long long int* location0;
+    long long int* location1;
+    int* segment = &newAlignment->pairSegment;
+
+    if (newAlignment->pairSegment == 0) {
+        location0 = &newAlignment->location;
+        location1 = &newAlignment->pairToLocation;
+    } else {
+        location0 = &newAlignment->pairToLocation;
+        location1 = &newAlignment->location;
+    }
+
     for (int i = 0; i < positions.size(); i++) {
-        if ((positions[i].location == newAlignment->location) &&
+        if ((positions[i].location0 == *location0) &&
+            (positions[i].location1 == *location1) &&
             (positions[i].chromosome == newAlignment->chromosomeName) &&
-            (positions[i].pairSegment == newAlignment->pairSegment)) {
+            positions[i].segmentExist[*segment]) {
             index = i;
             return true;
         }
@@ -32,11 +49,28 @@ bool MappingPositions::positionExist (Alignment* newAlignment, int& index) {
 }
 
 bool MappingPositions::positionExist (Alignment* newAlignment) {
+    if (positions.empty()) {
+        return false;
+    }
+
+    long long int* location0;
+    long long int* location1;
+    int* segment = &newAlignment->pairSegment;
+
+    if (*segment == 0) {
+        location0 = &newAlignment->location;
+        location1 = &newAlignment->pairToLocation;
+    } else {
+        location0 = &newAlignment->pairToLocation;
+        location1 = &newAlignment->location;
+    }
+
     for (int i = 0; i < positions.size(); i++) {
-        if ((positions[i].location == newAlignment->location) &&
+        if ((positions[i].location0 == *location0) &&
+            (positions[i].location1 == *location1) &&
             (positions[i].chromosome == newAlignment->chromosomeName) &&
-            (positions[i].pairSegment == newAlignment->pairSegment)) {
-            return (!positions[i].concordant) && newAlignment->concordant;
+            positions[i].segmentExist[*segment]) {
+            return true;
         }
     }
     return false;
@@ -47,15 +81,21 @@ bool MappingPositions::append (Alignment* newAlignment) {
 
     int index;
     if (positionExist(newAlignment, index)) {
-        return (!positions[index].concordant) && newAlignment->concordant;
+        return false;
     } else {
-        positions.push_back(MappingPosition(newAlignment->location, newAlignment->chromosomeName, newAlignment->pairSegment, newAlignment->concordant));
+        //positions.push_back(MappingPosition(newAlignment->location, newAlignment->pairToLocation, newAlignment->chromosomeName, newAlignment->pairSegment));
+        positions.emplace_back(newAlignment->location, newAlignment->pairToLocation, newAlignment->chromosomeName, newAlignment->pairSegment);
         return true;
     }
 }
 
-void MappingPositions::directAppend(Alignment *newAlignment) {
-    positions.push_back(MappingPosition(newAlignment->location, newAlignment->chromosomeName, newAlignment->pairSegment, newAlignment->concordant));
+void MappingPositions::directAppend(Alignment *newAlignment, int& index) {
+    if (index == -1) {
+        positions.emplace_back(newAlignment->location, newAlignment->pairToLocation, newAlignment->chromosomeName, newAlignment->pairSegment);
+    } else {
+        positions[index].segmentExist[newAlignment->pairSegment] = true;
+    }
+
 }
 
 
