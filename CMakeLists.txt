@@ -198,7 +198,6 @@ add_executable(hisat2-build-l ${BUILD_CPPS} ${SHARED_CPPS})
 add_executable(hisat2-inspect-s ${INSPECT_CPPS} ${SHARED_CPPS})
 add_executable(hisat2-inspect-l ${INSPECT_CPPS} ${SHARED_CPPS})
 add_executable(hisat2-repeat ${REPEAT_CPPS} ${SHARED_CPPS})
-add_executable(mkRef mkRef.cpp)
 
 set_target_properties(${HISAT2_BIN_LIST} PROPERTIES DEBUG_POSTFIX "-debug")
 set_target_properties(hisat2-align-l hisat2-build-l hisat2-inspect-l hisat2-repeat 
@@ -245,12 +244,8 @@ add_dependencies(hisat2-all
 		hisat2-build-l
 		hisat2-inspect-s
 		hisat2-inspect-l
-		hisat2-repeat
-		mkRef)
-add_dependencies(hisat2-build-s
-		mkRef)
-add_dependencies(hisat2-build-l
-		mkRef)
+		hisat2-repeat)
+
 
 #
 # Examples

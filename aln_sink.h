@@ -2075,6 +2075,9 @@ public:
                 // mate's RNAME and POS as is customary
                 assert(flags.partOfPair());
                 samc_.printRefNameFromIndex(newAlignment->chromosomeName, (size_t)summ.orefid(), summ.repeat());
+                if (newAlignment->repeat) {
+                    newAlignment->pairToRepeat = true;
+                }
             } else {
                 // No alignment
                 newAlignment->chromosomeName = "*";
@@ -2114,6 +2117,11 @@ public:
         } else {
             // No alignment
             newAlignment->cigarString = "*";
+        }
+        if (rso != NULL) {
+            if (rso->repeat()) {
+                newAlignment->pairToRepeat = true;
+            }
         }
         // RNEXT
         if(rs != NULL && flags.partOfPair()) {
