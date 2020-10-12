@@ -189,6 +189,9 @@ class OutputQueue:
         # key = [new_chr, new_pos, new_cigar], value = [count, samline_fields]
         #self.alignments = {}
         self.alignments = list()
+        # single/paired-end
+        self.is_paired = False
+
         self.NH = 0
         self.left_NH = 0
         self.right_NH = 0
@@ -197,6 +200,7 @@ class OutputQueue:
         self.current_rid = ''
         #self.alignments = {}
         self.alignments = list()
+        self.is_paired = False
         self.NH = 0
         self.left_NH = 0
         self.right_NH = 0
@@ -218,8 +222,10 @@ class OutputQueue:
 
         #self.alignments.append([new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, flag, sam_fields])
 
+
         flag = self.alignments[0][5]
-        if flag & 0x1:
+
+        if self.is_paired:
             # paired-end
             tmp_alignments = self.alignments
 
@@ -270,7 +276,7 @@ class OutputQueue:
             i = 0
             j = 0
             while i < len(left_alignments_list) and j < len(right_alignments_list):
-
+                break
                 pass
 
         else:
@@ -289,38 +295,75 @@ class OutputQueue:
         return
 
     def print_sam(self):
+        if self.is_paired:
+            left_count = self.left_NH
+            right_count = self.right_NH
 
-        count = self.NH
+            for alignment in self.alignments:
+                fields = alignment[6]
+                if alignment[0] == alignment[3]:
+                    new_pair_chr = '='
+                else:
+                    new_pair_chr = alignment[3]
+                new_pair_pos = alignment[4]
 
-        #        self.alignments.append([new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, flag, sam_fields])
-
-        for alignment in self.alignments:
-            fields = alignment[6]
-            if alignment[0] == alignment[3]:
-                new_pair_chr = '='
-            else:
-                new_pair_chr = alignment[3]
-            new_pair_pos = alignment[4]
-
-            flag = int(fields[1])
-            mapq = 60
-
-            if count == 1:
+                flag = int(fields[1])
                 mapq = 60
-            else:
-                mapq = 1
 
-            # update NH
-            self.updateNH(fields, count)
+                is_left = (flag & 0x40 == 0x40)
+                count = left_count if is_left else right_count
 
-            assert self.current_rid == '' or self.current_rid == fields[0]
+                if count == 1:
+                    mapq = 60
+                else:
+                    mapq = 1
 
-            print('\t'.join([fields[0], str(flag), alignment[0], str(alignment[1] + 1), str(mapq), alignment[2], new_pair_chr, str(new_pair_pos + 1), *fields[8:]]), file=self.fp)
+                # update NH
+                self.updateNH(fields, count)
+
+                assert self.current_rid == '' or self.current_rid == fields[0]
+
+                print('\t'.join([fields[0], str(flag), alignment[0], str(alignment[1] + 1), str(mapq), alignment[2], new_pair_chr, str(new_pair_pos + 1), *fields[8:]]), file=self.fp)
+
+        else:
+            count = self.NH
+            #        self.alignments.append([new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, flag, sam_fields])
+
+            for alignment in self.alignments:
+                fields = alignment[6]
+                if alignment[0] == alignment[3]:
+                    new_pair_chr = '='
+                else:
+                    new_pair_chr = alignment[3]
+                new_pair_pos = alignment[4]
+
+                flag = int(fields[1])
+                mapq = 60
+
+                if count == 1:
+                    mapq = 60
+                else:
+                    mapq = 1
+
+                # update NH
+                self.updateNH(fields, count)
+
+                assert self.current_rid == '' or self.current_rid == fields[0]
+
+                print('\t'.join([fields[0], str(flag), alignment[0], str(alignment[1] + 1), str(mapq), alignment[2], new_pair_chr, str(new_pair_pos + 1), *fields[8:]]), file=self.fp)
 
     """
     """
     def add(self, flag, new_rid, new_chr, new_pos, new_cigar, sam_fields, new_pair_chr, new_pair_pos):
-        primary = flag & 0x900
+        flag_paired = (flag & 0x1 == 0x1)
+        flag_primary = (flag & 0x900 == 0)
+
+        if len(self.alignments) == 0:
+            # update flag
+            self.is_paired = flag_paired
+        else:
+            assert self.is_paired == flag_paired
+
         #new_key = (new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, primary)
 
         assert self.current_rid == '' or self.current_rid == new_rid
