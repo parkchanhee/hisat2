@@ -18,165 +18,151 @@ def read_len_cigar(cigars):
     return read_len
 
 
-def read_transinfo(info_fp):
 
-    tbl = {}
+class Transinfo:
+    def __init__(self):
+        self.tbl = {}
 
-    current_trans = None
-    # parse
-    for line in info_fp:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            continue
+    def loadfromfile(self, info_fp):
+        self.tbl = {}
 
-        if line.startswith('>'):
-            line = line[1:].split('\t')
+        current_trans = None
+        # parse
+        for line in info_fp:
+            line = line.strip()
+            if not line or line.startswith('#'):
+                continue
 
-            current_tid = line[0]
-            chr_name = line[1]
+            if line.startswith('>'):
+                line = line[1:].split('\t')
 
-            if len(line) < 3:
-                strand = ''
-                tran_gene_len = 100000000
-                gene_id = ''
+                current_tid = line[0]
+                chr_name = line[1]
+
+                if len(line) < 3:
+                    strand = ''
+                    tran_gene_len = 100000000
+                    gene_id = ''
+                else:
+                    strand = line[2]
+                    tran_gene_len = int(line[3])
+                    gene_id = line[4]
+
+                if not current_tid in self.tbl:
+                    #                   chr_name, strand, len, exons, gene_id
+                    self.tbl[current_tid] = [chr_name, strand, tran_gene_len, list(), gene_id]
+                    current_trans = self.tbl[current_tid]
+
+                else:
+                    print('Duplicated tid', current_tid)
+                    current_trans = self.tbl[current_tid]
+
             else:
-                strand = line[2]
-                tran_gene_len = int(line[3])
-                gene_id = line[4]
+                field = line.split('\t')
 
+                for item in field:
+                    chr_name, genomic_position, exon_len = item.split(':')[0:3]
+                    current_trans[3].append([int(genomic_position), int(exon_len)])
 
-            if not current_tid in tbl:
-                #                   chr_name, strand, len, exons, gene_id
-                tbl[current_tid] = [chr_name, strand, tran_gene_len, list(), gene_id]
-                current_trans = tbl[current_tid]
+    def map_position_internal(self, tid, tr_pos):
+        trans = self.tbl[tid]
 
+        new_chr = trans[0]
+        exons = trans[3]
+
+        assert len(exons) >= 1
+
+        e_idx = -1
+        new_pos = 0
+
+        for i, exon in enumerate(exons):
+            # find first exon
+            if tr_pos >= exon[1]:
+                tr_pos -= exon[1]
             else:
-                print('Duplicated tid', current_tid)
-                current_trans = tbl[current_tid]
-
-        else:
-            field = line.split('\t')
-
-            for item in field:
-                chr_name, genomic_position, exon_len = item.split(':')[0:3]
-                current_trans[3].append([int(genomic_position), int(exon_len)])
-
-    return tbl
-
-
-def map_position(trans_tbl, tid, tr_pos):
-    trans = trans_tbl[tid]
-
-    new_chr = trans[0]
-    exons = trans[3]
-
-    assert len(exons) >= 1
-
-    e_idx = -1
-    new_pos = 0
-    for i, exon in enumerate(exons):
-        # find first exon
-        if tr_pos >= exon[1]:
-            tr_pos -= exon[1]
-        else:
-            new_pos = exon[0] + tr_pos
-            e_idx = i
-            break
-
-    assert e_idx >= 0
-
-    return new_chr, new_pos
-
-
-def translate_pos_cigar(trans_tbl, tid, tr_pos, cigar_str):
-
-    trans = trans_tbl[tid]
-
-    new_chr = trans[0]
-
-    exons = trans[3]
-    assert len(exons) >= 1
-
-    e_idx = -1
-    new_pos = 0
-    for i, exon in enumerate(exons):
-        # find first exon
-        if tr_pos >= exon[1]:
-            tr_pos -= exon[1]
-        else:
-            new_pos = exon[0] + tr_pos
-            e_idx = i
-            break
-
-    assert e_idx >= 0
-
-
-    if cigar_str == "*":
-        return new_chr, new_pos, cigar_str
-
-    cigars = cigar_re.findall(cigar_str)
-    cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
-
-    read_len = read_len_cigar(cigars)
-    assert tr_pos + read_len <= trans[2]
-
-
-    tmp_cigar = list()
-
-    r_len = exons[e_idx][1] - (new_pos - exons[e_idx][0])
-    for cigar in cigars:
-        c_len, c_op = cigar
-        c_len = int(c_len)
-
-        if c_op in ['S']:
-            tmp_cigar.append([c_len, c_op])
-            continue
-
-        while c_len > 0 and e_idx < len(exons):
-            if c_len <= r_len:
-                r_len -= c_len
-                tmp_cigar.append([c_len, c_op])
+                new_pos = exon[0] + tr_pos
+                e_idx = i
                 break
+
+        assert e_idx >= 0
+
+        return new_chr, new_pos, e_idx
+
+
+    def map_position(self, tid, tr_pos):
+        new_chr, new_pos, e_idx = self.map_position_internal(tid, tr_pos)
+        return new_chr, new_pos
+
+
+    def translate_pos_cigar(self, tid, tr_pos, cigar_str):
+        new_chr, new_pos, e_idx = self.map_position_internal(tid, tr_pos)
+
+        trans = self.tbl[tid]
+        exons = trans[3]
+
+        if cigar_str == '*':
+            return new_chr, new_pos, cigar_str
+
+        cigars = cigar_re.findall(cigar_str)
+        cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
+
+        read_len = read_len_cigar(cigars)
+        assert tr_pos + read_len <= trans[2]
+
+        tmp_cigar = list()
+
+        r_len = exons[e_idx][1] - (new_pos - exons[e_idx][0])
+        for cigar in cigars:
+            c_len, c_op = cigar
+            c_len = int(c_len)
+
+            if c_op in ['S']:
+                tmp_cigar.append([c_len, c_op])
+                continue
+
+            while c_len > 0 and e_idx < len(exons):
+                if c_len <= r_len:
+                    r_len -= c_len
+                    tmp_cigar.append([c_len, c_op])
+                    break
+                else:
+                    c_len -= r_len
+                    tmp_cigar.append([r_len, c_op])
+                    """
+                    if e_idx == len(exons):
+                        print(tid)
+                    """
+                    gap = exons[e_idx + 1][0] - (exons[e_idx][0] + exons[e_idx][1])
+                    tmp_cigar.append([gap, 'N'])
+
+                    e_idx += 1
+                    r_len = exons[e_idx][1]
+
+
+        # clean new_cigars
+        ni = 0
+
+        for i in range(1, len(tmp_cigar)):
+            if tmp_cigar[i][0] == 0:
+                pass
+            elif tmp_cigar[i][1] == 'S' and tmp_cigar[ni][1] == 'N':
+                # replace ni to i
+                tmp_cigar[ni] = tmp_cigar[i]
+            elif tmp_cigar[i][1] == 'N' and tmp_cigar[ni][1] == 'S':
+                # goto next
+                pass
+            elif tmp_cigar[ni][1] == tmp_cigar[i][1]:
+                # merge to ni
+                tmp_cigar[ni][0] += tmp_cigar[i][0]
             else:
-                c_len -= r_len
-                tmp_cigar.append([r_len, c_op])
-                """
-                if e_idx == len(exons):
-                    print(tid)
-                """
-                gap = exons[e_idx + 1][0] - (exons[e_idx][0] + exons[e_idx][1])
-                tmp_cigar.append([gap, 'N'])
+                ni += 1
+                tmp_cigar[ni] = tmp_cigar[i]
 
-                e_idx += 1
-                r_len = exons[e_idx][1]
+        new_cigar = list()
+        for i in range(ni+1):
+            new_cigar.append('{}{}'.format(tmp_cigar[i][0], tmp_cigar[i][1]))
 
-
-    # clean new_cigars
-    ni = 0
-
-    for i in range(1, len(tmp_cigar)):
-        if tmp_cigar[i][0] == 0:
-            pass
-        elif tmp_cigar[i][1] == 'S' and tmp_cigar[ni][1] == 'N':
-            # replace ni to i
-            tmp_cigar[ni] = tmp_cigar[i]
-        elif tmp_cigar[i][1] == 'N' and tmp_cigar[ni][1] == 'S':
-            # goto next
-            pass
-        elif tmp_cigar[ni][1] == tmp_cigar[i][1]:
-            # merge to ni
-            tmp_cigar[ni][0] += tmp_cigar[i][0]
-        else:
-            ni += 1
-            tmp_cigar[ni] = tmp_cigar[i]
-
-    new_cigar = list()
-    for i in range(ni+1):
-        new_cigar.append('{}{}'.format(tmp_cigar[i][0], tmp_cigar[i][1]))
-
-    return new_chr, new_pos, ''.join(new_cigar)
-    #
-    #    new_chr, new_pos, new_cigar = translate_position(transinfo_table, tid, tr_pos, cigars)
+        return new_chr, new_pos, ''.join(new_cigar)
 
 
 class OutputQueue:
@@ -229,10 +215,12 @@ class OutputQueue:
             # paired-end
             tmp_alignments = self.alignments
 
-            self.alignments = list()
+            #self.alignments = list()
 
+            '''
             if len(tmp_alignments) % 2 > 0:
                 print(tmp_alignments, file=sys.stderr)
+            '''
 
             #assert len(tmp_alignments) % 2 == 0
             positions_set = set()
@@ -241,10 +229,11 @@ class OutputQueue:
             right_alignments_list = list()
 
             def check_dup_append(alignments_list, key, value):
+                '''
                 for item in alignments_list:
                     if key == item[0]:
                         return
-
+                '''
                 alignments_list.append([key, value])
                 return
 
@@ -272,6 +261,7 @@ class OutputQueue:
             self.left_NH = len(left_alignments_list)
             self.right_NH = len(right_alignments_list)
 
+            return
             # make paires
             i = 0
             j = 0
@@ -399,7 +389,8 @@ class OutputQueue:
 
 
 def main(sam_file, transinfo_file):
-    transinfo_table = read_transinfo(transinfo_file)
+    transinfo_table = Transinfo()
+    transinfo_table.loadfromfile(transinfo_file)
 
     outq = OutputQueue()
 
@@ -416,44 +407,47 @@ def main(sam_file, transinfo_file):
         fields = line.split('\t')
 
         flag = int(fields[1])
-        """
-        if flag & 0x04:
-            # unmapped
-            outq.flush()
-            print(line)
-            continue
-        """
 
+        # read id
         rid = fields[0]
-        tid = fields[2]
 
+        # reference name = chromosome name...
+        old_chr = fields[2]
+        old_pos = int(fields[3])
+
+        old_pair_chr = fields[6]
+        old_pair_pos = int(fields[7])
+
+        '''
         if rid == '858144':
             print(rid)
+        '''
 
         # update pair-read
         if flag & 0x1:
-            if flag & 0xc == 0xc:
-                rid = fields[2]
-                new_chr = tid
+
+            if old_chr == '*':
+                new_chr = '*'
                 new_pos = 0
-                new_cigar = "*"
-                new_pair_chr = "*"
+                new_cigar = '*'
+
+                new_pair_chr = '*'
                 new_pair_pos = 0
             else:
-                old_pair_chr = fields[6]
-                old_pair_pos = int(fields[7]) - 1
+                # translate locations
+                old_pos -= 1
+                old_pair_pos -= 1
 
-                tr_pos = int(fields[3]) - 1
                 cigar_str = fields[5]
 
                 if old_pair_chr == '*':
                     assert False
 
                 if old_pair_chr == "=":
-                    old_pair_chr = tid
+                    old_pair_chr = old_chr
 
-                new_chr, new_pos, new_cigar = translate_pos_cigar(transinfo_table, tid, tr_pos, cigar_str)
-                new_pair_chr, new_pair_pos = map_position(transinfo_table, old_pair_chr, old_pair_pos)
+                new_chr, new_pos, new_cigar = transinfo_table.translate_pos_cigar(old_chr, old_pos, cigar_str)
+                new_pair_chr, new_pair_pos = transinfo_table.map_position(old_pair_chr, old_pair_pos)
 
             outq.push(flag, rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, fields)
 
@@ -465,10 +459,10 @@ def main(sam_file, transinfo_file):
                 print(line)
                 continue
 
-            tr_pos = int(fields[3]) - 1
+            old_pos -= 1
             cigar_str = fields[5]
 
-            new_chr, new_pos, new_cigar = translate_pos_cigar(transinfo_table, tid, tr_pos, cigar_str)
+            new_chr, new_pos, new_cigar = transinfo_table.translate_pos_cigar(old_chr, old_pos, cigar_str)
 
             new_pair_chr = '*'
             new_pair_pos = 0
