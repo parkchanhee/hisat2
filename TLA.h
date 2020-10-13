@@ -2479,7 +2479,9 @@ public:
             // make a unalignment result and output it.
             initialize();
             return;
-        } else if (alignments.empty() || alignmentPositions.nBestPair == 0) {
+        } else if (alignments.empty() ||
+            alignmentPositions.nBestPair == 0 ||
+            alignmentPositions.bestPairScore == numeric_limits<int>::min()) {
             // make a unalignment result and output it.
             outputUnAlignmentRead(o);
         } else {
