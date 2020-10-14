@@ -164,8 +164,8 @@ public:
     //long long int repeatLocation;
     //long long int location0;
     //long long int location1;
-    long long int locations[2];
-    BTString chromosome;
+    long long int* locations[2];
+    BTString* chromosome;
     int AS = numeric_limits<int>::min();
     int pairScore;
     bool segmentExist[2] = {false};
@@ -187,10 +187,10 @@ public:
             location0 = inputPairedLocation;
             location1 = inputLocation;
         }*/
-        locations[pairSegment] = inputLocation;
-        locations[1-pairSegment] = inputPairedLocation;
+        locations[pairSegment] = &inputLocation;
+        locations[1-pairSegment] = &inputPairedLocation;
         segmentExist[pairSegment] = true;
-        chromosome = *inputChromosome;
+        chromosome = inputChromosome;
         pairScore = numeric_limits<int>::min();
     }
 
@@ -336,7 +336,7 @@ public:
 
     void append (long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &repeatYZ) {
         positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ);
-        //positions.push_back(RepeatMappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS));
+        //positions.push_back(RepeatMappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ));
     }
 
     void append(BTString &chromosome, long long int &location, int &index) {
@@ -429,15 +429,16 @@ public:
         return false;
     }*/
 
-    bool findPosition_new(long long int inputLocations[2], BTString& chromosome, int pairSegment) {
+    bool findPosition_new(long long int* inputLocations[2], BTString& chromosome, int pairSegment) {
         oppositeAlignment = NULL;
         for (int i = 0; i < positions.size(); i++) {
-            if (positions[i].locations[1-pairSegment] == inputLocations[1-pairSegment]) {
+            //if (positions[i].badAlignment) { continue; }
+            if (*(positions[i].locations[1-pairSegment]) == *inputLocations[1-pairSegment]) {
                 if (!positions[i].badAlignment) {
                     oppositeAlignment = positions[i].alignments[1-pairSegment];
                 }
-                if (positions[i].locations[pairSegment] == inputLocations[pairSegment] &&
-                    (positions[i].chromosome == chromosome)) {
+                if (*positions[i].locations[pairSegment] == *inputLocations[pairSegment] &&
+                    (*positions[i].chromosome == chromosome)) {
                     index = i;
                     return positions[i].segmentExist[pairSegment];
                 }
@@ -505,8 +506,8 @@ public:
 
     bool positionExist_new (BTString& chromosome, long long int& location, int& segment) {
         for (int i = 0; i < positions.size(); i++) {
-            if ((positions[i].locations[segment] == location) &&
-                (positions[i].chromosome == chromosome)) {
+            if ((*(positions[i].locations[segment]) == location) &&
+                (*(positions[i].chromosome) == chromosome)) {
                 return true;
             }
         }
@@ -610,7 +611,7 @@ public:
     struct ht2_repeat_expand_result *repeatResult = nullptr;
     int pairScore; // to identify the better pair
 
-    vector<Alignment*> oppositePairAddresses;
+    //vector<Alignment*> oppositePairAddresses;
     // for repeatAlignment only
     bool repeat;
     bool pairToRepeat;
@@ -655,7 +656,7 @@ public:
         nBestRepeat = 0;
         paired = false;
         pairScore = numeric_limits<int>::min();
-        oppositePairAddresses.clear();
+        //oppositePairAddresses.clear();
         repeatPositions.initialize();
         conversionCount[0] = 0;
         conversionCount[1] = 0;
@@ -833,8 +834,6 @@ public:
     }*/
 
     int calculatePairScore(Alignment *inputAlignment, int &nPair);
-
-
 
     void makeYZ(BTString &YZ_string) {
         if (TC == 0) {
@@ -1348,7 +1347,7 @@ public:
         }*/
     }
 
-    void outputRegularAlginemnt(BTString& o, long long int& oppoLocation, bool& primaryAlignment) {
+    void outputRegularAlginemnt(BTString& o, long long int* oppoLocation, bool& primaryAlignment) {
         if (outputted) {
             return; }
         outputted = true;
@@ -1384,7 +1383,7 @@ public:
             o.append("0");
             o.append('\t');
         }*/
-        if (paired && concordant) {
+        if (paired && *oppoLocation != 0) {
             o.append("=");
             o.append('\t');
         } else {
@@ -1398,7 +1397,7 @@ public:
         //    o.append('\t');
         //}
         // pair to location
-        itoa10<int>(oppoLocation, buf);
+        itoa10<int>(*oppoLocation, buf);
         o.append(buf);
         o.append('\t');
         /*if (concordant) {
@@ -1410,7 +1409,7 @@ public:
 
         // pairing distance
         if (paired) {
-            itoa10<int>(oppoLocation - location, buf);
+            itoa10<int>(*oppoLocation - location, buf);
             o.append(buf);
             o.append('\t');
         } else {
@@ -1428,7 +1427,7 @@ public:
         o.append('\n');
     }
 
-    void outputRepeatAlignment (BTString& o, RepeatMappingPosition* repeatInfo, long long int& oppoLocation, bool& primaryAlignment) {
+    void outputRepeatAlignment (BTString& o, RepeatMappingPosition* repeatInfo, long long int* oppoLocation, bool& primaryAlignment) {
         /*if (repeatInfo->outputted) {
             return;
         }*/
@@ -1458,7 +1457,7 @@ public:
         o.append(cigarString.toZBuf());
         o.append('\t');
         // pair to chromosome
-        if (paired && concordant) {
+        if (paired && *oppoLocation!=0) {
             o.append("=");
             o.append('\t');
         } else {
@@ -1466,12 +1465,13 @@ public:
             o.append('\t');
         }
         // pair to location
-        itoa10<int>(oppoLocation, buf);
+        itoa10<int>(*oppoLocation, buf);
         o.append(buf);
         o.append('\t');
         // pairing distance
         if (paired) {
-            itoa10<int>(oppoLocation - location, buf);
+            long long int test = *oppoLocation - repeatInfo->repeatLocation;
+            itoa10<int>(*oppoLocation - repeatInfo->repeatLocation, buf);
             o.append(buf);
             o.append('\t');
         } else {
@@ -1761,16 +1761,16 @@ public:
 
 class Alignments {
 public:
-    vector<Alignment*> alignments; // pool to store current alignment result.
+    EList<Alignment*> alignments; // pool to store current alignment result.
     //vector<Alignment*> repeatAlignments; // pool to store repeat alignment results.
-    queue<Alignment*> freeAlignments; // free pointer pool for new alignment result. after output a alignment, return the pointer back to this pool.
+    EList<Alignment*> freeAlignments; // free pointer pool for new alignment result. after output a alignment, return the pointer back to this pool.
 
     TReadId previousReadID;
     //int bestAS; // for single-end read selection
     //int bestPairScore; // for paired-end read selection;
     //int nBestPair; // NH for paired-end output.
     //bool concordantAlignmentExist; // for paired-end output, if there is concordant alignment, output the concordant one.
-    MappingPositions existPositions; // check if same alignment result is exist. same alignment result could made by planA alignment and planB alignment.
+    //MappingPositions existPositions; // check if same alignment result is exist. same alignment result could made by planA alignment and planB alignment.
     MappingPositions alignmentPositions;
 
     BTString readName[2]; // the read name could be different for segment 1 and segment 2.
@@ -1791,7 +1791,7 @@ public:
     void initialize() {
         //bestAS = numeric_limits<int>::min();
         //bestPairScore = numeric_limits<int>::min()+1;
-        existPositions.initialize();
+        //existPositions.initialize();
         alignmentPositions.initialize();
         working = false;
         //nBestPair = 0;
@@ -1807,7 +1807,7 @@ public:
         }
         for (int i = 0; i < alignments.size(); i++) {
             alignments[i]->initialize();
-            freeAlignments.push(alignments[i]);
+            freeAlignments.push_back(alignments[i]);
         }
         alignments.clear();
         alignmentPositions.initialize();
@@ -1817,13 +1817,13 @@ public:
         initialize();
         for (int i = 0; i < 10; i++) {
             Alignment *newAlignment = new Alignment();
-            freeAlignments.push(newAlignment);
+            freeAlignments.push_back(newAlignment);
         }
     }
     ~Alignments() {
         while (!freeAlignments.empty()) {
-            delete freeAlignments.front();
-            freeAlignments.pop();
+            delete freeAlignments.back();
+            freeAlignments.pop_back();
         }
         for (int i = 0; i < alignments.size(); i++) {
             delete alignments[i];
@@ -1832,7 +1832,7 @@ public:
 
     void returnToFreeAlignments (Alignment* &currentAlignment) {
         currentAlignment->initialize();
-        freeAlignments.push(currentAlignment);
+        freeAlignments.push_back(currentAlignment);
     }
 
     void freeLastAlignment(){
@@ -1846,8 +1846,8 @@ public:
     void getFreeAlignmentPointer(Alignment* &newAlignment) {
         //Alignment* newAlignment;
         if (!freeAlignments.empty()) {
-            newAlignment = freeAlignments.front();
-            freeAlignments.pop();
+            newAlignment = freeAlignments.back();
+            freeAlignments.pop_back();
         } else {
             newAlignment = new Alignment();
         }
@@ -2185,7 +2185,8 @@ public:
         }
 
         if (!alignmentPositions.append_new(newAlignment)) {
-            returnToFreeAlignments(newAlignment);
+            //returnToFreeAlignments(newAlignment);
+            alignments.push_back(newAlignment);
             working = false;
             return;
         }
@@ -2205,7 +2206,8 @@ public:
         if (newAlignment->repeat) {
             if (!newAlignment->constructRepeatMD(bitReference, alignmentPositions, multipleAligned)) {
                 alignmentPositions.badAligned();
-                returnToFreeAlignments(newAlignment);
+                //returnToFreeAlignments(newAlignment);
+                alignments.push_back(newAlignment);
                 working = false;
                 return;
             }
@@ -2215,14 +2217,16 @@ public:
             // check mismatch, update tags
             if (!newAlignment->constructMD(bitReference)) {
                 alignmentPositions.badAligned();
-                returnToFreeAlignments(newAlignment);
+                //returnToFreeAlignments(newAlignment);
+                alignments.push_back(newAlignment);
                 working = false;
                 return;
             }
         }
 
         if (!alignmentPositions.updateAS()) {
-            returnToFreeAlignments(newAlignment);
+            //returnToFreeAlignments(newAlignment);
+            alignments.push_back(newAlignment);
             working = false;
             return;
         }
@@ -2296,7 +2300,8 @@ public:
         }
 
         if (!alignmentPositions.append_new(newAlignment)) {
-            returnToFreeAlignments(newAlignment);
+            //returnToFreeAlignments(newAlignment);
+            alignments.push_back(newAlignment);
             working = false;
             return;
         }
@@ -2327,7 +2332,8 @@ public:
         if (newAlignment->repeat) {
             if (!newAlignment->constructRepeatMD(bitReference, alignmentPositions, multipleAligned)) {
                 alignmentPositions.badAligned();
-                returnToFreeAlignments(newAlignment);
+                //returnToFreeAlignments(newAlignment);
+                alignments.push_back(newAlignment);
                 working = false;
                 return;
             }
@@ -2338,7 +2344,8 @@ public:
             // check mismatch, update tags
             if (!newAlignment->constructMD(bitReference)) {
                 alignmentPositions.badAligned();
-                returnToFreeAlignments(newAlignment);
+                //returnToFreeAlignments(newAlignment);
+                alignments.push_back(newAlignment);
                 working = false;
                 return;
             }
@@ -2363,7 +2370,8 @@ public:
 
         // // find pairScore, update pair score and nBest pair information in this MappingPositions.
         if (!alignmentPositions.updatePairScore()) {
-            returnToFreeAlignments(newAlignment);
+            //returnToFreeAlignments(newAlignment);
+            alignments.push_back(newAlignment);
             working = false;
             return;
         }
