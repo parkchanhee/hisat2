@@ -253,6 +253,8 @@ void MappingPositions::outputPair(BTString& o) {
                 if (positions[i].alignments[0]->outputted && positions[i].alignments[1]->outputted) {
                     positions[i].alignments[1]->outputted = false;
                 }
+                positions[i].alignments[0]->setYS(positions[i].alignments[1]);
+                positions[i].alignments[1]->setYS(positions[i].alignments[0]);
                 positions[i].alignments[0]->outputRegularAlginemnt(o, positions[i].locations[1], primary);
                 positions[i].alignments[1]->outputRegularAlginemnt(o, positions[i].locations[0], primary);
             } else {
@@ -260,6 +262,8 @@ void MappingPositions::outputPair(BTString& o) {
                 if (positions[i].repeats[0]->outputted && positions[i].repeats[1]->outputted) {
                     positions[i].repeats[1]->outputted = false;
                 }
+                positions[i].repeats[0]->setYS(positions[i].repeats[1]);
+                positions[i].repeats[1]->setYS(positions[i].repeats[0]);
                 positions[i].alignments[0]->outputRepeatAlignment(o, positions[i].repeats[0], positions[i].locations[1], primary);
                 positions[i].alignments[1]->outputRepeatAlignment(o, positions[i].repeats[1], positions[i].locations[0], primary);
             }
@@ -335,6 +339,8 @@ bool MappingPositions::updatePairScore_repeat() {
     }
     RepeatMappingPosition *repeatPosition0;
     RepeatMappingPosition *repeatPosition1;
+    RepeatMappingPosition *repeatFlag0;
+    RepeatMappingPosition *repeatFlag1;
     bool forward[2];
     forward[0] = alignments[0]->forward;
     forward[1] = alignments[1]->forward;
@@ -343,25 +349,27 @@ bool MappingPositions::updatePairScore_repeat() {
     bool concordant;
     for (int i = 0; i < alignments[0]->repeatPositions.size(); i++) {
         repeatPosition0 = &alignments[0]->repeatPositions.positions[i];
+        repeatFlag0 = repeatPosition0->repeatFlagInfo==NULL ? repeatPosition0 : repeatPosition0->repeatFlagInfo;
         for (int j = 0; j < alignments[1]->repeatPositions.size(); j++) {
             repeatPosition1 = &alignments[1]->repeatPositions.positions[j];
             if (repeatPosition0->repeatChromosome == repeatPosition1->repeatChromosome) {
+                repeatFlag1 = repeatPosition1->repeatFlagInfo==NULL ? repeatPosition1 : repeatPosition1->repeatFlagInfo;
                 if (DNA) {
                     score = calculatePairScore_DNA(repeatPosition0->repeatLocation,
-                                           repeatPosition0->AS,
-                                           forward[0],
-                                           repeatPosition1->repeatLocation,
-                                           repeatPosition1->AS,
-                                           forward[1],
-                                           concordant);
+                                                   repeatFlag0->AS,
+                                                   forward[0],
+                                                   repeatPosition1->repeatLocation,
+                                                   repeatFlag1->AS,
+                                                   forward[1],
+                                                   concordant);
                 } else {
                     score = calculatePairScore_RNA(repeatPosition0->repeatLocation,
-                                           repeatPosition0->XM,
-                                           forward[0],
-                                           repeatPosition1->repeatLocation,
-                                           repeatPosition1->XM,
-                                           forward[1],
-                                           concordant);
+                                                   repeatFlag0->XM,
+                                                   forward[0],
+                                                   repeatPosition1->repeatLocation,
+                                                   repeatFlag1->XM,
+                                                   forward[1],
+                                                   concordant);
                 }
                 if (score >= bestPairScore) {
                     positions.emplace_back(repeatPosition0, alignments[0], repeatPosition1, alignments[1]);
@@ -392,7 +400,7 @@ bool MappingPositions::updateAS_repeat() {
     int AS;
     for (int i = 0; i < alignment->repeatPositions.size(); i++) {
         repeatPosition = &alignment->repeatPositions.positions[i];
-        AS = repeatPosition->AS;
+        AS = (repeatPosition->repeatFlagInfo == NULL)?repeatPosition->AS : repeatPosition->repeatFlagInfo->AS;
         if (AS >= bestAS) {
             positions.emplace_back(repeatPosition, alignment);
             //positions.back().AS = AS;

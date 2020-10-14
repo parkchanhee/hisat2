@@ -204,8 +204,8 @@ HISAT2_BIN_LIST = hisat2-build-s \
 	hisat2-align-l \
 	hisat2-inspect-s \
 	hisat2-inspect-l \
-	hisat2-repeat \
-	mkRef
+	hisat2-repeat
+
 HISAT2_BIN_LIST_AUX = hisat2-build-s-debug \
 	hisat2-build-l-debug \
 	hisat2-align-s-debug \
@@ -460,8 +460,6 @@ hisat2-inspect-l-debug: hisat2_inspect.cpp $(HEADERS) $(SHARED_CPPS)
 	$(SHARED_CPPS) \
 	$(LIBS) $(INSPECT_LIBS)
 
-mkRef:	mkRef.cpp
-	$(CXX) $(RELEASE_FLAGS) $(RELEASE_DEFS) $(EXTRA_FLAGS) $(DEFS) -o $@ $<
 #
 # HT2LIB targets
 #

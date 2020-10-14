@@ -212,40 +212,60 @@ public:
     int YS;
     int TC;
     BTString YZ;
-    BTString MP;
-    int RA_Array[5][5] = {{0,},};
+    //BTString MP;
+    //int RA_Array[5][5] = {{0,},};
     BTString refSequence;
     BTString repeatChromosome;
     bool outputted = false;
     /*vector<RepeatPosition> repeatPositions;*/
+    RepeatMappingPosition* repeatFlagInfo = NULL;
+    //bool needDelete = false;
+
+    /*void initialize() {
+        needDelete = true;
+        //repeatLocation = new long long int;
+        MD = new BTString;
+        XM = new int;
+        NM = new int;
+        YS = new int;
+        TC = new int;
+        YZ = new BTString;
+        MP = new BTString;
+        refSequence = new BTString;
+        //repeatChromosome = new BTString;
+    }*/
 
     RepeatMappingPosition() {};
 
-    RepeatMappingPosition (long long int& inputLocation, BTString& inputChromosome, BTString &inputRefSequence, int &inputAS, BTString &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &inputMP, int inputRA[5][5], BTString &repeatYZ, int& inputYS){
+    RepeatMappingPosition (long long int& inputLocation, BTString& inputChromosome, BTString &inputRefSequence, int &inputAS, BTString &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &repeatYZ){
+        //initialize();
         repeatLocation = inputLocation;
         repeatChromosome = inputChromosome;
+
         refSequence = inputRefSequence;
         AS = inputAS;
         MD = inputMD;
         XM = inputXM;
         NM = inputNM;
         TC = inputTC;
-        MP = inputMP;
-        YS = inputYS;
+        //YS = inputYS;
         YZ = repeatYZ;
-        for (int i = 0; i < 5; i++) {
+        /*for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
                 RA_Array[i][j] = inputRA[i][j];
             }
-        }
+        }*/
         pairScore = numeric_limits<int>::min();
+        repeatFlagInfo = NULL;
         //addRepeatPosition(inputLocation, inputChromosome, repeatYZ);
     }
 
     RepeatMappingPosition(long long int &inputLocation, BTString &inputChromosome, RepeatMappingPosition& input) {
         repeatLocation = inputLocation;
         repeatChromosome = inputChromosome;
-        refSequence = input.refSequence;
+
+        repeatFlagInfo = &input;
+        /*refSequence = input.refSequence;
         AS = input.AS;
         MD = input.MD;
         XM = input.XM;
@@ -259,8 +279,29 @@ public:
                 RA_Array[i][j] = input.RA_Array[i][j];
             }
         }
-        pairScore = numeric_limits<int>::min();
+        pairScore = numeric_limits<int>::min();*/
     }
+
+    void setYS(RepeatMappingPosition* input) {
+        if (input->repeatFlagInfo == NULL) {
+            YS = input->AS;
+        } else {
+            YS = input->repeatFlagInfo->AS;
+        }
+    }
+
+    /*~RepeatMappingPosition() {
+        if (needDelete) {
+            delete MD;
+            delete XM;
+            delete NM;
+            delete YS;
+            delete TC;
+            delete YZ;
+            delete MP;
+            delete refSequence;
+        }
+    }*/
 
     /*void addRepeatPosition(long long int &inputLocation, BTString &inputChromosome, BTString repeatYZ) {
         repeatPositions.push_back(RepeatPosition(inputLocation, inputChromosome, repeatYZ));
@@ -271,6 +312,7 @@ public:
 class RepeatMappingPositions {
 public:
     vector<RepeatMappingPosition> positions;
+    //EList<RepeatMappingPosition> positions;
 
     void initialize() {
         positions.clear();
@@ -283,6 +325,7 @@ public:
     bool sequenceExist (BTString& refSequence, int &index) {
         // return true if reference sequence is exist, else, return false.
         for (int i = 0; i < positions.size(); i++) {
+            if (positions[i].repeatFlagInfo == NULL) {continue;}
             if (refSequence == positions[i].refSequence) {
                 index = i;
                 return true;
@@ -291,12 +334,14 @@ public:
         return false;
     }
 
-    void append (long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &MP, int RA[5][5], BTString &repeatYZ, int YS=0) {
-        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS);
+    void append (long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &repeatYZ) {
+        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ);
+        //positions.push_back(RepeatMappingPosition(location, chromosome, refSequence, AS, MD, XM, NM, TC, MP, RA, repeatYZ, YS));
     }
 
     void append(BTString &chromosome, long long int &location, int &index) {
         positions.emplace_back(location, chromosome, positions[index]);
+        //positions.push_back(RepeatMappingPosition(location, chromosome, positions[index]));
     }
 };
 
@@ -541,8 +586,8 @@ public:
 
     // extraTags
     int TC;
-    BTString MP;
-    int RA_Array[5][5] = {{0,},};
+    //BTString MP;
+    //int RA_Array[5][5] = {{0,},};
     BTString YZ;  // this tag shows alignment strand:
                 // Original top strand (OT)
                 // Complementary to original top strand (CTOT)
@@ -631,6 +676,11 @@ public:
         if (repeatResult != nullptr) free(repeatResult);
     }
 
+    void setYS (Alignment* input) {
+        YS = input->AS;
+    }
+
+
     void setConcordant(bool concordant_) {
         // change concordant status and flag
         concordant = concordant_;
@@ -692,10 +742,10 @@ public:
 
     void updateRA(char& read, char& ref) {
         // update RA tag
-        RA_Array[asc2dna[ref]][asc2dna[read]]++;
+        //RA_Array[asc2dna[ref]][asc2dna[read]]++;
     }
 
-    void updateMP(int readLocation, char read, long long int refLocation, char ref) {
+    /*void updateMP(int readLocation, char read, long long int refLocation, char ref) {
         char buf[1024];
         if (!MP.empty()) {
             MP.append(",");
@@ -708,16 +758,16 @@ public:
         MP.append(":");
         itoa10<int>(refLocation + 1, buf);
         MP.append(buf);
-    }
+    }*/
 
     void clearExtraTags() {
         TC = 0;
-        MP.clear();
-        for (int i = 0; i < 5; i++) {
+        //MP.clear();
+        /*for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
                 RA_Array[i][j] = 0;
             }
-        }
+        }*/
     }
 
 
@@ -814,7 +864,7 @@ public:
         }
 
         praseCigar();
-        repeatPositions.positions.reserve(1000);
+        //repeatPositions.positions.reserve(1000);
 
         ht2_error_t err = ht2_repeat_expand((TLAcycle == 0 || TLAcycle == 3) ? repeatHandles[0] : repeatHandles[1],
                                             chromosomeName.toZBuf(),
@@ -883,7 +933,7 @@ public:
             int newNM = NM + nIncorrectMatch;
             int newAS = AS - 6*nIncorrectMatch;
 
-            repeatPositions.append(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, TC, MP, RA_Array, repeatYZ);
+            repeatPositions.append(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, TC, repeatYZ);
             /*if (!paired) {
                 if (newAS > bestAS) {
                     bestAS = newAS;
@@ -966,12 +1016,12 @@ public:
                         }
                         //newMD_String += refChar;
                         newMD_String.append(refChar);
-                        updateMP(refPos, readChar, refPos, refChar);
+                        //updateMP(refPos, readChar, refPos, refChar);
                     }
                     if (newXM + (conversionCount[0] >= conversionCount[1] ? conversionCount[1]:conversionCount[0])> readSequence.length()/25) {
                         return false;
                     }
-                    updateRA(readChar, refChar);
+                    //updateRA(readChar, refChar);
                     readPos++;
                     refPos++;
                 }
@@ -1085,12 +1135,12 @@ public:
                         }
                         //newMD_String += refChar;
                         MD.append(refChar);
-                        updateMP(refPos, readChar, refPos, refChar);
+                        //updateMP(refPos, readChar, refPos, refChar);
                     }
                     if (newXM + (conversionCount[0] >= conversionCount[1] ? conversionCount[1]:conversionCount[0])> readSequence.length()/25) {
                         return false;
                     }
-                    updateRA(readChar, refChar);
+                    //updateRA(readChar, refChar);
                     readPos++;
                     refPos++;
                 }
@@ -1151,7 +1201,7 @@ public:
         //MD = newMD_String;
         BTString tmp;
         if (pairToRepeat) {
-            repeatPositions.append(location, chromosomeName, tmp,AS, MD, XM, NM, TC, MP, RA_Array, YZ);
+            repeatPositions.append(location, chromosomeName, tmp,AS, MD, XM, NM, TC, YZ);
         }
 
         return true;
@@ -1212,7 +1262,7 @@ public:
             o.append(buf);
             o.append('\t');
             // RA
-            o.append("RA:i:");
+            /*o.append("RA:i:");
             for (int i = 0; i < 5; i++) {
                 for (int j = 0; j < 5; j++) {
                     itoa10<int>(RA_Array[i][j], buf);
@@ -1222,12 +1272,12 @@ public:
                     }
                 }
             }
-            o.append('\t');
+            o.append('\t');*/
             // MP
-            if (!MP.empty()) {
+            /*if (!MP.empty()) {
                 o.append("MP:Z:");
                 o.append(MP.toZBuf());
-            }
+            }*/
         }
     }
 
@@ -1280,7 +1330,7 @@ public:
         o.append(buf);
         o.append('\t');
         // RA
-        o.append("RA:i:");
+        /*o.append("RA:i:");
         for (int i = 0; i < 5; i++) {
             for (int j = 0; j < 5; j++) {
                 itoa10<int>(repeatInfo->RA_Array[i][j], buf);
@@ -1290,12 +1340,12 @@ public:
                 }
             }
         }
-        o.append('\t');
+        o.append('\t');*/
         // MP
-        if (!repeatInfo->MP.empty()) {
+        /*if (!repeatInfo->MP.empty()) {
             o.append("MP:Z:");
             o.append(repeatInfo->MP.toZBuf());
-        }
+        }*/
     }
 
     void outputRegularAlginemnt(BTString& o, long long int& oppoLocation, bool& primaryAlignment) {
@@ -1385,6 +1435,8 @@ public:
         repeatInfo->outputted = true;
         char buf[1024];
 
+        //RepeatMappingPosition* outputRepeatInfo = (repeatInfo->sameAsRepeat == NULL)? repeatInfo: repeatInfo->sameAsRepeat;
+
         // readName
         o.append(readName.toZBuf());
         o.append('\t');
@@ -1433,7 +1485,7 @@ public:
         o.append(readQuality.toZBuf());
         o.append('\t');
         // tags
-        outputRepeatTags(o, repeatInfo);
+        outputRepeatTags(o, repeatInfo->repeatFlagInfo == NULL?repeatInfo:repeatInfo->repeatFlagInfo);
         o.append('\n');
     }
 /*
