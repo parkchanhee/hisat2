@@ -192,22 +192,22 @@ public:
 
     }
 
-    /*MappingPosition (long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment){
-        *//*if (pairSegment == 0) {
+    MappingPosition (long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment){
+        /*if (pairSegment == 0) {
             location0 = inputLocation;
             location1 = inputPairedLocation;
         } else {
             location0 = inputPairedLocation;
             location1 = inputLocation;
-        }*//*
+        }*/
         locations[pairSegment] = &inputLocation;
         locations[1-pairSegment] = &inputPairedLocation;
         segmentExist[pairSegment] = true;
         chromosome = inputChromosome;
         pairScore = numeric_limits<int>::min();
-    }*/
+    }
 
-    void install (long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment) {
+    /*void install (long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment) {
         locations[pairSegment] = &inputLocation;
         locations[1-pairSegment] = &inputPairedLocation;
         segmentExist[pairSegment] = true;
@@ -217,11 +217,11 @@ public:
 
     void install (Alignment* newAlignment);
 
-    void install (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1, Alignment* newAlignment1);
+    void install (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1, Alignment* newAlignment1);*/
 
-    /*MappingPosition (Alignment* newAlignment);
+    MappingPosition (Alignment* newAlignment);
 
-    MappingPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1, Alignment* newAlignment1);*/
+    MappingPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1, Alignment* newAlignment1);
 
     bool operator==(Alignment* o);
 
@@ -342,7 +342,7 @@ public:
 
     void initialize() {
         /*for (int i = 0; i < positions.size(); i++) {
-            positions[i]->initialize();
+            positions[i].initialize();
             freePositions.push_back(positions[i]);
         }*/
         positions.clear();
@@ -377,9 +377,9 @@ public:
 
 class MappingPositions {
 public:
-    //vector<MappingPosition> positions;
-    vector<MappingPosition*> positions;
-    vector<MappingPosition*> freePositions;
+    vector<MappingPosition> positions;
+    //vector<MappingPosition*> positions;
+    //vector<MappingPosition*> freePositions;
     int bestPairScore;
     int nBestPair;
     int bestAS;
@@ -398,14 +398,14 @@ public:
         index = -1;
         oppositeAlignment = NULL;
         concordantExist = false;
-        for (int i = 0; i < positions.size(); i++) {
-            positions[i]->initialize();
+        /*for (int i = 0; i < positions.size(); i++) {
+            positions[i].initialize();
             freePositions.push_back(positions[i]);
-        }
+        }*/
         positions.clear();
     }
 
-    void getFreePositionPointer(MappingPosition* &newPostion) {
+    /*void getFreePositionPointer(MappingPosition* &newPostion) {
         //Alignment* newAlignment;
         if (!freePositions.empty()) {
             newPostion = freePositions.back();
@@ -413,7 +413,7 @@ public:
         } else {
             newPostion = new MappingPosition();
         }
-    }
+    }*/
 
     MappingPositions() {
         initialize();
@@ -424,13 +424,13 @@ public:
         }*/
     };
 
-    ~MappingPositions() {
+    /*~MappingPositions() {
         initialize();
-        while (!freePositions.empty()) {
+        *//*while (!freePositions.empty()) {
             delete freePositions.back();
             freePositions.pop_back();
-        }
-    }
+        }*//*
+    }*/
 
     int size() {
         return positions.size();
@@ -493,42 +493,43 @@ public:
         oppositeAlignment = NULL;
         for (int i = 0; i < positions.size(); i++) {
             //if (positions[i].badAlignment) { continue; }
-            if (positions[i]->locations[1-pairSegment] == NULL ||
-                *(positions[i]->locations[1-pairSegment]) == *inputLocations[1-pairSegment]) {
-                if (!positions[i]->badAlignment) {
-                    oppositeAlignment = positions[i]->alignments[1-pairSegment];
+            if (positions[i].locations[1-pairSegment] == NULL ||
+                *(positions[i].locations[1-pairSegment]) == *inputLocations[1-pairSegment]) {
+                if (!positions[i].badAlignment) {
+                    oppositeAlignment = positions[i].alignments[1-pairSegment];
                 }
-                if (*positions[i]->locations[pairSegment] == *inputLocations[pairSegment] &&
-                    (*positions[i]->chromosome == chromosome)) {
+                if (*positions[i].locations[pairSegment] == *inputLocations[pairSegment] &&
+                    (*positions[i].chromosome == chromosome)) {
                     index = i;
-                    return positions[i]->segmentExist[pairSegment];
+                    return positions[i].segmentExist[pairSegment];
                 }
             }
         }
         return false;
     }
 
-    void appendPosition(long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment) {
-        MappingPosition* newPostion;
+    /*void appendPosition(long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment) {
+        *//*MappingPosition* newPostion;
         getFreePositionPointer(newPostion);
         newPostion->install(inputLocation, inputPairedLocation, inputChromosome, pairSegment);
-        positions.push_back(newPostion);
+        positions.push_back(newPostion);*//*
+
     }
 
     void appendPosition (Alignment* newAlignment);
 
-    void appendPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1 = NULL, Alignment* newAlignment1= NULL);
+    void appendPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1 = NULL, Alignment* newAlignment1= NULL);*/
 
     void badAligned() {
-        positions[index]->badAlignment = true;
+        positions[index].badAlignment = true;
     }
 
     bool isBad() {
-        return positions[index]->badAlignment;
+        return positions[index].badAlignment;
     }
 
     bool mateExist() {
-        return positions[index]->segmentExist[0] && positions[index]->segmentExist[1];
+        return positions[index].segmentExist[0] && positions[index].segmentExist[1];
     }
 
     bool updatePairScore();
@@ -575,8 +576,8 @@ public:
 
     bool positionExist_new (BTString& chromosome, long long int& location, int& segment) {
         for (int i = 0; i < positions.size(); i++) {
-            if ((*(positions[i]->locations[segment]) == location) &&
-                (*(positions[i]->chromosome) == chromosome)) {
+            if ((*(positions[i].locations[segment]) == location) &&
+                (*(positions[i].chromosome) == chromosome)) {
                 return true;
             }
         }
