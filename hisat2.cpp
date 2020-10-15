@@ -307,7 +307,7 @@ char convertedFrom;
 char convertedTo;
 char convertedToComplement;
 char convertedFromComplement;
-EList<ht2_handle_t> repeatHandles;
+vector<ht2_handle_t> repeatHandles;
 struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
 bool uniqueOutputOnly;

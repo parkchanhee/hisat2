@@ -74,7 +74,34 @@ bool MappingPosition::operator==(Alignment* o) {
     }*/
 }
 
-MappingPosition::MappingPosition(Alignment* newAlignment) {
+/*MappingPosition::MappingPosition(Alignment* newAlignment) {
+    locations[newAlignment->pairSegment] = &newAlignment->location;
+    locations[1-newAlignment->pairSegment] = &newAlignment->pairToLocation;
+    segmentExist[newAlignment->pairSegment] = true;
+    chromosome = &newAlignment->chromosomeName;
+    *//*if (newAlignment->repeat || newAlignment->pairToRepeat) {
+        repeat = true;
+    }*//*
+    pairScore = numeric_limits<int>::min();
+}
+
+MappingPosition::MappingPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1=NULL, Alignment* newAlignment1=NULL) {
+    locations[newAlignment0->pairSegment] = &repeat0->repeatLocation;
+    chromosome = &repeat0->repeatChromosome;
+    repeats[0] = repeat0;
+    repeats[1] = repeat1;
+    alignments[0] = newAlignment0;
+    alignments[1] = newAlignment1;
+    segmentExist[0] = true;
+    if (alignments[1] != NULL) {
+        locations[newAlignment1->pairSegment] = &repeat1->repeatLocation;
+        segmentExist[1] = true;
+    }
+    AS = repeat0->AS;
+    repeat = true;
+}*/
+
+void MappingPosition::install(Alignment *newAlignment) {
     locations[newAlignment->pairSegment] = &newAlignment->location;
     locations[1-newAlignment->pairSegment] = &newAlignment->pairToLocation;
     segmentExist[newAlignment->pairSegment] = true;
@@ -85,7 +112,7 @@ MappingPosition::MappingPosition(Alignment* newAlignment) {
     pairScore = numeric_limits<int>::min();
 }
 
-MappingPosition::MappingPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1=NULL, Alignment* newAlignment1=NULL) {
+void MappingPosition::install (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1=NULL, Alignment* newAlignment1=NULL) {
     locations[newAlignment0->pairSegment] = &repeat0->repeatLocation;
     chromosome = &repeat0->repeatChromosome;
     repeats[0] = repeat0;
@@ -107,8 +134,8 @@ bool MappingPositions::positionExist_new (Alignment* newAlignment) {
         return false;
     }
 
-    if (positions[index] == newAlignment) {
-        return positions[index].segmentExist[newAlignment->pairSegment];
+    if (*positions[index] == newAlignment) {
+        return positions[index]->segmentExist[newAlignment->pairSegment];
     }
 
     /*long long int* location0;
@@ -202,18 +229,18 @@ bool MappingPositions::positionExist_new (Alignment* newAlignment) {
     }
 }*/
 
-bool MappingPositions::append_new(Alignment* newAlignment) {
+bool MappingPositions::append(Alignment* newAlignment) {
 
     if (positionExist_new(newAlignment)) {
         return false;
     } else {
         int segment = newAlignment->pairSegment;
-        if (!positions.empty() && positions[index] == newAlignment) {
-            positions[index].segmentExist[segment] = true;
-            if (positions[index].badAlignment) {
+        if (!positions.empty() && *positions[index] == newAlignment) {
+            positions[index]->segmentExist[segment] = true;
+            if (positions[index]->badAlignment) {
                 return false;
             }
-            positions[index].alignments[segment] = newAlignment;
+            positions[index]->alignments[segment] = newAlignment;
         } else {
             BTString* inputChromosome;
             if (!newAlignment->repeat && newAlignment->pairToRepeat) {
@@ -221,12 +248,13 @@ bool MappingPositions::append_new(Alignment* newAlignment) {
             } else {
                 inputChromosome = &newAlignment->chromosomeName;
             }
-            positions.emplace_back(newAlignment->location, newAlignment->pairToLocation, inputChromosome, newAlignment->pairSegment);
+            appendPosition(newAlignment->location, newAlignment->pairToLocation, inputChromosome, newAlignment->pairSegment);
+            //positions.emplace_back(newAlignment->location, newAlignment->pairToLocation, inputChromosome, newAlignment->pairSegment);
             index = positions.size()-1;
-            positions[index].alignments[segment] = newAlignment;
+            positions[index]->alignments[segment] = newAlignment;
             if (oppositeAlignment != NULL) {
-                positions[index].alignments[1-segment] = oppositeAlignment;
-                positions[index].segmentExist[1-segment] = true;
+                positions[index]->alignments[1-segment] = oppositeAlignment;
+                positions[index]->segmentExist[1-segment] = true;
             }
         }
         return true;
@@ -245,33 +273,33 @@ void MappingPositions::outputPair(BTString& o) {
     int outputCount = 0;
     bool primary = true;
     for (int i = 0; i < positions.size(); i++) {
-        if (positions[i].pairScore == bestPairScore) {
+        if (positions[i]->pairScore == bestPairScore) {
             outputCount++;
-            assert(positions[i].alignments[0] != NULL);
-            assert(positions[i].alignments[1] != NULL);
-            bool concordant = isConcordant(*positions[i].locations[0],
-                                           positions[i].alignments[0]->forward,
-                                           *positions[i].locations[1],
-                                           positions[i].alignments[1]->forward);
-            positions[i].alignments[0]->setConcordant(concordant);
-            positions[i].alignments[1]->setConcordant(concordant);
-            if (!positions[i].repeat) {
-                if (positions[i].alignments[0]->outputted && positions[i].alignments[1]->outputted) {
-                    positions[i].alignments[1]->outputted = false;
+            assert(positions[i]->alignments[0] != NULL);
+            assert(positions[i]->alignments[1] != NULL);
+            bool concordant = isConcordant(*positions[i]->locations[0],
+                                           positions[i]->alignments[0]->forward,
+                                           *positions[i]->locations[1],
+                                           positions[i]->alignments[1]->forward);
+            positions[i]->alignments[0]->setConcordant(concordant);
+            positions[i]->alignments[1]->setConcordant(concordant);
+            if (!positions[i]->repeat) {
+                if (positions[i]->alignments[0]->outputted && positions[i]->alignments[1]->outputted) {
+                    positions[i]->alignments[1]->outputted = false;
                 }
-                positions[i].alignments[0]->setYS(positions[i].alignments[1]);
-                positions[i].alignments[1]->setYS(positions[i].alignments[0]);
-                positions[i].alignments[0]->outputRegularAlginemnt(o, positions[i].locations[1], primary);
-                positions[i].alignments[1]->outputRegularAlginemnt(o, positions[i].locations[0], primary);
+                positions[i]->alignments[0]->setYS(positions[i]->alignments[1]);
+                positions[i]->alignments[1]->setYS(positions[i]->alignments[0]);
+                positions[i]->alignments[0]->outputRegularAlginemnt(o, positions[i]->locations[1], primary);
+                positions[i]->alignments[1]->outputRegularAlginemnt(o, positions[i]->locations[0], primary);
             } else {
                 //output repeat
-                if (positions[i].repeats[0]->outputted && positions[i].repeats[1]->outputted) {
-                    positions[i].repeats[1]->outputted = false;
+                if (positions[i]->repeats[0]->outputted && positions[i]->repeats[1]->outputted) {
+                    positions[i]->repeats[1]->outputted = false;
                 }
-                positions[i].repeats[0]->setYS(positions[i].repeats[1]);
-                positions[i].repeats[1]->setYS(positions[i].repeats[0]);
-                positions[i].alignments[0]->outputRepeatAlignment(o, positions[i].repeats[0], positions[i].locations[1], primary);
-                positions[i].alignments[1]->outputRepeatAlignment(o, positions[i].repeats[1], positions[i].locations[0], primary);
+                positions[i]->repeats[0]->setYS(positions[i]->repeats[1]);
+                positions[i]->repeats[1]->setYS(positions[i]->repeats[0]);
+                positions[i]->alignments[0]->outputRepeatAlignment(o, positions[i]->repeats[0], positions[i]->locations[1], primary);
+                positions[i]->alignments[1]->outputRepeatAlignment(o, positions[i]->repeats[1], positions[i]->locations[0], primary);
             }
             primary = false;
         }
@@ -283,13 +311,13 @@ void MappingPositions::outputSingle(BTString &o) {
     int outputCount = 0;
     bool primary = true;
     for (int i = 0; i < positions.size(); i++) {
-        if (positions[i].AS == bestAS && !positions[i].badAlignment) {
+        if (positions[i]->AS == bestAS && !positions[i]->badAlignment) {
             outputCount++;
-            assert(positions[i].alignments[0] != NULL);
-            if (!positions[i].repeat) {
-                positions[i].alignments[0]->outputRegularAlginemnt(o, NULL, primary);
+            assert(positions[i]->alignments[0] != NULL);
+            if (!positions[i]->repeat) {
+                positions[i]->alignments[0]->outputRegularAlginemnt(o, NULL, primary);
             } else {
-                positions[i].alignments[0]->outputRepeatAlignment(o, positions[i].repeats[0], NULL, primary);
+                positions[i]->alignments[0]->outputRepeatAlignment(o, positions[i]->repeats[0], NULL, primary);
             }
             primary = false;
         }
@@ -299,25 +327,25 @@ void MappingPositions::outputSingle(BTString &o) {
 bool MappingPositions::updatePairScore_regular() {
     int nPair;
     int score;
-    score = positions[index].alignments[0]->calculatePairScore(positions[index].alignments[1], nPair);
+    score = positions[index]->alignments[0]->calculatePairScore(positions[index]->alignments[1], nPair);
     if (score > bestPairScore) {
         bestPairScore = score;
         nBestPair = nPair;
-        concordantExist = positions[index].alignments[0]->concordant;
+        concordantExist = positions[index]->alignments[0]->concordant;
     } else if (score == bestPairScore) {
         nBestPair += nPair;
     } else { // the newPair Score is less than bestPairScore, label it
         badAligned();
         return false;
     }
-    positions[index].pairScore = score;
+    positions[index]->pairScore = score;
     return true;
 }
 
 bool MappingPositions::updateAS_regular() {
     if (isBad()) { return false; }
-    if (!positions[index].alignments[0]->mapped) { return true; }
-    int AS = positions[index].alignments[0]->AS;
+    if (!positions[index]->alignments[0]->mapped) { return true; }
+    int AS = positions[index]->alignments[0]->AS;
     if (AS > bestAS) {
         bestAS = AS;
         nBestSingle = 1;
@@ -327,14 +355,14 @@ bool MappingPositions::updateAS_regular() {
         badAligned();
         return false;
     }
-    positions[index].AS = AS;
+    positions[index]->AS = AS;
     return true;
 }
 
 bool MappingPositions::updatePairScore_repeat() {
     Alignment* alignments[2];
-    alignments[0] = positions[index].alignments[0];
-    alignments[1] = positions[index].alignments[1];
+    alignments[0] = positions[index]->alignments[0];
+    alignments[1] = positions[index]->alignments[1];
     if ((!alignments[0]->mapped || !alignments[1]->mapped) &&
         (bestPairScore >= (numeric_limits<int>::min()/2 - 1))) {
         badAligned();
@@ -375,8 +403,9 @@ bool MappingPositions::updatePairScore_repeat() {
                                                    concordant);
                 }
                 if (score >= bestPairScore) {
-                    positions.emplace_back(repeatPosition0, alignments[0], repeatPosition1, alignments[1]);
-                    positions.back().pairScore = score;
+                    //positions.emplace_back(repeatPosition0, alignments[0], repeatPosition1, alignments[1]);
+                    appendPosition(repeatPosition0, alignments[0], repeatPosition1, alignments[1]);
+                    positions.back()->pairScore = score;
                     if (score > bestPairScore) {
                         nBestPair = 1;
                         bestPairScore = score;
@@ -393,7 +422,7 @@ bool MappingPositions::updatePairScore_repeat() {
 
 bool MappingPositions::updateAS_repeat() {
     if (isBad()) { return false; }
-    Alignment* alignment = positions[index].alignments[0];
+    Alignment* alignment = positions[index]->alignments[0];
     RepeatMappingPosition* repeatPosition;
     badAligned(); // label this as bad alignment to avoid directly output.
     int AS;
@@ -401,7 +430,8 @@ bool MappingPositions::updateAS_repeat() {
         repeatPosition = &alignment->repeatPositions.positions[i];
         AS = (repeatPosition->repeatFlagInfo == NULL)?repeatPosition->AS : repeatPosition->repeatFlagInfo->AS;
         if (AS >= bestAS) {
-            positions.emplace_back(repeatPosition, alignment);
+            appendPosition(repeatPosition, alignment);
+            //positions.emplace_back(repeatPosition, alignment);
             //positions.back().AS = AS;
             if (AS > bestAS) {
                 bestAS = AS;
@@ -418,10 +448,10 @@ bool MappingPositions::updateAS_repeat() {
 bool MappingPositions::updatePairScore() {
     if (!mateExist()) { return true; }
 
-    assert(positions[index].alignments[0] != NULL);
-    assert(positions[index].alignments[1] != NULL);
+    assert(positions[index]->alignments[0] != NULL);
+    assert(positions[index]->alignments[1] != NULL);
 
-    if (positions[index].alignments[0]->repeat || positions[index].alignments[1]->repeat) {
+    if (positions[index]->alignments[0]->repeat || positions[index]->alignments[1]->repeat) {
         return updatePairScore_repeat();
     } else {
         return updatePairScore_regular();
@@ -429,11 +459,25 @@ bool MappingPositions::updatePairScore() {
 }
 
 bool MappingPositions::updateAS() {
-    if (positions[index].alignments[0]->repeat) {
+    if (positions[index]->alignments[0]->repeat) {
         return updateAS_repeat();
     } else {
         return updateAS_regular();
     }
+}
+
+void MappingPositions::appendPosition(Alignment *newAlignment) {
+    MappingPosition* newPostion;
+    getFreePositionPointer(newPostion);
+    newPostion->install(newAlignment);
+    positions.push_back(newPostion);
+}
+
+void MappingPositions::appendPosition(RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1, Alignment* newAlignment1) {
+    MappingPosition* newPostion;
+    getFreePositionPointer(newPostion);
+    newPostion->install(repeat0, newAlignment0, repeat1, newAlignment1);
+    positions.push_back(newPostion);
 }
 
 int Alignment::calculatePairScore(Alignment *inputAlignment, int &nPair) {

@@ -1859,8 +1859,8 @@ public:
     typedef EList<std::string> StrList;
     using AlnSink<index_t>::oq_;
 
-    int nThreads;
-    EList<Alignments*> alignmentsEachThreads;
+    //int nThreads;
+    vector<Alignments*> alignmentsEachThreads;
 
     AlnSinkTLASam(
             OutputQueue&     oq,            // output queue
@@ -1883,15 +1883,15 @@ public:
                     ssdb)
 //                    samc_(samc)
     {
-        nThreads = nthreads;
-        for (int i = 0; i < nThreads; i++) {
+        //nThreads = nthreads;
+        for (int i = 0; i < nthreads; i++) {
             Alignments* newAlignments = new Alignments(ref, DNA);
             alignmentsEachThreads.push_back(newAlignments);
         }
     }
 
     ~AlnSinkTLASam() {
-        for (int i = 0; i < nThreads; i++) {
+        for (int i = 0; i < alignmentsEachThreads.size(); i++) {
             delete alignmentsEachThreads[i];
         }
     };
@@ -2014,14 +2014,15 @@ public:
             size_t        threadId0)    // which thread am I?
     {
         // this funtion is for HLA alignment result report.
-        Alignment* newAlignment;
-        alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
-        newAlignment->TLAcycle = rd.TLAcycle;
-
-        if(rs == NULL && samc_.omitUnalignedReads()) {
-            delete newAlignment;
+        if(rs == NULL && samc_.omitUnalignedReads() || !alignmentsEachThreads[threadId0]->acceptNewAlignment()) {
             return;
         }
+
+        Alignment* newAlignment;
+        alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
+        alignmentsEachThreads[threadId0]->getSequence(rd);
+        newAlignment->TLAcycle = rd.TLAcycle;
+
         char buf[1024];
         char mapqInps[1024];
         if(rs != NULL) {
@@ -2113,7 +2114,8 @@ public:
         // CIGAR
         if(rs != NULL) {
             staln.buildCigar(false);
-            staln.writeCigar(&newAlignment->cigarString, NULL);
+            staln.writeCigar(newAlignment, NULL);
+            //newAlignment->getCigarSegement(staln);
         } else {
             // No alignment
             newAlignment->cigarString = "*";
