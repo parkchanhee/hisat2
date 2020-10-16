@@ -82,6 +82,7 @@ bool MappingPosition::operator==(Alignment* o) {
 }
 
 MappingPosition::MappingPosition(Alignment* newAlignment) {
+    initialize();
     locations[newAlignment->pairSegment] = &newAlignment->location;
     locations[1-newAlignment->pairSegment] = &newAlignment->pairToLocation;
     segmentExist[newAlignment->pairSegment] = true;
@@ -93,6 +94,7 @@ MappingPosition::MappingPosition(Alignment* newAlignment) {
 }
 
 MappingPosition::MappingPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1=NULL, Alignment* newAlignment1=NULL) {
+    initialize();
     locations[newAlignment0->pairSegment] = &repeat0->repeatLocation;
     chromosome = &repeat0->repeatChromosome;
     repeats[0] = repeat0;
@@ -332,6 +334,10 @@ void MappingPositions::outputSingle(BTString &o) {
 }
 
 bool MappingPositions::updatePairScore_regular() {
+    if (positions[index].alignments[0]->chromosomeName != positions[index].alignments[1]->chromosomeName) {
+        badAligned();
+        return false;
+    }
     int nPair;
     int score;
     score = positions[index].alignments[0]->calculatePairScore(positions[index].alignments[1], nPair);

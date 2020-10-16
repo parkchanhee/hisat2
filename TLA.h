@@ -193,6 +193,7 @@ public:
     }
 
     MappingPosition (long long int &inputLocation, long long int &inputPairedLocation, BTString* inputChromosome, int &pairSegment){
+        initialize();
         /*if (pairSegment == 0) {
             location0 = inputLocation;
             location1 = inputPairedLocation;
