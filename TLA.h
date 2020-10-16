@@ -179,7 +179,7 @@ public:
             locations[i] = NULL;
             segmentExist[i] = false;
             alignments[i] = NULL;
-            repeats[2] = NULL;
+            repeats[i] = NULL;
         }
         chromosome = NULL;
         AS = numeric_limits<int>::min();

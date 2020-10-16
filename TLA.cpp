@@ -63,10 +63,17 @@ bool MappingPosition::operator==(Alignment* o) {
     } else {
         testChromosome = &o->chromosomeName;
     }
+
+    if (locations[1] == NULL) {
+        return (*locations[o->pairSegment] == o->location) &&
+               (*chromosome == *testChromosome);
+    } else {
+        return (*locations[o->pairSegment] == o->location) &&
+               (*locations[1-(o->pairSegment)] == o->pairToLocation) &&
+               (*chromosome == *testChromosome);
+    }
     //BTString* chromosome = (!o->repeat && o->pairToRepeat)?&o->pairToChromosome:&o->chromosomeName
-    return (*locations[o->pairSegment] == o->location) &&
-        (*locations[1-(o->pairSegment)] == o->pairToLocation) &&
-        (*chromosome == *testChromosome);
+
     /*if (o->pairSegment == 0) {
         return (locations[0] == o->location) && (locations[1] == o->pairToLocation) && (chromosome == o->chromosomeName);
     } else {
