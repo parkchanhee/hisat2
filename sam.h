@@ -1241,7 +1241,7 @@ const
         o.append("ZS:i:");
         o.append(buf);
     }
-    if(print_yt_) {
+    if(print_yt_ && !TLA) {
         // YT:Z: String representing alignment type
         WRITE_SEP();
         flags.printYT(o);
@@ -1616,7 +1616,7 @@ const
         o.append("ZS:i:");
         o.append(buf);
     }
-    if(print_yt_) {
+    if(print_yt_&& !TLA) {
         // YT:Z: String representing alignment type
         WRITE_SEP();
         flags.printYT(o);

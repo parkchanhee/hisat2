@@ -2170,7 +2170,6 @@ public:
             if(rd.patFw.length() == 0) {
                 newAlignment->readSequence = "*";
             } else {
-                newAlignment->originalFw = rd.originalFw.toZBuf();
                 if(rs == NULL || rs->fw()) {
                     newAlignment->readSequence = rd.originalFw.toZBuf();
                 } else {
@@ -2186,7 +2185,6 @@ public:
             if(rd.qual.length() == 0) {
                 newAlignment->readQuality = "*";
             } else {
-                newAlignment->readQualityFw = rd.qual.toZBuf();
                 if(rs == NULL || rs->fw()) {
                     newAlignment->readQuality = rd.qual.toZBuf();
                 } else {
@@ -2221,12 +2219,9 @@ public:
                     prm,         // per-read metrics
                     sc);         // scoring scheme
         }
-        newAlignment->extractFlagInfo();
-        if (newAlignment->paired) {
-            alignmentsEachThreads[threadId0]->addNewAlignment_paired(newAlignment);
-        } else {
-            alignmentsEachThreads[threadId0]->addNewAlignment_single(newAlignment);
-        }
+
+        alignmentsEachThreads[threadId0]->append(newAlignment);
+
     }
 };
 
