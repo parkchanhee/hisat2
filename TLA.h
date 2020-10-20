@@ -1365,55 +1365,60 @@ public:
     /**
      * report alignment statistics for single-end alignment
      */
-    void reportStats_single(uint64_t &unAligned,
-                            uint64_t &nonRepeatAlignment,
-                            uint64_t &uniqueAlignment,
-                            uint64_t &multipleAlignment) {
+    void reportStats_single(uint64_t &unAlignedSingle,
+                            uint64_t &alignedSingle,
+                            uint64_t &uniqueAlignmentSingle,
+                            uint64_t &multipleAlignmentSingle) {
 
         int nAlignment = alignmentPositions.nBestSingle;
         if (nAlignment == 0) {
-            unAligned++;
+            unAlignedSingle++;
         } else {
-            nonRepeatAlignment++;
-            if (nAlignment == 1) { uniqueAlignment++; }
-            else { multipleAlignment++; }
+            alignedSingle++;
+            if (nAlignment == 1) { uniqueAlignmentSingle++; }
+            else { multipleAlignmentSingle++; }
         }
     }
 
     /**
      * report alignment statistics for paired-end alignment
      */
-    void reportStats_paired(uint64_t &unConcordant,
-                            uint64_t &uniqueConcordant,
-                            uint64_t &multipleConcordant,
-                            uint64_t &nonRepeatPairedAlignment,
-                            uint64_t &uniqueDiscordant,
-                            uint64_t &unAlignedPairRead,
-                            uint64_t &alignedPairRead,
-                            uint64_t &uniqueAlignedPairRead,
-                            uint64_t &multipleAlignedPairRead) {
+    void reportStats_paired(uint64_t &unConcordantPair,
+                            uint64_t &uniqueConcordantPair,
+                            uint64_t &multipleConcordantPair,
+                            uint64_t &concordantPair,
+                            uint64_t &uniqueDiscordantPair,
+                            uint64_t &unAlignedMate,
+                            uint64_t &disconcordantAlignedMate,
+                            uint64_t &uniqueDisconcordantAlignedMate,
+                            uint64_t &multipleDisconcordantAlignedMate) {
         if (!alignmentPositions.concordantExist) {
-            unConcordant++;
+            unConcordantPair++;
             if (alignmentPositions.nBestPair == 0) {
-                unAlignedPairRead += 2;
+                unAlignedMate += 2;
                 return;
             }
             if (alignmentPositions.bestPairScore == numeric_limits<int>::min()/2) {
                 // one mate is unmapped, one mate is mapped
-                unAlignedPairRead++;
-                alignedPairRead++;
-                if (alignmentPositions.nBestPair == 1) { uniqueAlignedPairRead++; }
-                else { multipleAlignedPairRead++; }
+                unAlignedMate++;
+                disconcordantAlignedMate++;
+                if (alignmentPositions.nBestPair == 1) { uniqueDisconcordantAlignedMate++; }
+                else { multipleDisconcordantAlignedMate++; }
             } else { //both mate is mapped
-                alignedPairRead += 2;
-                if (alignmentPositions.nBestPair == 1) { uniqueDiscordant++; }
-                else { multipleAlignedPairRead += 2; }
+                if (alignmentPositions.nBestPair == 1) {
+                    uniqueDiscordantPair++;
+                    return;
+                }
+                else {
+                    disconcordantAlignedMate += 2;
+                    multipleDisconcordantAlignedMate += 2;
+                }
             }
         } else {
             assert(alignmentPositions.nBestPair > 0);
-            nonRepeatPairedAlignment++;
-            if (alignmentPositions.nBestPair == 1) { uniqueConcordant++; }
-            else { multipleConcordant++; }
+            concordantPair++;
+            if (alignmentPositions.nBestPair == 1) { uniqueConcordantPair++; }
+            else { multipleConcordantPair++; }
         }
     }
 
@@ -1421,15 +1426,15 @@ public:
      * output single-end alignment reuslts
      */
     void output_single(BTString& o,
-                       uint64_t &unAligned,
-                       uint64_t &nonRepeatAlignment,
-                       uint64_t &uniqueAlignment,
-                       uint64_t &multipleAlignment) {
+                       uint64_t &unAlignedSingle,
+                       uint64_t &alignedSingle,
+                       uint64_t &uniqueAlignmentSingle,
+                       uint64_t &multipleAlignmentSingle) {
 
-        reportStats_single(unAligned,
-                           nonRepeatAlignment,
-                           uniqueAlignment,
-                           multipleAlignment);
+        reportStats_single(unAlignedSingle,
+                           alignedSingle,
+                           uniqueAlignmentSingle,
+                           multipleAlignmentSingle);
 
         // output
         if (uniqueOutputOnly && (alignmentPositions.nBestSingle != 1 || multipleAligned)) {
@@ -1447,25 +1452,25 @@ public:
      * output paired-end alignment reuslts
      */
     void output_paired(BTString& o,
-                      uint64_t &unConcordant,
-                      uint64_t &uniqueConcordant,
-                      uint64_t &multipleConcordant,
-                      uint64_t &nonRepeatPairedAlignment,
-                      uint64_t &uniqueDiscordant,
-                      uint64_t &unAlignedPairRead,
-                      uint64_t &alignedPairRead,
-                      uint64_t &uniqueAlignedPairRead,
-                      uint64_t &multipleAlignedPairRead) {
+                      uint64_t &unConcordantPair,
+                      uint64_t &uniqueConcordantPair,
+                      uint64_t &multipleConcordantPair,
+                      uint64_t &concordantPair,
+                      uint64_t &uniqueDiscordantPair,
+                      uint64_t &unAlignedMate,
+                      uint64_t &disconcordantAlignedMate,
+                      uint64_t &uniqueDisconcordantAlignedMate,
+                      uint64_t &multipleDisconcordantAlignedMate) {
 
-        reportStats_paired(unConcordant,
-                           uniqueConcordant,
-                           multipleConcordant,
-                           nonRepeatPairedAlignment,
-                           uniqueDiscordant,
-                           unAlignedPairRead,
-                           alignedPairRead,
-                           uniqueAlignedPairRead,
-                           multipleAlignedPairRead);
+        reportStats_paired(unConcordantPair,
+                           uniqueConcordantPair,
+                           multipleConcordantPair,
+                           concordantPair,
+                           uniqueDiscordantPair,
+                           unAlignedMate,
+                           disconcordantAlignedMate,
+                           uniqueDisconcordantAlignedMate,
+                           multipleDisconcordantAlignedMate);
 
         if ((uniqueOutputOnly && (alignmentPositions.nBestPair != 1 || multipleAligned)) ) {
             // do not report anything
@@ -1485,19 +1490,19 @@ public:
      */
     void output(OutputQueue& oq_,
                 size_t threadid_,
-                uint64_t &unAligned,
-                uint64_t &nonRepeatAlignment,
-                uint64_t &uniqueAlignment,
-                uint64_t &multipleAlignment,
-                uint64_t &unConcordant,
-                uint64_t &uniqueConcordant,
-                uint64_t &multipleConcordant,
-                uint64_t &nonRepeatPairedAlignment,
-                uint64_t &uniqueDiscordant,
-                uint64_t &unAlignedPairRead,
-                uint64_t &alignedPairRead,
-                uint64_t &uniqueAlignedPairRead,
-                uint64_t &multipleAlignedPairRead) {
+                uint64_t &unAlignedSingle,
+                uint64_t &alignedSingle,
+                uint64_t &uniqueAlignmentSingle,
+                uint64_t &multipleAlignmentSingle,
+                uint64_t &unConcordantPair,
+                uint64_t &uniqueConcordantPair,
+                uint64_t &multipleConcordantPair,
+                uint64_t &concordantPair,
+                uint64_t &uniqueDiscordantPair,
+                uint64_t &unAlignedMate,
+                uint64_t &disconcordantAlignedMate,
+                uint64_t &uniqueDisconcordantAlignedMate,
+                uint64_t &multipleDisconcordantAlignedMate) {
 
         while(working) {
             usleep(100);
@@ -1507,21 +1512,21 @@ public:
         OutputQueueMark qqm(oq_, obuf_, previousReadID, threadid_);
         if (paired) {
             output_paired(obuf_,
-                          unConcordant,
-                          uniqueConcordant,
-                          multipleConcordant,
-                          nonRepeatPairedAlignment,
-                          uniqueDiscordant,
-                          unAlignedPairRead,
-                          alignedPairRead,
-                          uniqueAlignedPairRead,
-                          multipleAlignedPairRead);
+                          unConcordantPair,
+                          uniqueConcordantPair,
+                          multipleConcordantPair,
+                          concordantPair,
+                          uniqueDiscordantPair,
+                          unAlignedMate,
+                          disconcordantAlignedMate,
+                          uniqueDisconcordantAlignedMate,
+                          multipleDisconcordantAlignedMate);
         } else {
             output_single(obuf_,
-                          unAligned,
-                          nonRepeatAlignment,
-                          uniqueAlignment,
-                          multipleAlignment);
+                          unAlignedSingle,
+                          alignedSingle,
+                          uniqueAlignmentSingle,
+                          multipleAlignmentSingle);
         }
         initialize();
     }
