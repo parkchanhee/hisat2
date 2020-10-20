@@ -211,8 +211,8 @@ void MappingPositions::outputPair(BTString& o) {
                     positions[i].repeats[1]->outputted = false;
                 }
                 // change YS tag.
-                positions[i].repeats[0]->setYS(positions[i].repeats[1]);
-                positions[i].repeats[1]->setYS(positions[i].repeats[0]);
+                positions[i].alignments[0]->setYS(positions[i].repeats[1]);
+                positions[i].alignments[0]->setYS(positions[i].repeats[0]);
                 //output
                 positions[i].alignments[0]->outputAlignment(o, positions[i].repeats[0], positions[i].locations[1], primary);
                 positions[i].alignments[1]->outputAlignment(o, positions[i].repeats[1], positions[i].locations[0], primary);
@@ -275,7 +275,7 @@ bool MappingPositions::updateAS_repeat() {
     int AS;
     for (int i = 0; i < alignment->repeatPositions.size(); i++) {
         repeatPosition = &alignment->repeatPositions.positions[i];
-        AS = (repeatPosition->repeatFlagInfo == NULL)?repeatPosition->AS : repeatPosition->repeatFlagInfo->AS;
+        AS = (repeatPosition->flagInfoIndex == -1)?repeatPosition->AS : positions[repeatPosition->flagInfoIndex].AS;
         if (AS >= bestAS) {
             positions.emplace_back(repeatPosition, alignment);
             if (AS > bestAS) {
@@ -350,11 +350,11 @@ bool MappingPositions::updatePairScore_repeat() {
     bool concordant;
     for (int i = 0; i < alignments[0]->repeatPositions.size(); i++) {
         repeatPosition0 = &alignments[0]->repeatPositions.positions[i];
-        repeatFlag0 = repeatPosition0->repeatFlagInfo==NULL ? repeatPosition0 : repeatPosition0->repeatFlagInfo;
+        repeatFlag0 = repeatPosition0->flagInfoIndex==-1 ? repeatPosition0 : &alignments[0]->repeatPositions.positions[repeatPosition0->flagInfoIndex];
         for (int j = 0; j < alignments[1]->repeatPositions.size(); j++) {
             repeatPosition1 = &alignments[1]->repeatPositions.positions[j];
             if (repeatPosition0->repeatChromosome == repeatPosition1->repeatChromosome) {
-                repeatFlag1 = repeatPosition1->repeatFlagInfo==NULL ? repeatPosition1 : repeatPosition1->repeatFlagInfo;
+                repeatFlag1 = repeatPosition1->flagInfoIndex==-1 ? repeatPosition1 : &alignments[1]->repeatPositions.positions[repeatPosition1->flagInfoIndex];
                 if (DNA) {
                     score = calculatePairScore_DNA(repeatPosition0->repeatLocation,
                                                    repeatFlag0->AS,

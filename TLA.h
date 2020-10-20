@@ -370,7 +370,7 @@ public:
     BTString refSequence;
     BTString repeatChromosome;
     bool outputted = false;
-    RepeatMappingPosition* repeatFlagInfo = NULL;
+    int flagInfoIndex = -1;
 
     RepeatMappingPosition() {};
 
@@ -388,29 +388,18 @@ public:
         TC = inputTC;
         YZ = repeatYZ;
         pairScore = numeric_limits<int>::min();
-        repeatFlagInfo = NULL;
+        flagInfoIndex = -1;
     }
 
     /**
      * constructor for the repeat which has same reference sequence.
-     * we can point to the old repeatMappingPosition, because they should have same information except location and chromosome.
+     * we save the index for pattern RepeatMappingPosition, because they should have same information except location and chromosome.
      */
-    RepeatMappingPosition(long long int &inputLocation, BTString &inputChromosome, RepeatMappingPosition& input) {
+    RepeatMappingPosition(long long int &inputLocation, BTString &inputChromosome, int& inputAS, int& index) {
         repeatLocation = inputLocation;
         repeatChromosome = inputChromosome;
-        AS = input.AS;
-        repeatFlagInfo = &input;
-    }
-
-    /**
-     * change YS score for output.
-     */
-    void setYS(RepeatMappingPosition* input) {
-        if (input->repeatFlagInfo == NULL) {
-            YS = input->AS;
-        } else {
-            YS = input->repeatFlagInfo->AS;
-        }
+        AS = inputAS;
+        flagInfoIndex = index;
     }
 };
 
@@ -438,7 +427,7 @@ public:
     bool sequenceExist (BTString& refSequence, int &index) {
 
         for (int i = 0; i < positions.size(); i++) {
-            if ((positions[i].repeatFlagInfo == NULL) && (refSequence == positions[i].refSequence)) {
+            if ((positions[i].flagInfoIndex == -1) && (refSequence == positions[i].refSequence)) {
                 index = i;
                 return true;
             }
@@ -457,7 +446,7 @@ public:
      * add repeat mapping information.
      */
     void append(BTString &chromosome, long long int &location, int &index) {
-        positions.emplace_back(location, chromosome, positions[index]);
+        positions.emplace_back(location, chromosome, positions[index].AS, index);
     }
 };
 
@@ -582,6 +571,10 @@ public:
         YS = input->AS;
     }
 
+    void setYS(RepeatMappingPosition* input) {
+        YS = input->AS;
+    }
+
     /**
      * change concordant status and flag
      */
@@ -698,9 +691,6 @@ public:
 
         BTString chromosomeRepeat;
         long long int locationRepeat;
-        // reserve enough space for positions to avoid memory relocation.
-        // it could change the address for each MappingPosition and change repeatFlagInfo.
-        repeatPositions.positions.reserve(repeatResult->count > repeatLimit ? 1000 : repeatResult->count);
         for (int i = 0; i < repeatResult->count; i++) {
             struct ht2_position *pos = &repeatResult->positions[i];
             chromosomeRepeat = refNameMap->names[pos->chr_id];
@@ -1060,7 +1050,7 @@ public:
             // YS
             if (paired) {
                 o.append("YS:i:");
-                itoa10<int>(repeatInfo->YS, buf);
+                itoa10<int>(YS, buf);
                 o.append(buf);
                 o.append('\t');
             }
@@ -1174,7 +1164,7 @@ public:
             outputTags(o);
             o.append('\n');
         } else {
-            outputTags(o, repeatInfo->repeatFlagInfo == NULL?repeatInfo:repeatInfo->repeatFlagInfo);
+            outputTags(o, repeatInfo->flagInfoIndex == -1?repeatInfo:&repeatPositions.positions[repeatInfo->flagInfoIndex]);
             o.append('\n');
         }
     }
@@ -1211,7 +1201,6 @@ public:
         paired = false;
         multipleAligned = false;
         nRepeatAlignment = 0;
-        DNA = false;
 
         for (int i = 0; i < 2; i++) {
             readName[i].clear();
@@ -1492,7 +1481,7 @@ public:
     }
 
     /**
-     * output function will be redirect to output_single or output_paired
+     * output function will be redirected to output_single or output_paired
      */
     void output(OutputQueue& oq_,
                 size_t threadid_,
