@@ -275,7 +275,7 @@ bool MappingPositions::updateAS_repeat() {
     int AS;
     for (int i = 0; i < alignment->repeatPositions.size(); i++) {
         repeatPosition = &alignment->repeatPositions.positions[i];
-        AS = (repeatPosition->flagInfoIndex == -1)?repeatPosition->AS : positions[repeatPosition->flagInfoIndex].AS;
+        AS = (repeatPosition->flagInfoIndex == -1)?repeatPosition->AS : alignment->repeatPositions.positions[repeatPosition->flagInfoIndex].AS;
         if (AS >= bestAS) {
             positions.emplace_back(repeatPosition, alignment);
             if (AS > bestAS) {
