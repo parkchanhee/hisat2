@@ -1,52 +1,69 @@
-HISAT-3N is under development!
+HISAT-3N
 ============
 
-What is HISAT-3N?
+Overview
 -----------------
+HISAT-3N (hierarchical indexing for spliced alignment of transcripts - 3 nucleotides)
+is an ultrafast and memory-efficient sequence aligner designed for nucleotide conversion
+sequencing technologies. HISAT-3N index contains two HISAT2 index which require memory small: 
+for the human genome, it require 9 GB for standard 3N-index and 10.5 GB for repeat 3N-index.
+The repeat 3N-index could be used to align one read to thousands position 3 times faster standard 3N-index.
+HISAT-3N is developed based on [HISAT2](https://github.com/DaehwanKimLab/hisat2), 
+which is particlarly optimized for RNA sequencing technology. 
+HISAT-3N can be used for any base-converted sequencing reads include BS-seq, SLAM-seq, TAB-seq, scBS-seq, and scSLAM-seq.
 
-HISAT-3N is a three nucleotide aligner integrated in HISAT2. 
-It could be used for any base-converted sequencing reads like
-slam-seq, bisulfite-seq.
-
-
-Build index for HISAT-3N
+Getting started
 ============
-hisat2-build
+HISAT-3N requires a 64-bit computer running either Linux or Mac OS X and at least 16 GB of RAM. 
+
+A few notes:  
+
+1. The repeat 3N index building process requires 256 GB of RAM.
+2. The standard 3N index building requires no more than 16 GB of RAM.
+3. The alignment process with either standard or repeat index requires no more than 16 GB of RAM.
+
+Install
+------------
+   
+    git clone https://github.com/DaehwanKimLab/hisat-3n.git
+    cd hisat-3n
+    make
+
+Build a 3N index with hisat-3n-build
 -----------
-You need to run hisat-3n-build to build HISAT-3N index.
+`hisat-3n-build` builds a 3N-index, which contain two hisat2 indexes, from a set of DNA sequences. For standard 3N-index,
+each index contain 16 files with suffix `.3n.*.*.ht2`.
+For repeat 3N-index, there are 16 more files in addtion to the standard 3N-index, and they have suffix 
+`.3n.*.rep.*.ht2`. 
+These files constitute the hisat-3n index and no other file is needed to alignment reads to reference.
 
-Sample argument for HISAT-3N index building without repeat index:  
-`hisat-3n-build -p 10 genome.fa genome`  
+* Sample argument for standard HISAT-3N index building:  
+`hisat-3n-build genome.fa genome`  
 
-Sample argument for HISAT-3N index building with repeat index:  
-`hisat-3n-build -p 10 --repeat-index genome.fa genome` 
+* Sample argument for repeat HISAT-3N index building (require 256 GB memory):  
+`hisat-3n-build --repeat-index genome.fa genome` 
 
-HISAT-3N index with splicing site information is under development!  
-PLEASE DO NOT USE THIS!
+It is optional to make graph index and add SNP or spicing site information to index, in order to increase the alignment accuracy.
+for more detail, please check the [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/).
 
-    HISAT2_SS_SCRIPT=./hisat2_extract_splicesites.py
-    HISAT2_EXON_SCRIPT=./hisat2_extract_exons.py
-    download ftp://ftp.ensembl.org/pub/release-84/gtf/homo_sapiens/Homo_sapiens.GRCh38.84.gtf.gz
+    # Standard HISAT-3N integrated index with SNP information
+    hisat-3n-build --exons genome.exon genome.fa genome 
     
-    tar zxvf Homo_sapiens.GRCh38.84.gtf.gz
-    mv  Homo_sapiens.GRCh38.84.gtf genome.gtf
-    GTF_FILE=genome.gtf
-    ${HISAT2_SS_SCRIPT} ${GTF_FILE} > genome.ss
-    ${HISAT2_EXON_SCRIPT} ${GTF_FILE} > genome.exon
+    # Standard HISAT-3N integrated index with splicing site information
+    hisat-3n-build --ss genome.ss genome.fa genome 
+    
+    # Repeat HISAT-3N integrated index with SNP information
+    hisat-3n-build --repeat-index --exons genome.exon genome.fa genome 
+    
+    # Repeat HISAT-3N integrated index with splicing site information
+    hisat-3n-build --repeat-index --ss genome.ss genome.fa genome 
 
-Sample argument for HISAT-3N index building with splicing site information:  
-`hisat-3n-build genome.fa genome -p 10 --ss genome.ss --exons genome.exon`   
- 
+Alignment with hisat-3n
+------------
+After we build HISAT-3N index, you are ready to use HISAT-3N for alignment. 
+HISAT-3N use HISAT2 argument but has some extra argument. Please check [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/) for more detail.
 
-Use HISAT-3N for alignment
-============
-After we build HISAT-3N index, you are ready to use HISAT-3N for alignemnt.
-HISAT-3N use HISAT2 argument but has some extra argument.
-
-For human genome reference, HISAT-3N took about 9GB for alignment.
-
-HISAT-3N share basic argument with HISAT2, please check the [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/).
-There are some addional argument for HISAT-3N. 
+For human genome reference, HISAT-3N requires about 9GB for alignment with standard 3N-index and 10.5 GB for repeat 3N-index.
 
 * `--base-change`  
     Provide which base is converted in sequencing process to other base. Please enter
@@ -56,19 +73,34 @@ There are some addional argument for HISAT-3N.
     If you want to align non-converted reads to regular HISAT2 index, do not use this option.
        
 * `--index/-x`  
-    The index for HISAT-3N.  The basename is the name of the index files up to but not including the suffix `.3n.1.1.ht2` / etc. 
+    The index for HISAT-3N.  The basename is the name of the index files up to but not including the suffix `.3n.*.*.ht2` / etc. 
     For example, you build your index with basename 'genome' by HISAT-3N-build, please enter `--index genome`.
       
 * `--repeat-limit` 
-    You could set up number of alignment will be check for each repeat alignment. default: 1000.
+    You could set up number of alignment will be check for each repeat alignment. You may increase the number to let hisat-3n 
+    output more, if a reads has multiple mapping. We suggest the repeat limit number for paired-end reads alingment is no more 
+    than 1,000,000. default: 1000.
 
 * `--unique-only` 
     Only output uniquely aligned reads.
     
 Sample argument:  
-* If you want to align your slam-seq reads:  
-`--hisat-3n  --index genome -f -1 read_1.fa -2 read_2.fa -S output.sam --base-change T,C -p 10`
+* Single-end slam-seq reads (have T to C conversion) alignment with standard 3N-index:  
+`--hisat-3n --index genome -f -U read.fa -S output.sam --base-change T,C`
 
-* If you want to align your bisulfite-seq reads:   
-`--hisat-3n  --index genome -f -1 read_1.fa -2 read_2.fa -S output.sam --base-change C,T -p 10`
+* Paired-end bisulfite-seq reads (have T to C conversion) alignment with repeat 3N-index:   
+`--hisat-3n --index genome -f -1 read_1.fa -2 read_2.fa -S output.sam --base-change C,T`
+
+* Single-end TAB-seq reads (have T to C conversion) alignment with repeat 3N-index and only output unique aligned result:   
+`--hisat-3n --index genome -q -U read.fq -S output.sam --base-change C,T --unique`
+
+Publication
+============
+
+HISAT-3N paper
+-----------
+
+HIAST2 paper
+-----------
+Kim, D., Paggi, J.M., Park, C. et al. [Graph-based genome alignment and genotyping with HISAT2 and HISAT-genotype](https://www.nature.com/articles/s41587-019-0201-4). Nat Biotechnol 37, 907–915 (2019)
 
