@@ -10,7 +10,7 @@ for the human genome, it require 9 GB for standard 3N-index and 10.5 GB for repe
 The repeat 3N-index could be used to align one read to thousands position 3 times faster standard 3N-index.
 HISAT-3N is developed based on [HISAT2](https://github.com/DaehwanKimLab/hisat2), 
 which is particlarly optimized for RNA sequencing technology. 
-HISAT-3N can be used for any base-converted sequencing reads include BS-seq, SLAM-seq, TAB-seq, scBS-seq, and scSLAM-seq.
+HISAT-3N can be used for any base-converted sequencing reads include BS-seq, SLAM-seq, scBS-seq, scSLAM-seq, and TAPS.
 
 Getting started
 ============
@@ -97,10 +97,8 @@ Sample argument:
 Publication
 ============
 
-HISAT-3N paper
------------
+* HISAT-3N paper
 
-HIAST2 paper
------------
+* HIAST2 paper  
 Kim, D., Paggi, J.M., Park, C. et al. [Graph-based genome alignment and genotyping with HISAT2 and HISAT-genotype](https://www.nature.com/articles/s41587-019-0201-4). Nat Biotechnol 37, 907–915 (2019)
 

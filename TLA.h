@@ -1182,7 +1182,7 @@ public:
     MappingPositions alignmentPositions; // the pool to save all alignment position
 
     BTString readName[2]; // the read name could be different for segment 1 and segment 2.
-    BTString readSequence[2]; // save the read sequence for output.
+    BTDnaString readSequence[2]; // save the read sequence for output.
     BTString qualityScore[2]; // save the quality score for output.
 
     bool working; // make sure we will not output the alignment when it's working.
