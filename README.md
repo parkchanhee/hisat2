@@ -58,7 +58,7 @@ for more detail, please check the [HISAT2 manual](https://daehwankimlab.github.i
     # Repeat HISAT-3N integrated index with splicing site information
     hisat-3n-build --repeat-index --ss genome.ss genome.fa genome 
 
-Alignment with hisat-3n
+Alignment with HISAT-3N
 ------------
 After we build the HISAT-3N index, you are ready to use HISAT-3N for alignment. 
 HISAT-3N uses the HISAT2 argument but has some extra arguments. Please check [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/) for more detail.
