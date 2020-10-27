@@ -13,11 +13,11 @@ which is particularly optimized for RNA sequencing technology.
 HISAT-3N can be used for any base-converted sequencing reads include [BS-seq], [SLAM-seq], [scBS-seq], [scSLAM-seq], and [TAPS].
 
 
-[BS-seq]: http://
-[SLAM-seq]: http://
-[scBS-seq]: http://
-[scSLAM-seq]: http://
-[TAPS]: http://
+[BS-seq]: https://en.wikipedia.org/wiki/Bisulfite_sequencing
+[SLAM-seq]: https://www.nature.com/articles/nmeth.4435
+[scBS-seq]: https://www.nature.com/articles/nmeth.3035
+[scSLAM-seq]: https://www.nature.com/articles/s41586-019-1369-y
+[TAPS]: https://www.nature.com/articles/s41587-019-0041-2
 
 
 Getting started
@@ -45,10 +45,10 @@ For repeat 3N-index, there are 16 more files in addition to the standard 3N-inde
 `.3n.*.rep.*.ht2`. 
 These files constitute the hisat-3n index and no other file is needed to alignment reads to the reference.
 
-* Sample argument for standard HISAT-3N index building:  
+* Example for standard HISAT-3N index building:  
 `hisat-3n-build genome.fa genome`  
 
-* Sample argument for repeat HISAT-3N index building (require 256 GB memory):  
+* Example for repeat HISAT-3N index building (require 256 GB memory):  
 `hisat-3n-build --repeat-index genome.fa genome` 
 
 It is optional to make the graph index and add SNP or spicing site information to the index, to increase the alignment accuracy.
