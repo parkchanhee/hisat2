@@ -10,7 +10,15 @@ for the human genome, it requires 9 GB for standard 3N-index and 10.5 GB for rep
 The repeat 3N-index could be used to align one read to thousands position 3 times faster standard 3N-index.
 HISAT-3N is developed based on [HISAT2](https://github.com/DaehwanKimLab/hisat2), 
 which is particularly optimized for RNA sequencing technology. 
-HISAT-3N can be used for any base-converted sequencing reads include BS-seq, SLAM-seq, scBS-seq, scSLAM-seq, and TAPS.
+HISAT-3N can be used for any base-converted sequencing reads include [BS-seq], [SLAM-seq], [scBS-seq], [scSLAM-seq], and [TAPS].
+
+
+[BS-seq]: http://
+[SLAM-seq]: http://
+[scBS-seq]: http://
+[scSLAM-seq]: http://
+[TAPS]: http://
+
 
 Getting started
 ============
@@ -84,15 +92,15 @@ For human genome reference, HISAT-3N requires about 9GB for alignment with stand
 * `--unique-only` 
     Only output uniquely aligned reads.
     
-Sample argument:  
+Examples:
 * Single-end slam-seq reads (have T to C conversion) alignment with standard 3N-index:  
-`--hisat-3n --index genome -f -U read.fa -S output.sam --base-change T,C`
+`hisat-3n --index genome -f -U read.fa -S output.sam --base-change T,C`
 
 * Paired-end bisulfite-seq reads (have T to C conversion) alignment with repeat 3N-index:   
-`--hisat-3n --index genome -f -1 read_1.fa -2 read_2.fa -S output.sam --base-change C,T`
+`hisat-3n --index genome -f -1 read_1.fa -2 read_2.fa -S output.sam --base-change C,T`
 
 * Single-end TAB-seq reads (have T to C conversion) alignment with repeat 3N-index and only output unique aligned result:   
-`--hisat-3n --index genome -q -U read.fq -S output.sam --base-change C,T --unique`
+`hisat-3n --index genome -q -U read.fq -S output.sam --base-change C,T --unique`
 
 Publication
 ============
