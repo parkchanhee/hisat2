@@ -17,7 +17,8 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "TLA.h"
+#include "TLA_alignment.h"
+#include "TLA_position.h"
 
 bool isConcordant(long long int &location1, bool &forward1, long long int &location2, bool &forward2) {
     if (abs(location1-location2) > 500000) { return false; }
@@ -405,49 +406,3 @@ bool MappingPositions::updatePairScore() {
         return updatePairScore_regular();
     }
 }
-
-/**
- * calculate the pairScore for a pair of alignment result. Output pair Score and number of pair.
- * Do not update their pairScore.
- */
-int Alignment::calculatePairScore(Alignment *inputAlignment, int &nPair) {
-    int pairScore = numeric_limits<int>::min();
-    nPair = 0;
-    if (pairSegment == inputAlignment->pairSegment){
-        // when 2 alignment results are from same pair segment, output the lowest score and number of pair equal zero.
-        pairScore = numeric_limits<int>::min();
-    } else if (!mapped && !inputAlignment->mapped) {
-        // both ummaped.
-        pairScore = numeric_limits<int>::min()/2 - 1;
-    } else if (!mapped || !inputAlignment->mapped) {
-        // one of the segment unmapped.
-        pairScore = numeric_limits<int>::min()/2;
-        nPair = 1;
-    } else if ((!repeat && !inputAlignment->repeat)){
-        // both mapped and (both non-repeat or not expand repeat)
-        bool concordant;
-        if (DNA) {
-            pairScore = calculatePairScore_DNA(location,
-                                               AS,
-                                               forward,
-                                               inputAlignment->location,
-                                               inputAlignment->AS,
-                                               inputAlignment->forward,
-                                               concordant);
-        } else {
-            pairScore = calculatePairScore_RNA(location,
-                                               XM,
-                                               forward,
-                                               inputAlignment->location,
-                                               inputAlignment->XM,
-                                               inputAlignment->forward,
-                                               concordant);
-        }
-        setConcordant(concordant);
-        inputAlignment->setConcordant(concordant);
-        nPair = 1;
-    }
-    return pairScore;
-}
-
-

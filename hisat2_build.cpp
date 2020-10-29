@@ -35,7 +35,7 @@
 #include "gfm.h"
 #include "hgfm.h"
 #include "rfm.h"
-#include "TLA.h"
+#include "TLA_alignment.h"
 
 /**
  * \file Driver for the bowtie-build indexing tool.

@@ -40,7 +40,7 @@
 #include "scoring.h"
 #include "mask.h"
 #include "repeat_builder.h"
-#include "TLA.h"
+#include "TLA_alignment.h"
 
 /**
  * \file Driver for the bowtie-build indexing tool.

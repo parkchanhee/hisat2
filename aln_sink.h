@@ -31,7 +31,6 @@
 #include <utility>
 #include "alt.h"
 #include "splice_site.h"
-//#include "TLA.h"
 
 static const TAlScore getMinScore() {
     return std::numeric_limits<TAlScore>::min() / 2;
@@ -1794,7 +1793,7 @@ public:
 
 	}
 
-    // for HLA
+    // for hisat-3n
     virtual void output(int threadId0, ReportingMetrics& met) {
 
     }
@@ -1930,21 +1929,7 @@ public:
         } else {
             met.nunpaired++;
         }
-        alignmentsEachThreads[threadId0]->output(oq_,
-                                                 threadId0,
-                                                 met.nunp_0,
-                                                 met.nunp_uni,
-                                                 met.nunp_uni1,
-                                                 met.nunp_uni2,
-                                                 met.nconcord_0,
-                                                 met.nconcord_uni1,
-                                                 met.nconcord_uni2,
-                                                 met.nconcord_uni,
-                                                 met.ndiscord,
-                                                 met.nunp_0_0,
-                                                 met.nunp_0_uni,
-                                                 met.nunp_0_uni1,
-                                                 met.nunp_0_uni2);
+        alignmentsEachThreads[threadId0]->output(oq_, threadId0,met);
     }
 
     void append(

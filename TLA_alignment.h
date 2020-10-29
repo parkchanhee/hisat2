@@ -17,8 +17,8 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HISAT2_TLA_H
-#define HISAT2_TLA_H
+#ifndef HISAT2_TLA_ALIGNMENT_H
+#define HISAT2_TLA_ALIGNMENT_H
 
 #include <string>
 #include <vector>
@@ -33,6 +33,9 @@
 #include "reference.h"
 #include <unistd.h>
 #include <queue>
+#include "TLA_position.h"
+#include "TLA_utility.h"
+
 
 extern char convertedFrom;
 extern char convertedTo;
@@ -45,410 +48,7 @@ extern bool uniqueOutputOnly;
 
 using namespace std;
 
-class Alignment;
-
-class RepeatMappingPosition;
-
-/**
- * this is the class to convert asc2dna, asc2dnacomp, and dnacomp matrix for hisat-3n conversion.
- * always save the conversion as convertFrom and convertTo.
- */
-class ConvertMatrixTLA {
-    char convertFrom = 'A';
-    char convertTo = 'A';
-    string allBase = "ACGT";
-    string allBaseLower = "acgt";
-
-    /**
-     * helper function to convert character to int presentation.
-     */
-    int charToInt(char inputChar) { return allBase.find(inputChar); }
-
-    /**
-     * return the complement nucleotide
-     */
-    int complement(char inputChar) {
-        return allBase[3-charToInt(inputChar)];
-    }
-
-    /**
-     *  convert asc2dna, asc2dnacomp, and dnacomp matrix according to convertFrom and convertTo variable.
-     *  always restore the matrix to original (4 letter) matrix.
-     */
-    void convertMatrix() {
-        restoreNormal();
-        for (int i = 0; i < 4; i++) {
-            char base = allBase[i];
-            char lowerBase = allBaseLower[i];
-            if (convertFrom == base) {
-                asc2dna[base] = charToInt(convertTo);
-                asc2dna[lowerBase] = charToInt(convertTo);
-            } else if (complement(convertFrom) == base) {
-                asc2dnacomp[base] = convertTo;
-                asc2dnacomp[lowerBase] = convertTo;
-                dnacomp[i] = charToInt(convertTo);
-            }
-        }
-    }
-public:
-    ConvertMatrixTLA(){
-
-    };
-
-    /**
-     * save the conversion information then convert the matrix.
-     */
-    void convert(char from, char to)  {
-        convertFrom = from;
-        convertTo = to;
-        convertMatrix();
-    }
-
-    /**
-     * change convertFrom and convertTO to it's complement nucleotide, then convert the matrix.
-     */
-    void inverseConversion() {
-        convertFrom = complement(convertFrom);
-        convertTo = complement(convertTo);
-        convertMatrix();
-    }
-
-    /**
-     * restore the asc2dna, asc2dnacomp, and dnacomp matrix to original (4 letter).
-     * do not change the convertFrom and convertTO variable.
-     */
-    void restoreNormal() {
-        for (int i = 0; i < 4; i++) {
-            char base = allBase[i];
-            char lowerBase = allBaseLower[i];
-            asc2dna[base] = charToInt(base);
-            asc2dna[lowerBase] = charToInt(base);
-            asc2dnacomp[base] = complement(base);
-            asc2dnacomp[lowerBase] = complement(base);
-            dnacomp[i] = charToInt(complement(base));
-        }
-    }
-
-    /**
-     * convert the matrix according to the convertFrom and convertTo variable.
-     */
-    void restoreConversion() {
-        convertMatrix();
-    }
-};
-
-/**
- *  the simple data structure to store cigar information.
- */
-class Cigar {
-    int len;
-    char label;
-public:
-    Cigar() { }
-
-    Cigar(int inputLen, char inputLabel): len(inputLen), label(inputLabel) {
-    }
-
-    int& getLen() { return len; }
-
-    char& getLabel() { return label; }
-};
-
-/**
- * the data structure to store existing mapping positions.
- */
-class MappingPosition {
-public:
-    long long int* locations[2] = {NULL};
-    BTString* chromosome;
-    int AS = numeric_limits<int>::min();
-    int pairScore; // score to decide which mapping position should be output.
-    bool segmentExist[2] = {false}; // indicate whether we have the segment alignment information.
-    bool badAlignment = false; // if the alignment result
-    bool repeat = false;
-    Alignment* alignments[2] = {NULL};
-    RepeatMappingPosition* repeats[2] = {NULL};
-
-    void initialize() {
-        for (int i = 0; i < 2; i++) {
-            locations[i] = NULL;
-            segmentExist[i] = false;
-            alignments[i] = NULL;
-            repeats[i] = NULL;
-        }
-        chromosome = NULL;
-        AS = numeric_limits<int>::min();
-        pairScore = numeric_limits<int>::min();
-        badAlignment = false;
-        repeat = false;
-    }
-
-    MappingPosition() {
-
-    }
-
-    /**
-     * constructor for non-repeat alignment, or original repeat alignment( with chromosomeName = rep*).
-     */
-    MappingPosition (Alignment* newAlignment);
-
-
-    /**
-     * constructor for expanded repeat alignment position.
-     */
-    MappingPosition (RepeatMappingPosition* repeat0, Alignment* newAlignment0, RepeatMappingPosition* repeat1, Alignment* newAlignment1);
-
-    /**
-     * return true if the MappingPosition has same information as input Alignment
-     */
-    bool operator==(Alignment* o);
-};
-
-/**
- * this is the data structure to store all MappingPosition
- */
-class MappingPositions {
-public:
-    vector<MappingPosition> positions;
-    int bestPairScore; // the best pairing score, for paired-end alignment output
-    int nBestPair; // the number of pair have bestPairScore, should equal to NH.
-    int bestAS; // the best AS score, for single-end alignment output.
-    int nBestSingle; // the number of alignment have bestAS, should equal to NH.
-    int index; // the index number on positions. should always point to the lastest or current MappingPosition.
-    Alignment* oppositeAlignment; // the temporary pointer point to the opposite mate's Alignment. use in append function.
-    bool concordantExist; // whether concordant alignment is exsit. use for paired-end output statistics.
-
-    void initialize() {
-        positions.clear();
-        bestPairScore = numeric_limits<int>::min();
-        nBestPair = 0;
-        bestAS = numeric_limits<int>::min();
-        nBestSingle = 0;
-        index = -1;
-        oppositeAlignment = NULL;
-        concordantExist = false;
-    }
-
-    MappingPositions() {
-        initialize();
-    };
-
-    /**
-     * return number of MappingPosition in positions.
-     */
-    int size() {
-        return positions.size();
-    }
-
-    /**
-     * recursively search the positions to find whether there is a Mapping position has target information.
-     * if the opposite mate is exist, we will save it's Alignment address to oppositeAlignment.
-     */
-    bool findPosition (long long int* inputLocations[2], BTString& chromosome, int& pairSegment) {
-        oppositeAlignment = NULL;
-        for (int i = 0; i < positions.size(); i++) {
-            if (positions[i].locations[1-pairSegment] == NULL ||
-                *(positions[i].locations[1-pairSegment]) == *inputLocations[1-pairSegment]) {
-                if (!positions[i].badAlignment) {
-                    oppositeAlignment = positions[i].alignments[1-pairSegment];
-                }
-                if (*positions[i].locations[pairSegment] == *inputLocations[pairSegment] &&
-                    (*positions[i].chromosome == chromosome)) {
-                    index = i;
-                    return positions[i].segmentExist[pairSegment];
-                }
-            }
-        }
-        return false;
-    }
-
-    /**
-     * set current MappingPosition to a bad alignment.
-     */
-    void badAligned() {
-        positions[index].badAlignment = true;
-    }
-
-    /**
-     * return true if current positions is a bad alignment.
-     */
-    bool isBad() {
-        return positions[index].badAlignment;
-    }
-
-    /**
-     * return if both segment is exist for current MappingPosition
-     */
-    bool mateExist() {
-        return positions[index].segmentExist[0] && positions[index].segmentExist[1];
-    }
-
-    /**
-     * calculate the pairing score,
-     * if one of mate is repeat, calculate the pairing score by knn and append the pair has best pairing score to positions.
-     */
-    bool updatePairScore();
-
-    /**
-     * calculate the pairing score for regular (non-repeat) alignment.
-     */
-    bool updatePairScore_regular();
-
-    /**
-     * calculate the pairing score for repeat alignment
-     * append to positions if the new pair has better (or equal) pairing score.
-     */
-    bool updatePairScore_repeat();
-
-    /**
-     * redirect to updateAS_regular() or updateAS_repeat().
-     */
-    bool updateAS();
-
-    /**
-     * if AS is larger than bestAS, update bestAS.
-     */
-    bool updateAS_regular();
-
-    /**
-     * if AS in repeatPosition is larger than bestAS, add it to positions and update BestAS.
-     */
-    bool updateAS_repeat();
-
-    /**
-     *  return true if the is a MappingPosition has same information as input Alignment.
-     *  first check the latest MappingPosition, if not same, search all MappingPositions.
-     *  both mate and opposite mate position should be same to MappingPosition to return true.
-     */
-    bool positionExist(Alignment* newAlignment);
-
-    /**
-     *  return true if the is a MappingPosition has same information as position.
-     *  this function is to check repeat mapping position.
-     *  without checking it's mate, if the repeat mapping location is exist, return true.
-     */
-    bool positionExist (BTString& chromosome, long long int& location, int& segment) {
-        for (int i = 0; i < positions.size(); i++) {
-            if ((*(positions[i].locations[segment]) == location) &&
-                (*(positions[i].chromosome) == chromosome)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * output paired-end alignment results.
-     */
-    void outputPair(BTString& o);
-
-    /**
-     * output single-end alignment results.
-     */
-    void outputSingle(BTString& o);
-
-    /**
-     * append new Alignment to positions.
-     * return true if the new Alignment successfully append.
-     * return false if the new Alignment is exist or it's mate is bad algined.
-     */
-    bool append(Alignment* newAlignment);
-};
-
-/**
- * the data structure to store repeat information.
- */
-class RepeatMappingPosition: public MappingPosition {
-public:
-    long long int repeatLocation;
-    BTString MD;
-    int XM;
-    int NM;
-    int YS;
-    int TC;
-    BTString YZ;
-    BTString refSequence;
-    BTString repeatChromosome;
-    bool outputted = false;
-    int flagInfoIndex = -1;
-
-    RepeatMappingPosition() {};
-
-    /**
-     * constructor for new repeat information.
-     */
-    RepeatMappingPosition (long long int& inputLocation, BTString& inputChromosome, BTString &inputRefSequence, int &inputAS, BTString &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &repeatYZ){
-        repeatLocation = inputLocation;
-        repeatChromosome = inputChromosome;
-        refSequence = inputRefSequence;
-        AS = inputAS;
-        MD = inputMD;
-        XM = inputXM;
-        NM = inputNM;
-        TC = inputTC;
-        YZ = repeatYZ;
-        pairScore = numeric_limits<int>::min();
-        flagInfoIndex = -1;
-    }
-
-    /**
-     * constructor for the repeat which has same reference sequence.
-     * we save the index for pattern RepeatMappingPosition, because they should have same information except location and chromosome.
-     */
-    RepeatMappingPosition(long long int &inputLocation, BTString &inputChromosome, int& inputAS, int& index) {
-        repeatLocation = inputLocation;
-        repeatChromosome = inputChromosome;
-        AS = inputAS;
-        flagInfoIndex = index;
-    }
-};
-
-/**
- * this is the data structure to store all repeatMappingPosition after expansion.
- */
-class RepeatMappingPositions {
-public:
-    vector<RepeatMappingPosition> positions;
-
-    void initialize() {
-        positions.clear();
-    }
-
-    /**
-     * return number of MappingPosition in positions.
-     */
-    int size() {
-        return positions.size();
-    }
-
-    /**
-     * return true if reference sequence is exist, else, return false.
-     */
-    bool sequenceExist (BTString& refSequence, int &index) {
-
-        for (int i = 0; i < positions.size(); i++) {
-            if ((positions[i].flagInfoIndex == -1) && (refSequence == positions[i].refSequence)) {
-                index = i;
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * add repeat mapping information.
-     */
-    void append (long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &repeatYZ) {
-        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ);
-    }
-
-    /**
-     * add repeat mapping information.
-     */
-    void append(BTString &chromosome, long long int &location, int &index) {
-        positions.emplace_back(location, chromosome, positions[index].AS, index);
-    }
-};
+struct ReportingMetrics;
 
 /**
  * the data structure to store all information of one alignment result.
@@ -1168,6 +768,12 @@ public:
             o.append('\n');
         }
     }
+
+    bool isConcordant(long long int &location1, bool &forward1, long long int &location2, bool &forward2);
+
+    int calculatePairScore_DNA (long long int &location0, int& AS0, bool& forward0, long long int &location1, int &AS1, bool &forward1, bool& concordant);
+
+    int calculatePairScore_RNA (long long int &location0, int& XM0, bool& forward0, long long int &location1, int &XM1, bool &forward1, bool& concordant);
 };
 
 /**
@@ -1365,76 +971,21 @@ public:
     /**
      * report alignment statistics for single-end alignment
      */
-    void reportStats_single(uint64_t &unAlignedSingle,
-                            uint64_t &alignedSingle,
-                            uint64_t &uniqueAlignmentSingle,
-                            uint64_t &multipleAlignmentSingle) {
+    void reportStats_single(ReportingMetrics& met);
 
-        int nAlignment = alignmentPositions.nBestSingle;
-        if (nAlignment == 0) {
-            unAlignedSingle++;
-        } else {
-            alignedSingle++;
-            if (nAlignment == 1) { uniqueAlignmentSingle++; }
-            else { multipleAlignmentSingle++; }
-        }
-    }
 
     /**
      * report alignment statistics for paired-end alignment
      */
-    void reportStats_paired(uint64_t &unConcordantPair,
-                            uint64_t &uniqueConcordantPair,
-                            uint64_t &multipleConcordantPair,
-                            uint64_t &concordantPair,
-                            uint64_t &uniqueDiscordantPair,
-                            uint64_t &unAlignedMate,
-                            uint64_t &disconcordantAlignedMate,
-                            uint64_t &uniqueDisconcordantAlignedMate,
-                            uint64_t &multipleDisconcordantAlignedMate) {
-        if (!alignmentPositions.concordantExist) {
-            unConcordantPair++;
-            if (alignmentPositions.nBestPair == 0) {
-                unAlignedMate += 2;
-                return;
-            }
-            if (alignmentPositions.bestPairScore == numeric_limits<int>::min()/2) {
-                // one mate is unmapped, one mate is mapped
-                unAlignedMate++;
-                disconcordantAlignedMate++;
-                if (alignmentPositions.nBestPair == 1) { uniqueDisconcordantAlignedMate++; }
-                else { multipleDisconcordantAlignedMate++; }
-            } else { //both mate is mapped
-                if (alignmentPositions.nBestPair == 1) {
-                    uniqueDiscordantPair++;
-                    return;
-                }
-                else {
-                    disconcordantAlignedMate += 2;
-                    multipleDisconcordantAlignedMate += 2;
-                }
-            }
-        } else {
-            assert(alignmentPositions.nBestPair > 0);
-            concordantPair++;
-            if (alignmentPositions.nBestPair == 1) { uniqueConcordantPair++; }
-            else { multipleConcordantPair++; }
-        }
-    }
+    void reportStats_paired(ReportingMetrics& met);
 
     /**
      * output single-end alignment reuslts
      */
     void output_single(BTString& o,
-                       uint64_t &unAlignedSingle,
-                       uint64_t &alignedSingle,
-                       uint64_t &uniqueAlignmentSingle,
-                       uint64_t &multipleAlignmentSingle) {
+                       ReportingMetrics& met) {
 
-        reportStats_single(unAlignedSingle,
-                           alignedSingle,
-                           uniqueAlignmentSingle,
-                           multipleAlignmentSingle);
+        reportStats_single(met);
 
         // output
         if (uniqueOutputOnly && (alignmentPositions.nBestSingle != 1 || multipleAligned)) {
@@ -1452,27 +1003,11 @@ public:
      * output paired-end alignment reuslts
      */
     void output_paired(BTString& o,
-                      uint64_t &unConcordantPair,
-                      uint64_t &uniqueConcordantPair,
-                      uint64_t &multipleConcordantPair,
-                      uint64_t &concordantPair,
-                      uint64_t &uniqueDiscordantPair,
-                      uint64_t &unAlignedMate,
-                      uint64_t &disconcordantAlignedMate,
-                      uint64_t &uniqueDisconcordantAlignedMate,
-                      uint64_t &multipleDisconcordantAlignedMate) {
+                       ReportingMetrics& met) {
 
-        reportStats_paired(unConcordantPair,
-                           uniqueConcordantPair,
-                           multipleConcordantPair,
-                           concordantPair,
-                           uniqueDiscordantPair,
-                           unAlignedMate,
-                           disconcordantAlignedMate,
-                           uniqueDisconcordantAlignedMate,
-                           multipleDisconcordantAlignedMate);
+        reportStats_paired(met);
 
-        if ((uniqueOutputOnly && (alignmentPositions.nBestPair != 1 || multipleAligned)) ) {
+        if ((uniqueOutputOnly && (alignmentPositions.nBestPair != 1 || multipleAligned))) {
             // do not report anything
         } else if (alignments.empty() ||
                    alignmentPositions.nBestPair == 0 ||
@@ -1484,25 +1019,12 @@ public:
             alignmentPositions.outputPair(o);
         }
     }
-
     /**
      * output function will be redirected to output_single or output_paired
      */
     void output(OutputQueue& oq_,
                 size_t threadid_,
-                uint64_t &unAlignedSingle,
-                uint64_t &alignedSingle,
-                uint64_t &uniqueAlignmentSingle,
-                uint64_t &multipleAlignmentSingle,
-                uint64_t &unConcordantPair,
-                uint64_t &uniqueConcordantPair,
-                uint64_t &multipleConcordantPair,
-                uint64_t &concordantPair,
-                uint64_t &uniqueDiscordantPair,
-                uint64_t &unAlignedMate,
-                uint64_t &disconcordantAlignedMate,
-                uint64_t &uniqueDisconcordantAlignedMate,
-                uint64_t &multipleDisconcordantAlignedMate) {
+                ReportingMetrics& met) {
 
         while(working) {
             usleep(100);
@@ -1511,25 +1033,12 @@ public:
         BTString obuf_;
         OutputQueueMark qqm(oq_, obuf_, previousReadID, threadid_);
         if (paired) {
-            output_paired(obuf_,
-                          unConcordantPair,
-                          uniqueConcordantPair,
-                          multipleConcordantPair,
-                          concordantPair,
-                          uniqueDiscordantPair,
-                          unAlignedMate,
-                          disconcordantAlignedMate,
-                          uniqueDisconcordantAlignedMate,
-                          multipleDisconcordantAlignedMate);
+            output_paired(obuf_, met);
         } else {
-            output_single(obuf_,
-                          unAlignedSingle,
-                          alignedSingle,
-                          uniqueAlignmentSingle,
-                          multipleAlignmentSingle);
+            output_single(obuf_,met);
         }
         initialize();
     }
 };
 
-#endif //HISAT2_TLA_H
+#endif //HISAT2_TLA_ALIGNMENT_H

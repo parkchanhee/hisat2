@@ -8,11 +8,11 @@ is an ultrafast and memory-efficient sequence aligner designed for nucleotide co
 sequencing technologies. HISAT-3N index contains two HISAT2 indexes which require memory small: 
 for the human genome, it requires 9 GB for standard 3N-index and 10.5 GB for repeat 3N-index.
 The repeat 3N-index could be used to align one read to thousands position 3 times faster standard 3N-index.
-HISAT-3N is developed based on [HISAT2](https://github.com/DaehwanKimLab/hisat2), 
+HISAT-3N is developed based on [HISAT2], 
 which is particularly optimized for RNA sequencing technology. 
 HISAT-3N can be used for any base-converted sequencing reads include [BS-seq], [SLAM-seq], [scBS-seq], [scSLAM-seq], and [TAPS].
 
-
+[HISAT2]:https://github.com/DaehwanKimLab/hisat2
 [BS-seq]: https://en.wikipedia.org/wiki/Bisulfite_sequencing
 [SLAM-seq]: https://www.nature.com/articles/nmeth.4435
 [scBS-seq]: https://www.nature.com/articles/nmeth.3035
@@ -52,7 +52,9 @@ These files constitute the hisat-3n index and no other file is needed to alignme
 `hisat-3n-build --repeat-index genome.fa genome` 
 
 It is optional to make the graph index and add SNP or spicing site information to the index, to increase the alignment accuracy.
-for more detail, please check the [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/).
+for more detail, please check the [HISAT2 manual].
+
+[HISAT2 manual]:https://daehwankimlab.github.io/hisat2/manual/
 
     # Standard HISAT-3N integrated index with SNP information
     hisat-3n-build --exons genome.exon genome.fa genome 
@@ -69,7 +71,7 @@ for more detail, please check the [HISAT2 manual](https://daehwankimlab.github.i
 Alignment with HISAT-3N
 ------------
 After we build the HISAT-3N index, you are ready to use HISAT-3N for alignment. 
-HISAT-3N uses the HISAT2 argument but has some extra arguments. Please check [HISAT2 manual](https://daehwankimlab.github.io/hisat2/manual/) for more detail.
+HISAT-3N uses the HISAT2 argument but has some extra arguments. Please check [HISAT2 manual] for more detail.
 
 For human genome reference, HISAT-3N requires about 9GB for alignment with standard 3N-index and 10.5 GB for repeat 3N-index.
 

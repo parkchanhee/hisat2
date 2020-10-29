@@ -141,8 +141,7 @@ set(HT2LIB_CPPS
 	)
 
 set(TLA_CPPS
-		TLA.cpp
-	)
+		TLA_alignment.cpp TLA_position.cpp)
 
 string(TIMESTAMP BUILD_DATE)
 file(STRINGS VERSION HISAT2_VERSION)
