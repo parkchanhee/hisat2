@@ -140,8 +140,8 @@ set(HT2LIB_CPPS
 	hisat2lib/ht2_index.cpp
 	)
 
-set(TLA_CPPS
-		TLA_alignment.cpp TLA_position.cpp)
+set(threeN_CPPS
+		alignment_3N.cpp position_3N.cpp)
 
 string(TIMESTAMP BUILD_DATE)
 file(STRINGS VERSION HISAT2_VERSION)
@@ -190,8 +190,8 @@ set_target_properties(hisat2lib_shared PROPERTIES OUTPUT_NAME hisat2lib)
 
 
 
-add_executable(hisat2-align-s ${SEARCH_CPPS} ${SHARED_CPPS} ${HT2LIB_CPPS} ${TLA_CPPS})
-add_executable(hisat2-align-l ${SEARCH_CPPS} ${SHARED_CPPS} ${HT2LIB_CPPS} ${TLA_CPPS})
+add_executable(hisat2-align-s ${SEARCH_CPPS} ${SHARED_CPPS} ${HT2LIB_CPPS} ${threeN_CPPS})
+add_executable(hisat2-align-l ${SEARCH_CPPS} ${SHARED_CPPS} ${HT2LIB_CPPS} ${threeN_CPPS})
 add_executable(hisat2-build-s ${BUILD_CPPS} ${SHARED_CPPS})
 add_executable(hisat2-build-l ${BUILD_CPPS} ${SHARED_CPPS})
 add_executable(hisat2-inspect-s ${INSPECT_CPPS} ${SHARED_CPPS})

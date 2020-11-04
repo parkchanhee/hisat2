@@ -68,7 +68,7 @@ static EList<string> mates1;  // mated reads (first mate)
 static EList<string> mates2;  // mated reads (second mate)
 static EList<string> mates12; // mated reads (1st/2nd interleaved in 1 file)
 static string adjIdxBase;
-static string adjIdxBases_TLA[2];
+static string adjIdxBases_3N[2];
 bool gColor;              // colorspace (not supported)
 int gVerbose;             // be talkative
 static bool startVerbose; // be talkative at startup
@@ -302,7 +302,7 @@ static bool repeat;
 static bool use_repeat_index;
 static EList<size_t> readLens;
 
-// TLA variable
+// 3N variable
 char convertedFrom;
 char convertedTo;
 char convertedToComplement;
@@ -311,8 +311,7 @@ vector<ht2_handle_t> repeatHandles;
 struct ht2_index_getrefnames_result *refNameMap;
 int repeatLimit;
 bool uniqueOutputOnly;
-
-bool TLA = false;
+bool threeN = false;
 
 #define DMAX std::numeric_limits<double>::max()
 
@@ -321,8 +320,8 @@ static void resetOptions() {
 	mates2.clear();
 	mates12.clear();
     adjIdxBase             = "";
-	adjIdxBases_TLA[0]	    = "";
-    adjIdxBases_TLA[1]	    = "";
+	adjIdxBases_3N[0]	    = "";
+    adjIdxBases_3N[1]	    = "";
 	gColor                  = false;
 	gVerbose                = 0;
 	startVerbose			= 0;
@@ -553,12 +552,8 @@ static void resetOptions() {
     readLens.clear();
 
     refNameMap = NULL;
-    TLA = false;
+    threeN = false;
     repeatLimit = 1000;
-    /*convertedFrom = 'C';
-    convertedTo = 'T';
-    convertedFromComplement = 'G';
-    convertedToComplement = 'A';*/
     uniqueOutputOnly = false;
 }
 
@@ -1829,15 +1824,15 @@ static void parseOption(int next_option, const char *arg) {
                      << "arguments to --base-change option, got " << args.size() << endl;
                 throw 1;
             }
-            TLA = true;
-            convertedFrom = args[0][0];
-            convertedTo = args[1][0];
+            threeN = true;
+            convertedFrom = toupper(args[0][0]);
+            convertedTo = toupper(args[1][0]);
             convertedFromComplement = asc2dnacomp[convertedFrom];
             convertedToComplement   = asc2dnacomp[convertedTo];
-            asc2dna_TLA[0]['C'] = 3;
-            asc2dna_TLA[0]['c'] = 3;
-            asc2dna_TLA[1]['G'] = 0;
-            asc2dna_TLA[1]['g'] = 0;
+            asc2dna_3N[0]['C'] = 3;
+            asc2dna_3N[0]['c'] = 3;
+            asc2dna_3N[1]['G'] = 0;
+            asc2dna_3N[1]['g'] = 0;
             break;
         }
         case ARG_REPEAT_LIMIT: {
@@ -2082,35 +2077,35 @@ static ALTDB<index_t>*                   altdb;
 static RepeatDB<index_t>*                repeatdb;
 static ALTDB<index_t>*                   raltdb;
 
-static ALTDB<index_t> *altdbs_TLA[2];
-static RepeatDB<index_t> *repeatdbs_TLA[2];
-static ALTDB<index_t> *raltdbs_TLA[2];
+static ALTDB<index_t> *altdbs_3N[2];
+static RepeatDB<index_t> *repeatdbs_3N[2];
+static ALTDB<index_t> *raltdbs_3N[2];
 static TranscriptomePolicy*              multiseed_tpol;
 static GraphPolicy*                      gpol;
 
 
-class referenceTLA {
+class reference3N {
 public:
     const HGFM<index_t>* multiseed_gfm[2];
     const RFM<index_t>* multiseed_rgfm[2];
     const BitPairReference* multiseed_rrefs[2];
 
-    referenceTLA() {
+    reference3N() {
 
     }
 
-    void load(EList<HGFM<index_t>* >& gfms_TLA,
-              RFM<index_t>* rgfms_TLA[2],
+    void load(EList<HGFM<index_t>* >& gfms_3N,
+              RFM<index_t>* rgfms_3N[2],
               BitPairReference* rrefss[2]) {
         for (int i = 0; i < 2; i++) {
-            multiseed_gfm[i] = gfms_TLA[i];
-            multiseed_rgfm[i] = rgfms_TLA[i];
+            multiseed_gfm[i] = gfms_3N[i];
+            multiseed_rgfm[i] = rgfms_3N[i];
             multiseed_rrefs[i] = rrefss[i];
         }
     }
 };
 
-referenceTLA refTLA;
+reference3N ref3N;
 
 /**
  * Metrics for measuring the work done by the outer read alignment
@@ -3247,9 +3242,9 @@ static inline void printEEScoreMsg(
 static void multiseedSearchWorker_hisat2(void *vp) {
 	int tid = *((int*)vp);
 
-    if (TLA) {
-        assert(refTLA.multiseed_gfm[0] != NULL);
-        assert(refTLA.multiseed_gfm[1] != NULL);
+    if (threeN) {
+        assert(ref3N.multiseed_gfm[0] != NULL);
+        assert(ref3N.multiseed_gfm[1] != NULL);
     } else {
         assert(multiseed_gfm != NULL);
     }
@@ -3266,17 +3261,15 @@ static void multiseedSearchWorker_hisat2(void *vp) {
     AlnSink<index_t>&                msink    = *multiseed_msink;
     OutFileBuf*                      metricsOfb = multiseed_metricsOfb;
 
-    // for Hisat-TLA
-    const HGFM<index_t>* gfm_TLA[2];
-    const RFM<index_t>* rgfm_TLA[2];
-    //const BitPairReference* ref_TLA[2];
-    const BitPairReference* rref_TLA[2];
+    // for Hisat-3N
+    const HGFM<index_t>* gfm_3N[2];
+    const RFM<index_t>* rgfm_3N[2];
+    const BitPairReference* rref_3N[2];
 
     for (int i = 0; i < 2; i++) {
-        gfm_TLA[i] = refTLA.multiseed_gfm[i];
-        //ref_TLA[i] = refTLA.multiseed_refs[i];
-        rgfm_TLA[i] = refTLA.multiseed_rgfm[i];
-        rref_TLA[i] = refTLA.multiseed_rrefs[i];
+        gfm_3N[i] = ref3N.multiseed_gfm[i];
+        rgfm_3N[i] = ref3N.multiseed_rgfm[i];
+        rref_3N[i] = ref3N.multiseed_rrefs[i];
     }
 
 	// Sinks: these are so that we can print tables encoding counts for
@@ -3320,7 +3313,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                    no_spliced_alignment ? NULL : ssdb,
                                    thread_rids_mindist);
 
-    SplicedAligner<index_t, local_index_t> splicedAligner(TLA? *gfm_TLA[0]: gfm,
+    SplicedAligner<index_t, local_index_t> splicedAligner(threeN? *gfm_3N[0]: gfm,
                                                           anchorStop,
                                                           thread_rids_mindist);
 	SwAligner sw;
@@ -3466,45 +3459,18 @@ static void multiseedSearchWorker_hisat2(void *vp) {
 			}
 			// Try to align this read
 			int nCycle = 0;
-            bool gNofwTLA = false;
-            bool gNorcTLA = false;
-			while(retry || (TLA ? (nCycle <= 3) : (nCycle <= 0)) ) {
+            bool gNofw3N = false;
+            bool gNorc3N = false;
+			while(retry || (threeN ? (nCycle <= 3) : (nCycle <= 0)) ) {
                 if (nCycle%2 == 0) {
-                    gNofwTLA = false;
-                    gNorcTLA = true;
+                    gNofw3N = false;
+                    gNorc3N = true;
                 } else {
-                    gNofwTLA = true;
-                    gNorcTLA = false;
+                    gNofw3N = true;
+                    gNorc3N = false;
                 }
                 msinkwrap.resetInit_();
-                ps->changePlanTLA(nCycle);
-                if (!retry && (nCycle == 2))
-                {
-                    if(metricsIval > 0 &&
-                       (metricsOfb != NULL || metricsStderr) &&
-                       !metricsPerRead &&
-                       ++mergei == mergeival)
-                    {
-                        // Do a periodic merge.  Update global metrics, in a
-                        // synchronized manner if needed.
-                        MERGE_METRICS(metrics, nthreads > 1);
-                        mergei = 0;
-                        // Check if a progress message should be printed
-                        if(tid == 0) {
-                            // Only thread 1 prints progress messages
-                            time_t curTime = time(0);
-                            if(curTime - iTime >= metricsIval) {
-                                metrics.reportInterval(metricsOfb, metricsStderr, false, true, NULL);
-                                iTime = curTime;
-                            }
-                        }
-                    }
-                    prm.reset(); // per-read metrics
-                    prm.doFmString = false;
-                    if(sam_print_xt) {
-                        gettimeofday(&prm.tv_beg, &prm.tz_beg);
-                    }
-                }
+                ps->changePlan3N(nCycle);
 
 				retry = false;
 				assert_eq(ps->bufa().color, false);
@@ -3604,11 +3570,11 @@ static void multiseedSearchWorker_hisat2(void *vp) {
 				// Calcualte nofw / no rc
 				bool nofw[2] = { false, false };
 				bool norc[2] = { false, false };
-				if (TLA) {
-                    nofw[0] = paired ? (gMate1fw ? gNofwTLA : gNorcTLA) : gNofwTLA;
-                    norc[0] = paired ? (gMate1fw ? gNorcTLA : gNofwTLA) : gNorcTLA;
-                    nofw[1] = paired ? (gMate2fw ? gNofwTLA : gNorcTLA) : gNofwTLA;
-                    norc[1] = paired ? (gMate2fw ? gNorcTLA : gNofwTLA) : gNorcTLA;
+				if (threeN) {
+                    nofw[0] = paired ? (gMate1fw ? gNofw3N : gNorc3N) : gNofw3N;
+                    norc[0] = paired ? (gMate1fw ? gNorc3N : gNofw3N) : gNorc3N;
+                    nofw[1] = paired ? (gMate2fw ? gNofw3N : gNorc3N) : gNofw3N;
+                    norc[1] = paired ? (gMate2fw ? gNorc3N : gNofw3N) : gNorc3N;
 				} else {
                     nofw[0] = paired ? (gMate1fw ? gNofw : gNorc) : gNofw;
                     norc[0] = paired ? (gMate1fw ? gNorc : gNofw) : gNorc;
@@ -3704,7 +3670,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                 }
                 if(filt[0] || filt[1]) {
                     int ret;
-                    if (TLA) {
+                    if (threeN) {
                         int index;
                         if (nCycle == 0 || nCycle == 3) {
                             index = 0;
@@ -3715,19 +3681,19 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                         bool useRepeat = paired ? (ps->bufa().length() >= 100) && (ps->bufb().length() >= 100) :
                                          ps->bufa().length() >= 80 ;
 
-                        // for TLA only
+                        // for HISAT-3N only
                         ret = splicedAligner.go(
                                 sc,
                                 pepol,
                                 *multiseed_tpol,
                                 *gpol,
-                                *gfm_TLA[index],
-                                useRepeat ? rgfm_TLA[index] : NULL,
-                                *altdbs_TLA[index],
-                                *repeatdbs_TLA[index],
-                                *raltdbs_TLA[index],
+                                *gfm_3N[index],
+                                useRepeat ? rgfm_3N[index] : NULL,
+                                *altdbs_3N[index],
+                                *repeatdbs_3N[index],
+                                *raltdbs_3N[index],
                                 ref,
-                                rref_TLA[index],
+                                rref_3N[index],
                                 sw,
                                 *ssdb,
                                 wlm,
@@ -3737,7 +3703,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                                 rnd,
                                 msinkwrap);
                     } else {
-                        // for regular Hisat2
+                        // for standard Hisat2
                         ret = splicedAligner.go(
                                 sc,
                                 pepol,
@@ -3810,8 +3776,8 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                     assert_leq(prm.nEeFail,  streak[i]);
                 }
 
-                if (TLA) {
-                    msinkwrap.finishTLARead( // for TLA.
+                if (threeN) {
+                    msinkwrap.finish3NRead( // for HISAT-3N.
                             NULL,
                             NULL,
                             exhaustive[0],        // exhausted seed hits for mate 1?
@@ -3833,7 +3799,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
                             seedSumm,             //rdid suppress alignments?
                             templateLenAdjustment);
                 } else {
-                    msinkwrap.finishRead(
+                    msinkwrap.finishRead( // for standard HISAT2
                             NULL,
                             NULL,
                             exhaustive[0],        // exhausted seed hits for mate 1?
@@ -3873,7 +3839,7 @@ static void multiseedSearchWorker_hisat2(void *vp) {
 		}
 	} // while(true)
 
-	if (TLA) {
+	if (threeN) {
         // output rest
         msink.output(tid-1, rpm);
 	}
@@ -3895,9 +3861,9 @@ static void multiseedSearch(
                             GraphPolicy& gp,
                             PairedPatternSource& patsrc,            // pattern source
                             AlnSink<index_t>& msink,                // hit sink
-                            EList<HGFM<index_t>* > gfms_TLA,           // TLA index of original text
-                            RFM<index_t>* rgfms_TLA[2],                 // TLA index of repeat sequences
-                            BitPairReference* rrefss[2],            // TLA repeat reference
+                            EList<HGFM<index_t>* > gfms_3N,           // 3N index of original text
+                            RFM<index_t>* rgfms_3N[2],                 // 3N index of repeat sequences
+                            BitPairReference* rrefss[2],            // 3N repeat reference
                             HGFM<index_t>* gfm,           // index of original text
                             RFM<index_t>* rgfm,           // index of repeat sequences
                             BitPairReference* refs,       // base reference
@@ -3911,8 +3877,8 @@ static void multiseedSearch(
     gpol                   = &gp;
 	multiseed_metricsOfb   = metricsOfb;
     multiseed_refs         = refs;
-	if (TLA) {
-        refTLA.load(gfms_TLA, rgfms_TLA, rrefss);
+	if (threeN) {
+        ref3N.load(gfms_3N, rgfms_3N, rrefss);
 	} else {
         multiseed_gfm          = gfm;
         multiseed_rgfm         = rgfm;
@@ -4017,34 +3983,34 @@ static void driver(
 		cerr << "About to initialize fw GFM: "; logTime(cerr, true);
 	}
 
-    // for TLA
-    if (TLA) {
+    // for 3N
+    if (threeN) {
         for (int i = 0; i < 2; i++) {
-            altdbs_TLA[i] = new ALTDB<index_t>();
-            repeatdbs_TLA[i] = new RepeatDB<index_t>();
-            raltdbs_TLA[i] = new ALTDB<index_t>();
+            altdbs_3N[i] = new ALTDB<index_t>();
+            repeatdbs_3N[i] = new RepeatDB<index_t>();
+            raltdbs_3N[i] = new ALTDB<index_t>();
         }
     }
 
-    EList<HGFM<index_t>* >gfms_TLA;
-    RFM<index_t>* rgfms_TLA[2];
+    EList<HGFM<index_t>* >gfms_3N;
+    RFM<index_t>* rgfms_3N[2];
     for (int i = 0; i < 2; i++) {
-        rgfms_TLA[i] = NULL;
+        rgfms_3N[i] = NULL;
     }
-    bool rep_index_exists_TLA[2]{false};
+    bool rep_index_exists_3N[2]{false};
     bool rep_index_exists = false;
-    string rep_adjIdxBase_TLA[2];
+    string rep_adjIdxBase_3N[2];
     string rep_adjIdxBase;
 
     HGFM<index_t>* gfm;
     RFM<index_t>* rgfm = NULL;
 
-    if (TLA) {
+    if (threeN) {
         for (int j = 0; j < 2; j++) {
-            adjIdxBases_TLA[j] = adjustEbwtBase(argv0, bt2indexBases[j], gVerbose);
+            adjIdxBases_3N[j] = adjustEbwtBase(argv0, bt2indexBases[j], gVerbose);
             HGFM<index_t, local_index_t> *tmp_gfm = new HGFM<index_t, local_index_t>(
-                    adjIdxBases_TLA[j],
-                    altdbs_TLA[j],
+                    adjIdxBases_3N[j],
+                    altdbs_3N[j],
                     NULL,
                     NULL,
                     -1,       // fw index
@@ -4065,33 +4031,33 @@ static void driver(
                     sanityCheck,
                     use_haplotype); //use haplotypes?
 
-            gfms_TLA.push_back(tmp_gfm);
+            gfms_3N.push_back(tmp_gfm);
 
             if(sanityCheck && !os.empty()) {
                 // Sanity check number of patterns and pattern lengths in GFM
                 // against original strings
-                assert_eq(os.size(), gfms_TLA[j]->nPat());
+                assert_eq(os.size(), gfms_3N[j]->nPat());
 
                 for(size_t i = 0; i < os.size(); i++) {
-                    assert_eq(os[i].length(), gfms_TLA[j]->plen()[i]);
+                    assert_eq(os[i].length(), gfms_3N[j]->plen()[i]);
                 }
             }
             if(sanityCheck && !os.empty()) {
-                gfms_TLA[j]->loadIntoMemory(
+                gfms_3N[j]->loadIntoMemory(
                         -1, // fw index
                         true, // load SA sample
                         true, // load ftab
                         true, // load rstarts
                         !noRefNames,
                         startVerbose);
-                gfms_TLA[j]->checkOrigs(os, false);
-                gfms_TLA[j]->evictFromMemory();
+                gfms_3N[j]->checkOrigs(os, false);
+                gfms_3N[j]->evictFromMemory();
             }
             {
                 // Load the other half of the index into memory
-                assert(!gfms_TLA[j]->isInMemory());
+                assert(!gfms_3N[j]->isInMemory());
                 Timer _t(cerr, "Time loading forward index: ", timing);
-                gfms_TLA[j]->loadIntoMemory(
+                gfms_3N[j]->loadIntoMemory(
                         -1, // not the reverse index
                         true,         // load SA samp? (yes, need forward index's SA samp)
                         true,         // load ftab (in forward index)
@@ -4101,17 +4067,17 @@ static void driver(
             }
 
 
-            rep_adjIdxBase_TLA[j] = adjIdxBases_TLA[j] + ".rep";
+            rep_adjIdxBase_3N[j] = adjIdxBases_3N[j] + ".rep";
             {
-                std::ifstream infile((rep_adjIdxBase_TLA[j] + ".1." + gfm_ext.c_str()).c_str());
-                rep_index_exists_TLA[j] = infile.good();
+                std::ifstream infile((rep_adjIdxBase_3N[j] + ".1." + gfm_ext.c_str()).c_str());
+                rep_index_exists_3N[j] = infile.good();
             }
-            string test = rep_adjIdxBase_TLA[j] + ".1." + gfm_ext.c_str();
-            if(rep_index_exists_TLA[j] && use_repeat_index) {
-                rgfms_TLA[j] = new RFM<index_t>(
-                        rep_adjIdxBase_TLA[j],
-                        raltdbs_TLA[j],
-                        repeatdbs_TLA[j],
+            string test = rep_adjIdxBase_3N[j] + ".1." + gfm_ext.c_str();
+            if(rep_index_exists_3N[j] && use_repeat_index) {
+                rgfms_3N[j] = new RFM<index_t>(
+                        rep_adjIdxBase_3N[j],
+                        raltdbs_3N[j],
+                        repeatdbs_3N[j],
                         &readLens,
                         -1,       // fw index
                         true,     // index is for the forward direction
@@ -4156,9 +4122,9 @@ static void driver(
 #endif
                 {
                     // Load the other half of the index into memory
-                    assert(!rgfms_TLA[j]->isInMemory());
+                    assert(!rgfms_3N[j]->isInMemory());
                     Timer _t(cerr, "Time loading forward index: ", timing);
-                    rgfms_TLA[j]->loadIntoMemory(
+                    rgfms_3N[j]->loadIntoMemory(
                             -1, // not the reverse index
                             true,         // load SA samp? (yes, need forward index's SA samp)
                             true,         // load ftab (in forward index)
@@ -4166,20 +4132,20 @@ static void driver(
                             !noRefNames,  // load names?
                             startVerbose);
 
-                    repeatdbs_TLA[j]->construct(gfms_TLA[j]->rstarts(), gfms_TLA[j]->nFrag());
+                    repeatdbs_3N[j]->construct(gfms_3N[j]->rstarts(), gfms_3N[j]->nFrag());
                 }
 
-                if (TLA) {
+                if (threeN) {
                     ht2_option_t option;
                     ht2_init_options(&option);
 
-                    option.altdb = altdbs_TLA[j];
-                    option.raltdb = raltdbs_TLA[j];
-                    option.repeatdb = repeatdbs_TLA[j];
-                    option.gfm = gfms_TLA[j];
-                    option.rgfm = rgfms_TLA[j];
+                    option.altdb = altdbs_3N[j];
+                    option.raltdb = raltdbs_3N[j];
+                    option.repeatdb = repeatdbs_3N[j];
+                    option.gfm = gfms_3N[j];
+                    option.rgfm = rgfms_3N[j];
 
-                    ht2_handle_t handle = ht2_init(adjIdxBases_TLA[j].c_str(), &option);
+                    ht2_handle_t handle = ht2_init(adjIdxBases_3N[j].c_str(), &option);
 
                     repeatHandles.push_back(handle);
                     if (refNameMap == NULL) {
@@ -4190,7 +4156,7 @@ static void driver(
 
 
             if(!saw_k) {
-                if(gfms_TLA[j]->gh().linearFM()) khits = 5;
+                if(gfms_3N[j]->gh().linearFM()) khits = 5;
                 else                    khits = 10;
             }
         }
@@ -4368,12 +4334,12 @@ static void driver(
                    &penNoncanIntronLen);  // penalty as to intron length
 
         EList<size_t> reflens;
-        // for TLA
-        EList<string> refnames_TLA[2];
-        EList<size_t> replens_TLA[2];
-        EList<string> repnames_TLA[2];
-        EList<size_t> empty_replens_TLA[2];
-        EList<string> empty_repnames_TLA[2];
+        // for HISAT-3N
+        EList<string> refnames_3N[2];
+        EList<size_t> replens_3N[2];
+        EList<string> repnames_3N[2];
+        EList<size_t> empty_replens_3N[2];
+        EList<string> empty_repnames_3N[2];
 
         //for regular hisat2
         EList<string> refnames;
@@ -4384,30 +4350,30 @@ static void driver(
         EList<string> empty_repnames;
 
 
-		if (TLA) {
-            for(size_t i = 0; i < gfms_TLA[0]->nPat(); i++) {
-                reflens.push_back(gfms_TLA[0]->plen()[i]);
+		if (threeN) {
+            for(size_t i = 0; i < gfms_3N[0]->nPat(); i++) {
+                reflens.push_back(gfms_3N[0]->plen()[i]);
             }
             for (int j = 0; j < 2; j++) {
-                readEbwtRefnames<index_t>(adjIdxBases_TLA[j], refnames_TLA[j]);
-                if (rep_index_exists_TLA[j] && use_repeat_index) {
-                    rgfms_TLA[j]->getReferenceNames(repnames_TLA[j]);
-                    rgfms_TLA[j]->getReferenceLens(replens_TLA[j]);
+                readEbwtRefnames<index_t>(adjIdxBases_3N[j], refnames_3N[j]);
+                if (rep_index_exists_3N[j] && use_repeat_index) {
+                    rgfms_3N[j]->getReferenceNames(repnames_3N[j]);
+                    rgfms_3N[j]->getReferenceLens(replens_3N[j]);
                 }
                 if(rmChrName && addChrName) {
                     cerr << "Error: --remove-chrname and --add-chrname cannot be used at the same time" << endl;
                     throw 1;
                 }
                 if(rmChrName) {
-                    for(size_t i = 0; i < refnames_TLA[j].size(); i++) {
-                        string& refname = refnames_TLA[j][i];
+                    for(size_t i = 0; i < refnames_3N[j].size(); i++) {
+                        string& refname = refnames_3N[j][i];
                         if(refname.find("chr") == 0) {
                             refname = refname.substr(3);
                         }
                     }
                 } else if(addChrName) {
-                    for(size_t i = 0; i < refnames_TLA[j].size(); i++) {
-                        string& refname = refnames_TLA[j][i];
+                    for(size_t i = 0; i < refnames_3N[j].size(); i++) {
+                        string& refname = refnames_3N[j][i];
                         if(refname.find("chr") != 0) {
                             refname = string("chr") + refname;
                         }
@@ -4445,10 +4411,10 @@ static void driver(
 		}
 
         SamConfig<index_t> samc(
-                TLA ? refnames_TLA[0]: refnames,               // reference sequence names
+                threeN ? refnames_3N[0]: refnames,               // reference sequence names
                 reflens,                // reference sequence lengths
-                TLA?(repeat ? repnames_TLA[0] : empty_repnames_TLA[0]): (repeat ? repnames : empty_repnames), // repeat sequence names
-                TLA? (repeat ? replens_TLA[0] : empty_replens_TLA[0]): (repeat ? replens : empty_replens),   // repeat sequence lengths
+                threeN?(repeat ? repnames_3N[0] : empty_repnames_3N[0]): (repeat ? repnames : empty_repnames), // repeat sequence names
+                threeN? (repeat ? replens_3N[0] : empty_replens_3N[0]): (repeat ? replens : empty_replens),   // repeat sequence lengths
                 samTruncQname,          // whether to truncate QNAME to 255 chars
                 samOmitSecSeqQual,      // omit SEQ/QUAL for 2ndary alignments?
                 samNoUnal,              // omit unaligned-read records?
@@ -4510,7 +4476,7 @@ static void driver(
         Timer *_tRef = new Timer(cerr, "Time loading reference: ", timing);
         refs = auto_ptr<BitPairReference>(
                 new BitPairReference(
-                        TLA ? adjIdxBases_TLA[0] : adjIdxBase,
+                        threeN ? adjIdxBases_3N[0] : adjIdxBase,
                         NULL,
                         false,
                         sanityCheck,
@@ -4532,12 +4498,12 @@ static void driver(
         BitPairReference* rrefss[2]{NULL};
         BitPairReference* rrefs = NULL;
 
-        if (TLA) {
+        if (threeN) {
             for (int j = 0; j < 2; j++) {
-                if (rep_index_exists_TLA[j] && use_repeat_index) {
-                    const EList<uint8_t> &included = rgfms_TLA[j]->getReadIncluded();
+                if (rep_index_exists_3N[j] && use_repeat_index) {
+                    const EList<uint8_t> &included = rgfms_3N[j]->getReadIncluded();
                     rrefss[j] = new BitPairReference(
-                            rep_adjIdxBase_TLA[j],
+                            rep_adjIdxBase_3N[j],
                             &included,
                             false,
                             sanityCheck,
@@ -4586,19 +4552,19 @@ static void driver(
         
         GraphPolicy gpol(max_alts_tried,
                          use_haplotype,
-                         (TLA ? altdbs_TLA[0]->haplotypes().size() : altdb->haplotypes().size()) > 0 && use_haplotype,
+                         (threeN ? altdbs_3N[0]->haplotypes().size() : altdb->haplotypes().size()) > 0 && use_haplotype,
                          enable_codis);
         
         init_junction_prob();
         bool write = novelSpliceSiteOutfile != "" || useTempSpliceSite;
-        bool read = knownSpliceSiteInfile != "" || novelSpliceSiteInfile != "" || useTempSpliceSite || altdbs_TLA[0]->hasSpliceSites();
+        bool read = knownSpliceSiteInfile != "" || novelSpliceSiteInfile != "" || useTempSpliceSite || altdbs_3N[0]->hasSpliceSites();
         ssdb = new SpliceSiteDB(
                                 *(refs.get()),
-                                TLA ? refnames_TLA[0] : refnames,
+                                threeN ? refnames_3N[0] : refnames,
                                 nthreads > 1, // thread-safe
                                 write, // write?
                                 read);  // read?
-        ssdb->read(TLA ? *gfms_TLA[0] : *gfm, TLA ? altdbs_TLA[0]->alts() : altdb->alts());
+        ssdb->read(threeN ? *gfms_3N[0] : *gfm, threeN ? altdbs_3N[0]->alts() : altdb->alts());
         if(knownSpliceSiteInfile != "") {
             ifstream ssdb_file(knownSpliceSiteInfile.c_str(), ios::in);
             if(ssdb_file.is_open()) {
@@ -4618,17 +4584,17 @@ static void driver(
 
 		switch(outType) {
 			case OUTPUT_SAM: {
-			    if (TLA) {
-                    mssink = new AlnSinkTLASam<index_t>(
+			    if (threeN) {
+                    mssink = new AlnSink3NSam<index_t>(
                             oq,           // output queue
                             samc,         // settings & routines for SAM output
-                            refnames_TLA[0],     // reference names
-                            repnames_TLA[0],     // repeat names
+                            refnames_3N[0],     // reference names
+                            repnames_3N[0],     // repeat names
                             gQuiet,       // don't print alignment summary at end
                             nthreads,
                             refs.get(),
                             no_spliced_alignment,
-                            altdbs_TLA[0],
+                            altdbs_3N[0],
                             ssdb);
 			    } else {
                     mssink = new AlnSinkSam<index_t>(
@@ -4670,19 +4636,19 @@ static void driver(
                         gpol,
                         *patsrc, // pattern source
                         *mssink, // hit sink
-                        gfms_TLA,     // TLA BWT
-                        rgfms_TLA,    // TLA
-                        rrefss,   // TLA
+                        gfms_3N,     // 3N BWT
+                        rgfms_3N,    // 3N
+                        rrefss,   // 3N
                         gfm,     // BWT
                         rgfm,
                         refs.get(),
                         rrefs,
                         metricsOfb);
         // Evict any loaded indexes from memory
-		if (TLA) {
+		if (threeN) {
             for (int j = 0; j < 2; j++) {
-                if(gfms_TLA[j]->isInMemory()) {
-                    gfms_TLA[j]->evictFromMemory();
+                if(gfms_3N[j]->isInMemory()) {
+                    gfms_3N[j]->evictFromMemory();
                 }
             }
 		} else {
@@ -4731,18 +4697,18 @@ static void driver(
 		delete mssink;
         delete ssdb;
 		delete metricsOfb;
-		if (TLA) {
+		if (threeN) {
             for (int i = 0; i < 2; i++) {
-                if(rep_index_exists_TLA[i] && use_repeat_index) {
-                    delete rgfms_TLA[i];
+                if(rep_index_exists_3N[i] && use_repeat_index) {
+                    delete rgfms_3N[i];
                     delete rrefss[i];
-                    delete repeatdbs_TLA[i];
-                    delete raltdbs_TLA[i];
+                    delete repeatdbs_3N[i];
+                    delete raltdbs_3N[i];
                 }
-                delete gfms_TLA[i];
-                delete altdbs_TLA[i];
+                delete gfms_3N[i];
+                delete altdbs_3N[i];
             }
-            if(rep_index_exists_TLA[0] && use_repeat_index){
+            if(rep_index_exists_3N[0] && use_repeat_index){
                 for (int k = 0; k < 2; k++) {
                     ht2_close(repeatHandles[k]);
                 }
@@ -4812,7 +4778,7 @@ int hisat2(int argc, const char **argv) {
 			}
 
 			// Get index basename (but only if it wasn't specified via --index)
-			if (TLA) {
+			if (threeN) {
                 if(bt2indexs[0].empty()) {
                     if(optind >= argc) {
                         cerr << "No index, query, or output file specified!" << endl;

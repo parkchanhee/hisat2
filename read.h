@@ -81,8 +81,8 @@ struct Read {
 		filter = '?';
 		seed = 0;
 		ns_ = 0;
-		TLAcycle = 0;
-        TLAoppositeConversion = false;
+		cycle_3N = 0;
+        oppositeConversion_3N = false;
 	}
 
 	/**
@@ -108,22 +108,18 @@ struct Read {
         }
     }*/
 
-    void changePlanTLA(int nCycle) {
+    void changePlan3N(int nCycle) {
 	    if (name.length() == 0) return;
-	    if ((TLAcycle < 2 && nCycle >= 2) || (TLAcycle >= 2 && nCycle < 2)) {
+	    if ((cycle_3N < 2 && nCycle >= 2) || (cycle_3N >= 2 && nCycle < 2)) {
             ns_ = 0;
             swap(patFw, patFw1);
             finalize();
 	    }
-        TLAcycle = nCycle;
-        TLAoppositeConversion = false;
+        cycle_3N = nCycle;
+        oppositeConversion_3N = false;
 	}
 
-    /*void changeTLAoppositeConversion(bool opposite) {
-        TLAoppositeConversion = opposite;
-    }*/
-
-    void changePlanTLA() {
+    void changePlan3N() {
         ns_ = 0;
         swap(patFw, patFw1);
         finalize();
@@ -402,8 +398,8 @@ struct Read {
 	HitSet  *hitset;    // holds previously-found hits; for chaining
 
 	//char plan;          // which plan is it. Default is plan A.
-	int TLAcycle;
-	bool TLAoppositeConversion;
+	int cycle_3N;
+	bool oppositeConversion_3N;
 };
 
 /**

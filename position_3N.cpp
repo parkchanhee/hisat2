@@ -17,8 +17,8 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "TLA_alignment.h"
-#include "TLA_position.h"
+#include "alignment_3N.h"
+#include "position_3N.h"
 
 bool isConcordant(long long int &location1, bool &forward1, long long int &location2, bool &forward2) {
     if (abs(location1-location2) > 500000) { return false; }

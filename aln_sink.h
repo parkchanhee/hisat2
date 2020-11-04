@@ -864,7 +864,7 @@ public:
 		}
 	}
 
-    virtual void reportTLAHits(
+    virtual void report3NHits(
             ReportingMetrics&     met,          // reporting metrics
             BTString&             o,              // write to this buffer
             StackedAln&           staln,       // StackedAln to write stacked alignment
@@ -973,7 +973,7 @@ public:
 		       ssm1, ssm2, flags1, flags2, prm, mapq, sc, report2);
 	}
 
-    virtual void reportTLAUnaligned(
+    virtual void report3NUnaligned(
             ReportingMetrics&     met,
             BTString&             o,              // write to this string
             StackedAln&           staln,          // StackedAln to write stacked alignment
@@ -1304,7 +1304,7 @@ public:
 		bool suppressAlignments = false,
         bool templateLenAdjustment = true);
 
-    void finishTLARead(
+    void finish3NRead(
             const SeedResults<index_t> *sr1, // seed alignment results for mate 1
             const SeedResults<index_t> *sr2, // seed alignment results for mate 2
             bool               exhaust1,     // mate 1 exhausted?
@@ -1798,7 +1798,7 @@ public:
 
     }
 
-    virtual void reportTLAUnaligned(
+    virtual void report3NUnaligned(
             ReportingMetrics&     met,
             BTString&             o,              // write to this string
             StackedAln&           staln,          // StackedAln to write stacked alignment
@@ -1850,7 +1850,7 @@ protected:
 
 
 template <typename index_t>
-class AlnSinkTLASam : public AlnSinkSam<index_t> {
+class AlnSink3NSam : public AlnSinkSam<index_t> {
 
 public:
 
@@ -1861,7 +1861,7 @@ public:
     //int nThreads;
     vector<Alignments*> alignmentsEachThreads;
 
-    AlnSinkTLASam(
+    AlnSink3NSam(
             OutputQueue&     oq,            // output queue
             const SamConfig<index_t>& samc, // settings & routines for SAM output
             const StrList&   refnames,      // reference names
@@ -1889,13 +1889,13 @@ public:
         }
     }
 
-    ~AlnSinkTLASam() {
+    ~AlnSink3NSam() {
         for (int i = 0; i < alignmentsEachThreads.size(); i++) {
             delete alignmentsEachThreads[i];
         }
     };
 
-    virtual void reportTLAUnaligned(
+    virtual void report3NUnaligned(
             ReportingMetrics&     met,
             BTString&             o,              // write to this string
             StackedAln&           staln,          // StackedAln to write stacked alignment
@@ -2006,7 +2006,7 @@ public:
         Alignment* newAlignment;
         alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
         alignmentsEachThreads[threadId0]->getSequence(rd);
-        newAlignment->TLAcycle = rd.TLAcycle;
+        newAlignment->cycle_3N = rd.cycle_3N;
 
         char buf[1024];
         char mapqInps[1024];
@@ -3154,7 +3154,7 @@ void AlnSinkWrap<index_t>::finishRead(
 }
 
 template <typename index_t>
-void AlnSinkWrap<index_t>::finishTLARead(
+void AlnSinkWrap<index_t>::finish3NRead(
         const SeedResults<index_t> *sr1, // seed alignment results for mate 1
         const SeedResults<index_t> *sr2, // seed alignment results for mate 2
         bool               exhaust1,     // mate 1 exhausted?
@@ -3290,7 +3290,7 @@ void AlnSinkWrap<index_t>::finishTLARead(
                 assert_eq(abs(rs1_[i].fragmentLength()), abs(rs2_[i].fragmentLength()));
             }
             assert(!select1_.empty());
-            g_.reportTLAHits(
+            g_.report3NHits(
                     met,
                     obuf_,
                     staln_,
@@ -3372,7 +3372,7 @@ void AlnSinkWrap<index_t>::finishTLARead(
             }
             assert_eq(0, off);
             assert(!select1_.empty());
-            g_.reportTLAHits(
+            g_.report3NHits(
                     met,
                     obuf_,
                     staln_,
@@ -3523,7 +3523,7 @@ void AlnSinkWrap<index_t>::finishTLARead(
             if(sr1 != NULL) sr1->toSeedAlSumm(ssm1);
             if(sr2 != NULL) sr2->toSeedAlSumm(ssm2);
             assert(!select1_.empty());
-            g_.reportTLAHits(
+            g_.report3NHits(
                     met,
                     obuf_,
                     staln_,
@@ -3556,7 +3556,7 @@ void AlnSinkWrap<index_t>::finishTLARead(
             if(sr1 != NULL) sr1->toSeedAlSumm(ssm1);
             if(sr2 != NULL) sr2->toSeedAlSumm(ssm2);
             assert(!select2_.empty());
-            g_.reportTLAHits(
+            g_.report3NHits(
                     met,
                     obuf_,
                     staln_,
@@ -3612,7 +3612,7 @@ void AlnSinkWrap<index_t>::finishTLARead(
                     true,           // primary
                     repRs2 != NULL, // opp aligned
                     (repRs2 != NULL) ? repRs2->fw() : false); // opp fw
-            g_.reportTLAUnaligned(
+            g_.report3NUnaligned(
                     met,
                     obuf_,      // string to write output to
                     staln_,
@@ -3659,7 +3659,7 @@ void AlnSinkWrap<index_t>::finishTLARead(
                     true,           // primary
                     repRs1 != NULL, // opp aligned
                     (repRs1 != NULL) ? repRs1->fw() : false); // opp fw
-            g_.reportTLAUnaligned(
+            g_.report3NUnaligned(
                     met,
                     obuf_,      // string to write output to
                     staln_,

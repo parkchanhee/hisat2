@@ -96,11 +96,11 @@ def main():
         repeatLength = "100-300"
         repeatCount = "5"
         referenceName = ""
-        TLA = True
+        threeN = True
         removeRepeatLength = False
         for i in range(len(argv)):
             if argv[i] == "--no-base-change":
-                TLA = False
+                threeN = False
             if argv[i] == "-p":
                 nThread = argv[i+1]
             elif argv[i] == "-f":
@@ -121,8 +121,8 @@ def main():
         repeatArgv += ["-p", nThread]
         repeatArgv += ["--repeat-length", repeatLength]
         repeatArgv += ["--repeat-count", repeatCount]
-        if TLA:
-            repeatArgv += ["--TLA"]
+        if threeN:
+            repeatArgv += ["--3N"]
         repeatArgv += [referenceName, outputName]
         os.system(" ".join(repeatArgv))
 
@@ -130,7 +130,7 @@ def main():
     if "--no-base-change" in argv:
         argv.remove("--no-base-change")
     else:
-        argv.append("--TLA")
+        argv.append("--3N")
 
     argv[0] = build_bin_name
     argv.insert(1, 'basic-0')

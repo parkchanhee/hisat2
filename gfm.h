@@ -72,7 +72,7 @@ extern uint8_t cCntLUT_4[4][4][256];
 extern uint8_t cCntLUT_4_rev[4][4][256];
 extern uint8_t cCntBIT[8][256];
 
-extern bool TLA;
+extern bool threeN;
 
 static const uint64_t c_table[4] = {
     0xffffffffffffffff,
@@ -1491,7 +1491,7 @@ public:
                             uint64_t bp = asc2dna[(int)snp_ch];
                             assert_lt(bp, 4);
                             if((int)bp == s[pos]) {
-                                if (!TLA) {
+                                if (!threeN) {
                                     cerr << "Warning: single type should have a different base than " << "ACGTN"[(int)s[pos]]
                                          << " (" << snp_id << ") at " << genome_pos << " on " << chr << endl;
                                 }

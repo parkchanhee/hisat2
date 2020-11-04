@@ -17,8 +17,8 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HISAT2_TLA_ALIGNMENT_H
-#define HISAT2_TLA_ALIGNMENT_H
+#ifndef HISAT2_ALIGNMENT_3N_H
+#define HISAT2_ALIGNMENT_3N_H
 
 #include <string>
 #include <vector>
@@ -33,8 +33,8 @@
 #include "reference.h"
 #include <unistd.h>
 #include <queue>
-#include "TLA_position.h"
-#include "TLA_utility.h"
+#include "position_3N.h"
+#include "utility_3N.h"
 
 
 extern char convertedFrom;
@@ -91,7 +91,7 @@ public:
     // intermediate variable
     bool outputted = false; // whether the alignment is outputted.
     bool DNA = false;
-    int TLAcycle; // indicate which TLAcycle make this alignment result. 0 or 3 for repeatHandles[0], else repeatHandles[1]
+    int cycle_3N; // indicate which cycle_3N make this alignment result. 0 or 3 for repeatHandles[0], else repeatHandles[1]
     bool paired;
     bool forward;
     bool mapped;
@@ -136,7 +136,7 @@ public:
 
         outputted = false;
         DNA = false;
-        TLAcycle = -1;
+        cycle_3N = -1;
         paired = false;
         forward = false;
         mapped = false;
@@ -283,7 +283,7 @@ public:
         }
 
         // expand the repeat locations
-        ht2_error_t err = ht2_repeat_expand((TLAcycle == 0 || TLAcycle == 3) ? repeatHandles[0] : repeatHandles[1],
+        ht2_error_t err = ht2_repeat_expand((cycle_3N == 0 || cycle_3N == 3) ? repeatHandles[0] : repeatHandles[1],
                                             chromosomeName.toZBuf(),
                                             location - 1,
                                             readSequence.length(),
@@ -879,7 +879,7 @@ public:
     }
 
     /**
-     * receive alignment information from AlnSinkTLASam::appendMate() and append it to alignment pool.
+     * receive alignment information from AlnSink3NSam::appendMate() and append it to alignment pool.
      */
     void append(Alignment *newAlignment) {
         working = true;
@@ -1041,4 +1041,4 @@ public:
     }
 };
 
-#endif //HISAT2_TLA_ALIGNMENT_H
+#endif //HISAT2_ALIGNMENT_3N_H

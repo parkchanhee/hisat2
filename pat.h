@@ -525,9 +525,9 @@ public:
         buf2_.planB();
 	}*/
 
-	void changePlanTLA(int nCycle) {
-        buf1_.changePlanTLA(nCycle);
-        buf2_.changePlanTLA(3-nCycle);
+	void changePlan3N(int nCycle) {
+        buf1_.changePlan3N(nCycle);
+        buf2_.changePlan3N(3-nCycle);
 	}
 
 	/**

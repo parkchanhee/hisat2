@@ -17,11 +17,11 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HISAT2_TLA_POSITION_H
-#define HISAT2_TLA_POSITION_H
+#ifndef HISAT2_POSITION_3N_H
+#define HISAT2_POSITION_3N_H
 
 #include "sstring.h"
-#include "TLA_alignment.h"
+#include "alignment_3N.h"
 
 class Alignment;
 class RepeatMappingPosition;
@@ -322,5 +322,5 @@ public:
     }
 };
 
-#endif //HISAT2_TLA_POSTION_H
+#endif //HISAT2_POSTION_3N_H
 

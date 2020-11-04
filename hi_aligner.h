@@ -702,7 +702,7 @@ struct GenomeHit {
                                  ELList<pair<index_t, index_t> >&  ht_llist,
                                  EList<pair<index_t, index_t> >&   ht_list,
                                  Haplotype<index_t>&               cmp_ht,
-                                 int                               TLAcycle,
+                                 int                               cycle_3N,
                                  ELList<Edit, 128, 4>*             candidate_edits = NULL,
                                  index_t                           mm = 0,
                                  index_t*                          numNs = NULL)
@@ -746,7 +746,7 @@ struct GenomeHit {
                             0,    /* dep */
                             gpol,
                             numALTsTried,
-                            TLAcycle);
+                            cycle_3N);
         index_t extlen = 0;
         if(left) {
             assert_geq(best_rdoff, -1);
@@ -819,7 +819,7 @@ struct GenomeHit {
                                        index_t                           dep,
                                        const GraphPolicy&                gpol,
                                        index_t&                          numALTsTried,
-                                       int                               TLAcycle,
+                                       int                               cycle_3N,
                                        ALT_TYPE                          prev_alt_type = ALT_NONE);
     
     /**
@@ -1578,15 +1578,15 @@ bool GenomeHit<index_t>::combineWith(
     int64_t donor_seq = 0, acceptor_seq = 0;
     int splice_gap_off = 0;
 
-    int TLARefConversion[5] = {0, 1, 2, 3, 4};
-    if (TLA){
-        if (((rd.TLAcycle == 0 || rd.TLAcycle == 3) && !rd.TLAoppositeConversion) ||
-            ((rd.TLAcycle == 1 || rd.TLAcycle == 2) && rd.TLAoppositeConversion)) {
+    int refConversion_3N[5] = {0, 1, 2, 3, 4};
+    if (threeN){
+        if (((rd.cycle_3N == 0 || rd.cycle_3N == 3) && !rd.oppositeConversion_3N) ||
+            ((rd.cycle_3N == 1 || rd.cycle_3N == 2) && rd.oppositeConversion_3N)) {
             // C to T conversion
-            TLARefConversion[1] = 3;
+            refConversion_3N[1] = 3;
         } else {
             //G to A conversion
-            TLARefConversion[2] = 0;
+            refConversion_3N[2] = 0;
         }
     }
 
@@ -1612,7 +1612,7 @@ bool GenomeHit<index_t>::combineWith(
             static const char AA   = 0x00, AArc = 0x33;
             int i;
             for(i = 0; i < (int)len; i++) {
-                int rdc = seq[this_rdoff + i], rfc = TLARefConversion[refbuf[i]];
+                int rdc = seq[this_rdoff + i], rfc = refConversion_3N[refbuf[i]];
                 if(i > 0) {
                     temp_scores[i] = temp_scores[i-1];
                 } else {
@@ -1628,7 +1628,7 @@ bool GenomeHit<index_t>::combineWith(
             int i_limit = min<int>(i, len);
             int i2;
             for(i2 = len - 1; i2 >= 0; i2--) {
-                int rdc = seq[this_rdoff + i2], rfc = TLARefConversion[refbuf2[i2]];
+                int rdc = seq[this_rdoff + i2], rfc = refConversion_3N[refbuf2[i2]];
                 if((index_t)(i2 + 1) < len) {
                     temp_scores2[i2] = temp_scores2[i2+1];
                 } else {
@@ -1771,7 +1771,7 @@ bool GenomeHit<index_t>::combineWith(
             if(gap_penalty < remainsc) return false;
             int i;
             for(i = 0; i < (int)len; i++) {
-                int rdc = seq[this_rdoff + i], rfc = TLARefConversion[refbuf[i]];
+                int rdc = seq[this_rdoff + i], rfc = refConversion_3N[refbuf[i]];
                 if(i > 0) {
                     temp_scores[i] = temp_scores[i-1];
                 } else {
@@ -1787,7 +1787,7 @@ bool GenomeHit<index_t>::combineWith(
             int i_limit = min<int>(i, len);
             int i2;
             for(i2 = len - 1; i2 >= 0; i2--) {
-                int rdc = seq[this_rdoff + i2], rfc = TLARefConversion[refbuf2[i2]];
+                int rdc = seq[this_rdoff + i2], rfc = refConversion_3N[refbuf2[i2]];
                 if((index_t)(i2 + 1) < len) {
                     temp_scores2[i2] = temp_scores2[i2+1];
                 } else {
@@ -1860,19 +1860,19 @@ bool GenomeHit<index_t>::combineWith(
             int rfc;
             if(splice_gap_maxscorei <= maxscorei) {
 	      if(i <= (int)splice_gap_maxscorei) {
-                    rfc = TLARefConversion[refbuf[i]];
+                    rfc = refConversion_3N[refbuf[i]];
 	      } else if(i <= (int)maxscorei) {
-                    rfc = TLARefConversion[refbuf[i - ref_gap_off + rd_gap_off]];
+                    rfc = refConversion_3N[refbuf[i - ref_gap_off + rd_gap_off]];
                 } else {
-                    rfc = TLARefConversion[refbuf2[i]];
+                    rfc = refConversion_3N[refbuf2[i]];
                 }
             } else {
 	      if(i <= (int)maxscorei) {
-                    rfc = TLARefConversion[refbuf[i]];
+                    rfc = refConversion_3N[refbuf[i]];
 	      } else if(i <= (int)splice_gap_maxscorei) {
-                    rfc = TLARefConversion[refbuf2[i + ref_gap_off - rd_gap_off]];
+                    rfc = refConversion_3N[refbuf2[i + ref_gap_off - rd_gap_off]];
                 } else {
-                    rfc = TLARefConversion[refbuf2[i]];
+                    rfc = refConversion_3N[refbuf2[i]];
                 }
             }
             assert_range(0, 4, rfc);
@@ -1904,9 +1904,9 @@ bool GenomeHit<index_t>::combineWith(
                         int temp_rfc_off = i + 1 + j;
                         int temp_rfc;
                         if(i < (int)maxscorei) {
-                            temp_rfc = TLARefConversion[refbuf[temp_rfc_off]];
+                            temp_rfc = refConversion_3N[refbuf[temp_rfc_off]];
                         } else {
-                            temp_rfc = TLARefConversion[refbuf2[temp_rfc_off - rd_gap_off]];
+                            temp_rfc = refConversion_3N[refbuf2[temp_rfc_off - rd_gap_off]];
                         }
                         assert_range(0, 4, temp_rfc);
                         Edit e((uint32_t)(i + 1 + addoff), "ACGTN"[temp_rfc], '-', EDIT_TYPE_READ_GAP);
@@ -1929,7 +1929,7 @@ bool GenomeHit<index_t>::combineWith(
         index_t ins_len = 0;
         for(index_t i = 0; i < len; i++) {
             char rdc = seq[this_rdoff + i];
-            char rfc = (i <= maxscorei ? TLARefConversion[refbuf[i]] : TLARefConversion[refbuf2[i]]);
+            char rfc = (i <= maxscorei ? refConversion_3N[refbuf[i]] : refConversion_3N[refbuf2[i]]);
             assert_geq(this_rdoff, this->_rdoff);
             index_t addoff = this_rdoff - this->_rdoff;
             if(rdc != rfc) {
@@ -1962,8 +1962,8 @@ bool GenomeHit<index_t>::combineWith(
                     skipLen = right - left;
                     for(index_t j = 0; j < skipLen; j++) {
                         int temp_rfc;
-                        if(i + 1 + j < len) temp_rfc = TLARefConversion[refbuf[i + 1 + j]];
-                        else                temp_rfc = TLARefConversion[ref.getBase(this->_tidx, this_toff + i + 1 + j)];
+                        if(i + 1 + j < len) temp_rfc = refConversion_3N[refbuf[i + 1 + j]];
+                        else                temp_rfc = refConversion_3N[ref.getBase(this->_tidx, this_toff + i + 1 + j)];
                         assert_range(0, 4, temp_rfc);
                         Edit e((uint32_t)(i + 1 + addoff), "ACGTN"[temp_rfc], '-', EDIT_TYPE_READ_GAP);
                         _edits->push_back(e);
@@ -2120,7 +2120,7 @@ bool GenomeHit<index_t>::extend(
                                          _sharedVars->ht_llist,
                                          *this->_ht_list,
                                          _sharedVars->cmp_ht,
-                                         rd.TLAcycle,
+                                         rd.cycle_3N,
                                          NULL,
                                          mm,
                                          &numNs);
@@ -2203,7 +2203,7 @@ bool GenomeHit<index_t>::extend(
                                              _sharedVars->ht_llist,
                                              *this->_ht_list,
                                              _sharedVars->cmp_ht,
-                                             rd.TLAcycle,
+                                             rd.cycle_3N,
                                              NULL,
                                              mm);
             // Do not allow for any edits including known snps and splice sites when extending zero-length hit
@@ -2376,7 +2376,7 @@ bool GenomeHit<index_t>::adjustWithALT(
                                                sharedVars.ht_llist,
                                                *genomeHit._ht_list,
                                                sharedVars.cmp_ht,
-                                               rd.TLAcycle,
+                                               rd.cycle_3N,
                                                &candidate_edits);
             if(alignedLen == genomeHit._len) {
                 found2 = true;
@@ -2483,7 +2483,7 @@ bool GenomeHit<index_t>::adjustWithALT(
                                            _sharedVars->ht_llist,
                                            *this->_ht_list,
                                            _sharedVars->cmp_ht,
-                                           rd.TLAcycle,
+                                           rd.cycle_3N,
                                            &_sharedVars->candidate_edits);
         if(alignedLen == this->_len) {
             found = true;
@@ -2813,7 +2813,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                                                 index_t                           dep,
                                                 const GraphPolicy&                gpol,
                                                 index_t&                          numALTsTried,
-                                                int                               TLAcycle,
+                                                int                               cycle_3N,
                                                 ALT_TYPE                          prev_alt_type)
 {
     if(numALTsTried > gpol.maxAltsTried() + dep) return 0;
@@ -2844,14 +2844,14 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
         rfseq = raw_refbuf.wbuf() + 16 + off + min<int>(rfoff, 0);
     }
 
-    int TLARefConversion[5] = {0, 1, 2, 3, 4};
-    if (TLA){
-        if (TLAcycle == 0 || TLAcycle == 3) {
+    int refConversion_3N[5] = {0, 1, 2, 3, 4};
+    if (threeN){
+        if (cycle_3N == 0 || cycle_3N == 3) {
             // C to T conversion
-            TLARefConversion[1] = 3;
+            refConversion_3N[1] = 3;
         } else {
             //G to A conversion
-            TLARefConversion[2] = 0;
+            refConversion_3N[2] = 0;
         }
     }
 
@@ -2861,7 +2861,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
         int mm_min_rd_i = (int)rdoff;
         index_t mm_tmp_numNs = 0;
         for(int rf_i = (int)rflen - 1; rf_i >= 0 && mm_min_rd_i >= 0; rf_i--, mm_min_rd_i--) {
-            int rf_bp = TLARefConversion[rfseq[rf_i]];
+            int rf_bp = refConversion_3N[rfseq[rf_i]];
             int rd_bp = rdseq[mm_min_rd_i];
             if(rf_bp != rd_bp || rd_bp == 4) {
                 if(tmp_mm == 0) {
@@ -3033,7 +3033,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
 
             if(alt.type == ALT_SNP_SGL) {
                 if(rd_bp == (int)alt.seq) {
-                    int rf_bp = TLARefConversion[rfseq[rf_i]];
+                    int rf_bp = refConversion_3N[rfseq[rf_i]];
                     Edit e(
                            rd_i,
                            "ACGTN"[rf_bp],
@@ -3050,7 +3050,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                 if(rfoff + rf_i > (int)alt.len) {
                     if(rf_i > (int)alt.len) {
                         for(index_t i = 0; i < alt.len; i++) {
-                            int rf_bp = TLARefConversion[rfseq[rf_i - i]];
+                            int rf_bp = refConversion_3N[rfseq[rf_i - i]];
                             Edit e(
                                    rd_i + 1,
                                    "ACGTN"[rf_bp],
@@ -3078,7 +3078,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                         assert_lt(off, 16);
                         const char* new_rfseq = raw_refbuf.wbuf() + 16 + off + min<int>(new_rfoff, 0);
                         for(int i = 0; i < alt.len; i++) {
-                            int rf_bp = TLARefConversion[new_rfseq[rf_i - i + alt.len]];
+                            int rf_bp = refConversion_3N[new_rfseq[rf_i - i + alt.len]];
                             Edit e(
                                    rd_i + 1,
                                    "ACGTN"[rf_bp],
@@ -3193,7 +3193,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                                                          dep + 1,
                                                          gpol,
                                                          numALTsTried,
-                                                         TLAcycle,
+                                                         cycle_3N,
                                                          alt.type);
                 if(alignedLen == next_rdlen) return rdlen;
             }
@@ -3208,7 +3208,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
         index_t mm_max_rd_i = 0;
         index_t mm_tmp_numNs = 0;
         for(index_t rf_i = 0; rf_i < rflen && mm_max_rd_i < rdlen; rf_i++, mm_max_rd_i++) {
-            int rf_bp = TLARefConversion[rfseq[rf_i]];
+            int rf_bp = refConversion_3N[rfseq[rf_i]];
             int rd_bp = rdseq[rdoff + mm_max_rd_i];
             if(rf_bp != rd_bp || rd_bp == 4) {
                 if(tmp_mm == 0) {
@@ -3345,7 +3345,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
             rf_i = rd_i = alt.pos - joinedOff;
             if(rd_i >= rdlen) continue;
             assert_leq(rd_i, max_rd_i);
-            int rf_bp = TLARefConversion[rfseq[rf_i]];
+            int rf_bp = refConversion_3N[rfseq[rf_i]];
             int rd_bp = rdseq[rdoff + rd_i];
             
             // Check to see if there is a haplotype that supports this alt
@@ -3393,7 +3393,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                 if(try_del) {
                     if(rf_i + alt.len <= rflen) {
                         for(index_t i = 0; i < alt.len; i++) {
-                            rf_bp = TLARefConversion[rfseq[rf_i + i]];
+                            rf_bp = refConversion_3N[rfseq[rf_i + i]];
                             Edit e(
                                    rd_i + rdoff_add,
                                    "ACGTN"[rf_bp],
@@ -3421,7 +3421,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                         assert_lt(off, 16);
                         const char* new_rfseq = raw_refbuf.wbuf() + 16 + off + min<int>(rfoff, 0);
                         for(index_t i = 0; i < alt.len; i++) {
-                            rf_bp = TLARefConversion[new_rfseq[rf_i + i]];
+                            rf_bp = refConversion_3N[new_rfseq[rf_i + i]];
                             Edit e(
                                    rd_i + rdoff_add,
                                    "ACGTN"[rf_bp],
@@ -3553,7 +3553,7 @@ index_t GenomeHit<index_t>::alignWithALTs_recur(
                                                          dep + 1,
                                                          gpol,
                                                          numALTsTried,
-                                                         TLAcycle,
+                                                         cycle_3N,
                                                          alt.type);
                 if(alignedLen > 0) {
                     assert_leq(rdoff + rd_i + alignedLen, best_rdoff);
@@ -3707,15 +3707,15 @@ bool GenomeHit<index_t>::repOk(const Read& rd, const BitPairReference& ref)
     assert_eq(reflens.size(), refoffs.size());
     refstr.clear();
 
-    int TLARefConversion[5] = {0, 1, 2, 3, 4};
-    if (TLA){
-        if (((rd.TLAcycle == 0 || rd.TLAcycle == 3) && !rd.TLAoppositeConversion) ||
-            ((rd.TLAcycle == 1 || rd.TLAcycle == 2) && rd.TLAoppositeConversion)) {
+    int refConversion_3N[5] = {0, 1, 2, 3, 4};
+    if (threeN){
+        if (((rd.cycle_3N == 0 || rd.cycle_3N == 3) && !rd.oppositeConversion_3N) ||
+            ((rd.cycle_3N == 1 || rd.cycle_3N == 2) && rd.oppositeConversion_3N)) {
             // C to T conversion
-            TLARefConversion[1] = 3;
+            refConversion_3N[1] = 3;
         } else {
             //G to A conversion
-            TLARefConversion[2] = 0;
+            refConversion_3N[2] = 0;
         }
     }
 
@@ -3734,7 +3734,7 @@ bool GenomeHit<index_t>::repOk(const Read& rd, const BitPairReference& ref)
                                  destU32);
         assert_leq(off, 16);
         for(index_t j = 0; j < reflens[i]; j++) {
-            char rfc = TLARefConversion[*(raw_refbuf.buf()+off+j)];
+            char rfc = refConversion_3N[*(raw_refbuf.buf()+off+j)];
             refstr.append(rfc);
         }
         char* bufA = raw_refbuf.wbuf() + off;
@@ -4479,9 +4479,9 @@ public:
                             _genomeHits.back()._joinedOff = positions[p].first.joinedOff;
                             if(!positions[p].first.fw) {
                                 _genomeHits.back().reverse(*_rds[rdi]);
-                                _rds[rdi]->TLAoppositeConversion = true;
+                                _rds[rdi]->oppositeConversion_3N = true;
                             } else {
-                                _rds[rdi]->TLAoppositeConversion = false;
+                                _rds[rdi]->oppositeConversion_3N = false;
                             }
                             
                             // extend the partial alignments bidirectionally using
@@ -4562,9 +4562,9 @@ public:
                                 _genomeHits.back()._joinedOff = positions[p].first.joinedOff;
                                 if(!positions[p].first.fw) {
                                     _genomeHits.back().reverse(*_rds[0]);
-                                    _rds[0]->TLAoppositeConversion = true;
+                                    _rds[0]->oppositeConversion_3N = true;
                                 } else {
-                                    _rds[0]->TLAoppositeConversion = false;
+                                    _rds[0]->oppositeConversion_3N = false;
                                 }
                                 
                                 // extend the partial alignments bidirectionally using
@@ -4596,9 +4596,9 @@ public:
                                 _genomeHits.back()._joinedOff = positions[p].second.joinedOff;
                                 if(!positions[p].second.fw) {
                                     _genomeHits.back().reverse(*_rds[1]);
-                                    _rds[1]->TLAoppositeConversion = true;
+                                    _rds[1]->oppositeConversion_3N = true;
                                 } else {
-                                    _rds[1]->TLAoppositeConversion = false;
+                                    _rds[1]->oppositeConversion_3N = false;
                                 }
                                 
                                 // extend the partial alignments bidirectionally using
@@ -4655,9 +4655,9 @@ public:
                     align2repeat = (rs->size() == 0 || sink.numBestUnp(rdi).first > rp.khits);
                 }
 
-                _rds[0]->TLAoppositeConversion = false;
+                _rds[0]->oppositeConversion_3N = false;
                 if (_paired) {
-                    _rds[1]->TLAoppositeConversion = false;
+                    _rds[1]->oppositeConversion_3N = false;
                 }
 
                 if(align2repeat) {

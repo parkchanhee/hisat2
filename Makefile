@@ -130,8 +130,8 @@ SEARCH_CPPS = qual.cpp pat.cpp \
 	aligner_swsse_ee_u8.cpp \
 	aligner_driver.cpp \
 	splice_site.cpp \
-	TLA_alignment.cpp \
-	TLA_position.cpp \
+	alignment_3N.cpp \
+	position_3N.cpp \
 	$(HT2LIB_CPPS)
 
 BUILD_CPPS = diff_sample.cpp

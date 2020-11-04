@@ -29,7 +29,7 @@
 #include "scoring.h"
 #include "alt.h"
 #include "filebuf.h"
-#include "TLA_alignment.h"
+#include "alignment_3N.h"
 
 enum {
 	// Comments use language from v1.4-r962 spec
@@ -1241,7 +1241,7 @@ const
         o.append("ZS:i:");
         o.append(buf);
     }
-    if(print_yt_ && !TLA) {
+    if(print_yt_ && !threeN) {
         // YT:Z: String representing alignment type
         WRITE_SEP();
         flags.printYT(o);
@@ -1616,7 +1616,7 @@ const
         o.append("ZS:i:");
         o.append(buf);
     }
-    if(print_yt_&& !TLA) {
+    if(print_yt_&& !threeN) {
         // YT:Z: String representing alignment type
         WRITE_SEP();
         flags.printYT(o);

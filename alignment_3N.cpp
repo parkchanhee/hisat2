@@ -17,7 +17,7 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "TLA_alignment.h"
+#include "alignment_3N.h"
 #include "aln_sink.h"
 
 bool Alignment::isConcordant(long long int &location1, bool &forward1, long long int &location2, bool &forward2) {

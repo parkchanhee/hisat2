@@ -17,11 +17,11 @@
  * along with HISAT-3N.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef HISAT2_TLA_UTILITY_H
-#define HISAT2_TLA_UTILITY_H
+#ifndef HISAT2_UTILITY_3N_H
+#define HISAT2_UTILITY_3N_H
 
 #include <string>
-#include <TLA_alignment.h>
+#include <alignment_3N.h>
 
 
 using namespace std;
@@ -29,8 +29,10 @@ using namespace std;
 /**
  * this is the class to convert asc2dna, asc2dnacomp, and dnacomp matrix for hisat-3n conversion.
  * always save the conversion as convertFrom and convertTo.
+ * this class is to convert matrix for hisat2-build with (--3N) or hisat2-repeat with (--3N).
+ * hisat2 with (--base-change C,T) will not use this class.
  */
-class ConvertMatrixTLA {
+class ConvertMatrix3N {
     char convertFrom = 'A';
     char convertTo = 'A';
     string allBase = "ACGT";
@@ -66,7 +68,7 @@ class ConvertMatrixTLA {
         }
     }
 public:
-    ConvertMatrixTLA(){
+    ConvertMatrix3N(){
 
     };
 
@@ -129,4 +131,4 @@ public:
     char& getLabel() { return label; }
 };
 
-#endif //HISAT2_TLA_UTILITY_H
+#endif //HISAT2_UTILITY_3N_H
