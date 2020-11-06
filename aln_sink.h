@@ -722,8 +722,8 @@ public:
 	 */
 	void addWrapper() { numWrappers_++; }
 
-	// for HLA
-	virtual void output(int threadId0, ReportingMetrics& met) {
+	// for HISAT-3N
+	virtual void output(int threadId0, ReportingMetrics& met, BTString& o) {
 
 	}
 
@@ -1770,7 +1770,10 @@ public:
             }
 		}
 	}
-    // for HLA
+
+    /**
+	 * Append a single alignment result, this function is for HSIAT-3N.
+	 */
     virtual void append(
             ReportingMetrics&     met,
             BTString&             o,
@@ -1794,7 +1797,7 @@ public:
 	}
 
     // for hisat-3n
-    virtual void output(int threadId0, ReportingMetrics& met) {
+    virtual void output(int threadId0, ReportingMetrics& met, BTString& o) {
 
     }
 
@@ -1847,7 +1850,11 @@ protected:
 	BTString                  dqual_;   // buffer for decoded quality sequence
 };
 
-
+/**
+ * This is the class similar to AlnSinkSAM.
+ * AlnSink3NSam will put all the alignment result information into the class Alignment in "alignment_3N.h".
+ * This class should only be used for HISAT-3N (3N mode for HISAT2).
+ */
 
 template <typename index_t>
 class AlnSink3NSam : public AlnSinkSam<index_t> {
@@ -1918,8 +1925,11 @@ public:
                ssm1, ssm2, flags1, flags2, prm, mapq, sc, report2);
     }
 
-    void output(int threadId0, ReportingMetrics& met) {
-        // this function is to output rest of alignments information in alignmentsEachThreads[threadId0].
+    /**
+     * output the rest of alignment information in alignmentsEachThreads[threadId0].
+     * this function will be used after we receive new alignment result (with different rdid to previous one).
+     */
+    void output(int threadId0, ReportingMetrics& met, BTString& o) {
         if (alignmentsEachThreads[threadId0]->readName->empty()) {
             return;
         }
@@ -1929,9 +1939,12 @@ public:
         } else {
             met.nunpaired++;
         }
-        alignmentsEachThreads[threadId0]->output(oq_, threadId0,met);
+        alignmentsEachThreads[threadId0]->output(met, o);
     }
 
+    /**
+	 * Append a single alignment result, this function is for HSIAT-3N.
+	 */
     void append(
             ReportingMetrics&     met,          // reporting metrics
             BTString&     o,           // write output to this string
@@ -1954,18 +1967,11 @@ public:
     {
         // this function is for HLA alignment result report.
         size_t threadId0 = threadId-1;
-        if (rdid != alignmentsEachThreads[threadId0]->previousReadID ) {
-            if (!alignmentsEachThreads[threadId0]->readName[0].empty()) {
-                // output previous result.
-                output(threadId0, met);
-            }
-            // this is the first read input for this thread
-            alignmentsEachThreads[threadId0]->previousReadID = rdid;
-        }
+
         assert(rd1 != NULL || rd2 != NULL);
         if(rd1 != NULL) {
             assert(flags1 != NULL);
-            appendMate(o, staln, *rd1, rd2, rdid, rs1, rs2, summ, ssm1, ssm2,
+            appendMate(staln, *rd1, rd2, rdid, rs1, rs2, summ, ssm1, ssm2,
                        *flags1, prm, mapq, sc, threadId0);
             if(rs1 != NULL && rs1->spliced() && this->spliceSiteDB_ != NULL) {
                 this->spliceSiteDB_->addSpliceSite(*rd1, *rs1);
@@ -1973,7 +1979,7 @@ public:
         }
         if(rd2 != NULL && report2) {
             assert(flags2 != NULL);
-            appendMate(o, staln, *rd2, rd1, rdid, rs2, rs1, summ, ssm2, ssm1,
+            appendMate(staln, *rd2, rd1, rdid, rs2, rs1, summ, ssm2, ssm1,
                        *flags2, prm, mapq, sc, threadId0);
             if(rs2 != NULL && rs2->spliced() && this->spliceSiteDB_ != NULL) {
                 this->spliceSiteDB_->addSpliceSite(*rd2, *rs2);
@@ -1981,8 +1987,12 @@ public:
         }
     }
 
+    /**
+	 * Append a single per-mate alignment result to the Alignment class.
+     * This function is for HISAT-3N.
+	 */
     void appendMate(
-            BTString&     o,           // append to this string
+            //Alignment*    newAlignment,
             StackedAln&   staln,       // store stacked alignment struct here
             const Read&   rd,
             const Read*   rdo,
@@ -1998,11 +2008,11 @@ public:
             const Scoring& sc,
             size_t        threadId0)    // which thread am I?
     {
-        // this funtion is for HLA alignment result report.
+        // check whether we want to recieve this alignment reuslt.
         if(rs == NULL && samc_.omitUnalignedReads() || !alignmentsEachThreads[threadId0]->acceptNewAlignment()) {
             return;
         }
-
+        // get the Alignment pointer and append information into it.
         Alignment* newAlignment;
         alignmentsEachThreads[threadId0]->getFreeAlignmentPointer(newAlignment);
         alignmentsEachThreads[threadId0]->getSequence(rd);
@@ -3313,7 +3323,9 @@ void AlnSinkWrap<index_t>::finish3NRead(
                     sc);
 
             init_ = false;
-            //g_.outq().finishRead(obuf_, rdid_, threadid_);
+            if (rd1_->cycle_3N == 3) {
+                g_.output(threadid_-1, met, obuf_);
+            }
             return;
         }
             // Report concordant paired-end alignments if possible
@@ -3394,7 +3406,10 @@ void AlnSinkWrap<index_t>::finish3NRead(
                     mapq_,
                     sc);
             init_ = false;
-            //g_.outq().finishRead(obuf_, rdid_, threadid_);
+            // output alignment result if cycle_3N == 3 (the last one)
+            if (rd1_->cycle_3N == 3) {
+                g_.output(threadid_-1, met, obuf_);
+            }
             return;
         }
         // If we're at this point, at least one mate failed to align.
@@ -3679,6 +3694,10 @@ void AlnSinkWrap<index_t>::finish3NRead(
         }
     } // if(suppress alignments)
     init_ = false;
+    // output alignment result if cycle_3N == 3 (the last one)
+    if (rd1_->cycle_3N == 3) {
+        g_.output(threadid_-1, met, obuf_);
+    }
     return;
 }
 

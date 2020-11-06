@@ -79,7 +79,7 @@ public:
     BTString MD;
     BTString YT; //"UU" for single-end. "CP" for concordant alignment, "DP" for disconcordant alignment, "UP" for else.
     // special tags in HISAT-3N
-    int TC; // number of convertion.
+    int TC; // number of conversion.
     BTString YZ;  // this tag shows alignment strand:
                 // Original top strand (OT)
                 // Complementary to original top strand (CTOT)
@@ -302,8 +302,7 @@ public:
             }
             locationRepeat = (pos->pos) + 1;
             bool genomeForward = pos->direction == 0;
-            if (!genomeForward) { continue; }
-            // if the repeat mapping direction is different to the designed direction, ignore it.
+            if (!genomeForward) { continue; } // if the repeat mapping direction is different to the designed direction, ignore it.
 
             // if the mapping location is already exist, continue.
             if (alignmentPositions.positionExist(chromosomeRepeat, locationRepeat, pairSegment)){
@@ -791,7 +790,6 @@ public:
     BTDnaString readSequence[2]; // save the read sequence for output.
     BTString qualityScore[2]; // save the quality score for output.
 
-    bool working; // make sure we will not output the alignment when it's working.
     bool paired;
     const int repeatPoolLimit = 20;
     bool multipleAligned; // check whether we have multiple alignment, it is work unique mode.
@@ -803,7 +801,6 @@ public:
 
     void initialize() {
         alignmentPositions.initialize();
-        working = false;
         paired = false;
         multipleAligned = false;
         nRepeatAlignment = 0;
@@ -882,7 +879,6 @@ public:
      * receive alignment information from AlnSink3NSam::appendMate() and append it to alignment pool.
      */
     void append(Alignment *newAlignment) {
-        working = true;
 
         newAlignment->extractFlagInfo();
         paired = newAlignment->paired;
@@ -891,7 +887,6 @@ public:
         // check if the alignment is already exist. if exist, ignore it.
         if (!alignmentPositions.append(newAlignment)) {
             alignments.push_back(newAlignment);
-            working = false;
             return;
         }
 
@@ -900,7 +895,6 @@ public:
             if (!newAlignment->constructRepeatMD(bitReference, alignmentPositions)) {
                 alignmentPositions.badAligned();
                 alignments.push_back(newAlignment);
-                working = false;
                 return;
             }
             nRepeatAlignment++; // for each repeat alignment, record it.
@@ -909,7 +903,6 @@ public:
             if (!newAlignment->constructMD(bitReference)) {
                 alignmentPositions.badAligned();
                 alignments.push_back(newAlignment);
-                working = false;
                 return;
             }
         }
@@ -919,7 +912,6 @@ public:
         if (paired) {
             if (!alignmentPositions.updatePairScore()) {
                 alignments.push_back(newAlignment);
-                working = false;
                 return;
             }
             if (alignmentPositions.bestPairScore == maxPairScore && alignmentPositions.nBestPair > 1) {
@@ -928,7 +920,6 @@ public:
         } else {
             if (!alignmentPositions.updateAS()) {
                 alignments.push_back(newAlignment);
-                working = false;
                 return;
             }
             if (alignmentPositions.bestAS == 0 && alignmentPositions.nBestSingle > 1) {
@@ -936,7 +927,6 @@ public:
             }
         }
         alignments.push_back(newAlignment);
-        working = false;
     }
 
     /**
@@ -1022,20 +1012,13 @@ public:
     /**
      * output function will be redirected to output_single or output_paired
      */
-    void output(OutputQueue& oq_,
-                size_t threadid_,
-                ReportingMetrics& met) {
+    void output(ReportingMetrics& met,
+                BTString& o) {
 
-        while(working) {
-            usleep(100);
-        }
-
-        BTString obuf_;
-        OutputQueueMark qqm(oq_, obuf_, previousReadID, threadid_);
         if (paired) {
-            output_paired(obuf_, met);
+            output_paired(o, met);
         } else {
-            output_single(obuf_,met);
+            output_single(o,met);
         }
         initialize();
     }
