@@ -27,6 +27,7 @@ import bisect
 
 bDebug = False
 bVerbose = False
+bUniqueSNP = False
 
 
 def read_genome(genome_file, chr_filter=None):
@@ -276,7 +277,10 @@ def write_transcripts_snp(fp, gene_id, trans_ids, transcripts, exon_list):
         for i in range(1, len(new_exons)):
             gap = new_exons[i][0] - new_exons[i - 1][1] - 1
             if gap > 0:
-                snps.add((trans[0], new_exons[i - 1][1] + 1, gap, trans_id))
+                if bUniqueSNP:
+                    snps.add(('', new_exons[i - 1][1] + 1, gap, ''))
+                else:
+                    snps.add((trans[0], new_exons[i - 1][1] + 1, gap, trans_id))
 
     snps_list = sorted(list(snps))
 
@@ -463,10 +467,17 @@ if __name__ == '__main__':
                         default=False,
                         help='Create linear-transcripts files')
 
+    parser.add_argument('--unique-snp',
+                        dest='bUniqueSNP',
+                        action='store_true',
+                        default=False,
+                        help='Create SNP file with unique SNP')
+
     parser.add_argument('--debug',
                         dest='bDebug',
                         action='store_true',
                         help='Run in debug mode')
+
     parser.add_argument('--verbose',
                         dest='bVerbose',
                         action='store_true',
@@ -482,6 +493,9 @@ if __name__ == '__main__':
 
     if args.bVerbose is not None:
         bVerbose = args.bVerbose
+
+    if args.bUniqueSNP is not None:
+        bUniqueSNP = args.bUniqueSNP
 
     if args.bLinear:
         extract_transcript_linear(
