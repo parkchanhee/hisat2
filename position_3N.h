@@ -238,7 +238,8 @@ public:
     int NM;
     int YS;
     int TC;
-    BTString YZ;
+    char YZ;
+    BTString Yf;
     BTString refSequence;
     BTString repeatChromosome;
     bool outputted = false;
@@ -249,7 +250,16 @@ public:
     /**
      * constructor for new repeat information.
      */
-    RepeatMappingPosition (long long int& inputLocation, BTString& inputChromosome, BTString &inputRefSequence, int &inputAS, BTString &inputMD, int &inputXM, int &inputNM, int &inputTC, BTString &repeatYZ){
+    RepeatMappingPosition (long long int& inputLocation,
+                           BTString& inputChromosome,
+                           BTString &inputRefSequence,
+                           int &inputAS,
+                           BTString &inputMD,
+                           int &inputXM,
+                           int &inputNM,
+                           int &inputTC,
+                           char &repeatYZ,
+                           BTString& inputYf){
         repeatLocation = inputLocation;
         repeatChromosome = inputChromosome;
         refSequence = inputRefSequence;
@@ -259,6 +269,7 @@ public:
         NM = inputNM;
         TC = inputTC;
         YZ = repeatYZ;
+        Yf = inputYf;
         pairScore = numeric_limits<int>::min();
         flagInfoIndex = -1;
     }
@@ -310,8 +321,17 @@ public:
     /**
      * add repeat mapping information.
      */
-    void append (long long int &location, BTString &chromosome, BTString &refSequence, int &AS, BTString &MD, int &XM, int &NM, int &TC, BTString &repeatYZ) {
-        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ);
+    void append (long long int &location,
+                 BTString &chromosome,
+                 BTString &refSequence,
+                 int &AS,
+                 BTString &MD,
+                 int &XM,
+                 int &NM,
+                 int &TC,
+                 char &repeatYZ,
+                 BTString& Yf) {
+        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ, Yf);
     }
 
     /**

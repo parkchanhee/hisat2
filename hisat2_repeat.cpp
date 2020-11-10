@@ -220,7 +220,7 @@ static void printUsage(ostream& out) {
         << "    --max-seed-extlen <int>" << endl
         << "    --save-sa" << endl
         << "    --load-sa" << endl
-        << "    --3N                    make 3N repeat database"
+        << "    --3N                    make 3N repeat database" << endl
 	    << "    -q/--quiet              disable verbose output (for debugging)" << endl
 	    << "    -h/--help               print detailed description of tool and its options" << endl
 	    << "    --usage                 print this usage message" << endl
