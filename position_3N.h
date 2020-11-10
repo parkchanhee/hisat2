@@ -237,9 +237,8 @@ public:
     int XM;
     int NM;
     int YS;
-    int TC;
+    int Yf;
     char YZ;
-    BTString Yf;
     BTString refSequence;
     BTString repeatChromosome;
     bool outputted = false;
@@ -258,8 +257,7 @@ public:
                            int &inputXM,
                            int &inputNM,
                            int &inputTC,
-                           char &repeatYZ,
-                           BTString& inputYf){
+                           char &repeatYZ) {
         repeatLocation = inputLocation;
         repeatChromosome = inputChromosome;
         refSequence = inputRefSequence;
@@ -267,9 +265,8 @@ public:
         MD = inputMD;
         XM = inputXM;
         NM = inputNM;
-        TC = inputTC;
+        Yf = inputTC;
         YZ = repeatYZ;
-        Yf = inputYf;
         pairScore = numeric_limits<int>::min();
         flagInfoIndex = -1;
     }
@@ -278,7 +275,10 @@ public:
      * constructor for the repeat which has same reference sequence.
      * we save the index for pattern RepeatMappingPosition, because they should have same information except location and chromosome.
      */
-    RepeatMappingPosition(long long int &inputLocation, BTString &inputChromosome, int& inputAS, int& index) {
+    RepeatMappingPosition(long long int &inputLocation,
+                          BTString &inputChromosome,
+                          int& inputAS,
+                          int& index) {
         repeatLocation = inputLocation;
         repeatChromosome = inputChromosome;
         AS = inputAS;
@@ -328,10 +328,9 @@ public:
                  BTString &MD,
                  int &XM,
                  int &NM,
-                 int &TC,
-                 char &repeatYZ,
-                 BTString& Yf) {
-        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, TC, repeatYZ, Yf);
+                 int &Yf,
+                 char &repeatYZ) {
+        positions.emplace_back(location, chromosome, refSequence, AS, MD, XM, NM, Yf, repeatYZ);
     }
 
     /**

@@ -79,11 +79,10 @@ public:
     BTString MD;
     BTString YT; //"UU" for single-end. "CP" for concordant alignment, "DP" for disconcordant alignment, "UP" for else.
     // special tags in HISAT-3N
-    int TC; // number of conversion.
+    int Yf; // number of conversion.
     char YZ;  // this tag shows alignment strand:
               // + for REF strand (conversionCount[0] is equal or smaller than conversionCount[1]),
               // - for REF-RC strand (conversionCount[1] is smaller)
-    BTString Yf; // this tag shows all the conversion locations. this location is relative to reference location.
     // unChanged tags
     BTString unChangedTags;
 
@@ -104,9 +103,6 @@ public:
     RepeatMappingPositions repeatPositions; // to store the expanded repeat information
     int conversionCount[2] = {0}; // there are two type of conversion could happen, save the number of conversion sperately.
     string intToBase = "ACGTN";
-
-    vector<int> edits; // edit locations (on reference)
-    vector<int> editsTypes; // edit types.0 for conversion[0], 1 for conversion[1].
 
     void initialize() {
         readName.clear();
@@ -131,8 +127,7 @@ public:
         YS = 0;
         MD.clear();
         YT.clear();
-        TC = 0;
-        Yf.clear();
+        Yf = 0;
         unChangedTags.clear();
 
         outputted = false;
@@ -155,8 +150,6 @@ public:
         repeatPositions.initialize();
         conversionCount[0] = 0;
         conversionCount[1] = 0;
-        edits.clear();
-        editsTypes.clear();
     }
 
     Alignment() {
@@ -255,7 +248,7 @@ public:
      * make YZ tag
      */
     void makeYZ(char &YZ_string) {
-        if (conversionCount[0]<=conversionCount[1]) {
+        if (conversionCount[0]>=conversionCount[1]) {
             YZ_string = '+';
         } else {
             YZ_string = '-';
@@ -333,7 +326,7 @@ public:
             int newXM = XM + newMismatch;
             int newNM = NM + newMismatch;
             int newAS = AS - 6*newMismatch;
-            repeatPositions.append(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, TC, repeatYZ, Yf);
+            repeatPositions.append(locationRepeat, chromosomeRepeat, refSequence,newAS, newMD, newXM, newNM, Yf, repeatYZ);
 
             // if there are too many mappingPosition exist return.
             if (repeatPositions.size() >= repeatLimit || alignmentPositions.size() > repeatLimit) {
@@ -356,9 +349,6 @@ public:
 
         conversionCount[0] = 0;
         conversionCount[1] = 0;
-        Yf.clear();
-        edits.clear();
-        editsTypes.clear();
 
         int readPos = 0;
         long long int refPos = 0;
@@ -394,12 +384,8 @@ public:
                         }
                         if ((readChar == convertedTo) && (refChar == convertedFrom)) {
                             conversionCount[0]++;
-                            edits.push_back(refPos);
-                            editsTypes.push_back(0);
                         } else if ((readChar == convertedToComplement) && (refChar == convertedFromComplement)) {
                             conversionCount[1]++;
-                            edits.push_back(refPos);
-                            editsTypes.push_back(1);
                         } else {
                             // real mismatch
                             newXM++;
@@ -431,25 +417,12 @@ public:
         if (isalpha(newMD_String[newMD_String.length()-1])) { newMD_String.append('0'); }
 
         int badConversion = 0;
-        int conversionType;
         if (conversionCount[0] >= conversionCount[1]) {
             badConversion = conversionCount[1];
-            TC = conversionCount[0];
-            conversionType = 0;
+            Yf = conversionCount[0];
         } else {
             badConversion = conversionCount[0];
-            TC = conversionCount[1];
-            conversionType = 1;
-        }
-
-        for (int i = 0; i < edits.size(); i++) {
-            if (editsTypes[i] == conversionType) {
-                if (!Yf.empty()) {
-                    Yf.append(',');
-                }
-                itoa10<int>(edits[i], buf);
-                Yf.append(buf);
-            }
+            Yf = conversionCount[1];
         }
 
         newXM += badConversion;
@@ -516,12 +489,8 @@ public:
 
                         if ((readChar == convertedTo) && (refChar == convertedFrom)) {
                             conversionCount[0]++;
-                            edits.push_back(refPos);
-                            editsTypes.push_back(0);
                         } else if ((readChar == convertedToComplement) && (refChar == convertedFromComplement)) {
                             conversionCount[1]++;
-                            edits.push_back(refPos);
-                            editsTypes.push_back(1);
                         } else {
                             // real mismatch
                             newXM++;
@@ -558,25 +527,12 @@ public:
         if (isalpha(MD[MD.length()-1])) { MD.append('0'); }
 
         int badConversion = 0;
-        int conversionType;
         if (conversionCount[0] >= conversionCount[1]) {
             badConversion = conversionCount[1];
-            TC = conversionCount[0];
-            conversionType = 0;
+            Yf = conversionCount[0];
         } else {
             badConversion = conversionCount[0];
-            TC = conversionCount[1];
-            conversionType = 1;
-        }
-
-        for (int i = 0; i < edits.size(); i++) {
-            if (editsTypes[i] == conversionType) {
-                if (!Yf.empty()) {
-                    Yf.append(',');
-                }
-                itoa10<int>(edits[i], buf);
-                Yf.append(buf);
-            }
+            Yf = conversionCount[1];
         }
 
         newXM += badConversion;
@@ -588,7 +544,7 @@ public:
         AS = AS - 6*newXM;
         BTString tmp;
         if (pairToRepeat) {
-            repeatPositions.append(location, chromosomeName, tmp,AS, MD, XM, NM, TC, YZ, Yf);
+            repeatPositions.append(location, chromosomeName, tmp,AS, MD, XM, NM, Yf, YZ);
         }
         return true;
     }
@@ -639,17 +595,10 @@ public:
             o.append("YZ:Z:");
             o.append(YZ);
             o.append('\t');
-            // TC
-            o.append("TC:i:");
-            itoa10<int>(TC, buf);
+            // Yf
+            o.append("Yf:i:");
+            itoa10<int>(Yf, buf);
             o.append(buf);
-
-            if (TC > 0) {
-                // Yf
-                o.append('\t');
-                o.append("Yf:Z:");
-                o.append(Yf.toZBuf());
-            }
         }
     }
 
@@ -659,74 +608,64 @@ public:
     void outputTags(BTString& o, RepeatMappingPosition* repeatInfo){
         // this function is for repeat alignment output.
         char buf[1024];
-        if (mapped) {
-            // AS
-            assert(AS <= 0);
-            o.append("AS:i:");
-            itoa10<int>(repeatInfo->AS, buf);
-            o.append(buf);
-            o.append('\t');
-            // NH
-            assert(NH > 0);
-            o.append("NH:i:");
-            itoa10<int>(NH, buf);
-            o.append(buf);
-            o.append('\t');
-            // XM
-            assert(XM >= 0);
-            o.append("XM:i:");
-            itoa10<int>(repeatInfo->XM, buf);
-            o.append(buf);
-            o.append('\t');
-            // NM
-            assert(NM >= 0);
-            o.append("NM:i:");
-            itoa10<int>(repeatInfo->NM, buf);
-            o.append(buf);
-            o.append('\t');
-            // MD
-            assert(!MD.empty());
-            o.append("MD:Z:");
-            o.append(repeatInfo->MD.toZBuf());
-            o.append('\t');
-            // YS
-            if (paired) {
-                o.append("YS:i:");
-                itoa10<int>(YS, buf);
-                o.append(buf);
-                o.append('\t');
-            }
-            //YT
-            o.append("YT:Z:");
-            o.append(YT.toZBuf());
-            o.append('\t');
-            // unchanged Tags
-            o.append(unChangedTags.toZBuf());
-            o.append('\t');
-            // YS
-            if (paired && mateMapped) {
-                o.append("YS:i:");
-                itoa10<int>(YS, buf);
-                o.append(buf);
-                o.append('\t');
-            }
-            // YZ
-            o.append("YZ:i:");
-            o.append(repeatInfo->YZ);
-            o.append('\t');
-        }
-
-
-        // TC
-        o.append("TC:i:");
-        itoa10<int>(repeatInfo->TC, buf);
+        // AS
+        assert(AS <= 0);
+        o.append("AS:i:");
+        itoa10<int>(repeatInfo->AS, buf);
         o.append(buf);
-        if (repeatInfo->TC > 0) {
-            // Yf
+        o.append('\t');
+        // NH
+        assert(NH > 0);
+        o.append("NH:i:");
+        itoa10<int>(NH, buf);
+        o.append(buf);
+        o.append('\t');
+        // XM
+        assert(XM >= 0);
+        o.append("XM:i:");
+        itoa10<int>(repeatInfo->XM, buf);
+        o.append(buf);
+        o.append('\t');
+        // NM
+        assert(NM >= 0);
+        o.append("NM:i:");
+        itoa10<int>(repeatInfo->NM, buf);
+        o.append(buf);
+        o.append('\t');
+        // MD
+        assert(!MD.empty());
+        o.append("MD:Z:");
+        o.append(repeatInfo->MD.toZBuf());
+        o.append('\t');
+        // YS
+        if (paired) {
+            o.append("YS:i:");
+            itoa10<int>(YS, buf);
+            o.append(buf);
             o.append('\t');
-            o.append("Yf:Z:");
-            o.append(repeatInfo->Yf.toZBuf());
         }
+        //YT
+        o.append("YT:Z:");
+        o.append(YT.toZBuf());
+        o.append('\t');
+        // unchanged Tags
+        o.append(unChangedTags.toZBuf());
+        o.append('\t');
+        // YS
+        if (paired && mateMapped) {
+            o.append("YS:i:");
+            itoa10<int>(YS, buf);
+            o.append(buf);
+            o.append('\t');
+        }
+        // YZ
+        o.append("YZ:i:");
+        o.append(repeatInfo->YZ);
+        o.append('\t');
+        // Yf
+        o.append("Yf:i:");
+        itoa10<int>(repeatInfo->Yf, buf);
+        o.append(buf);
     }
 
     /**
