@@ -1172,10 +1172,6 @@ const
                 }
             }
         }
-        //itoa10<size_t>(NM, buf);
-        /*WRITE_SEP();
-        o.append("NM:i:");
-        o.append(buf);*/
         newAlignment->NM = NM;
     }
     if(print_md_) {
@@ -1190,10 +1186,6 @@ const
     if(print_ys_ && summ.paired()) {
         // YS:i: Alignment score of opposite mate
         assert(res.oscore().valid());
-        //itoa10<TAlScore>(res.oscore().score(), buf);
-        /*WRITE_SEP();
-        o.append("YS:i:");
-        o.append(buf);*/
         newAlignment->YS = res.oscore().score();
     }
     if(print_yn_) {

@@ -245,7 +245,9 @@ public:
     int calculatePairScore(Alignment *inputAlignment, int &nPair);
 
     /**
-     * make YZ tag
+     * make YZ tag.
+     * if the conversion type 0 is less, the read is mapped to REF (+).
+     * if the conversion type 1 is less, the read is mapped to REF-RC (-).
      */
     void makeYZ(char &YZ_string) {
         if (conversionCount[0]>=conversionCount[1]) {
@@ -483,7 +485,7 @@ public:
                             count = 0;
                         }
                         // output mismatch
-                        if (!MD.empty() && isalpha(isalpha(MD[MD.length()-1]))) {
+                        if (!MD.empty() && isalpha(MD[MD.length()-1])) {
                             MD.append('0');
                         }
 
@@ -592,7 +594,7 @@ public:
                 o.append('\t');
             }
             // YZ
-            o.append("YZ:Z:");
+            o.append("YZ:A:");
             o.append(YZ);
             o.append('\t');
             // Yf
@@ -659,7 +661,7 @@ public:
             o.append('\t');
         }
         // YZ
-        o.append("YZ:i:");
+        o.append("YZ:A:");
         o.append(repeatInfo->YZ);
         o.append('\t');
         // Yf

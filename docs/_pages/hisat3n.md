@@ -1,7 +1,7 @@
 ---
 layout: page
-title: HISAT-TLA 
-permalink: /hisat-tla/
+title: HISAT-3N 
+permalink: /hisat-3n/
 order: 4
 share: false
 ---
