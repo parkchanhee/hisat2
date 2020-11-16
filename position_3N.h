@@ -86,9 +86,9 @@ public:
     int nBestPair; // the number of pair have bestPairScore, should equal to NH.
     int bestAS; // the best AS score, for single-end alignment output.
     int nBestSingle; // the number of alignment have bestAS, should equal to NH.
-    int index; // the index number on positions. should always point to the lastest or current MappingPosition.
+    int index; // the index number on positions. should always point to the last or current MappingPosition.
     Alignment* oppositeAlignment; // the temporary pointer point to the opposite mate's Alignment. use in append function.
-    bool concordantExist; // whether concordant alignment is exsit. use for paired-end output statistics.
+    bool concordantExist; // whether concordant alignment is exist. use for paired-end output statistics.
 
     void initialize() {
         positions.clear();
@@ -222,7 +222,7 @@ public:
     /**
      * append new Alignment to positions.
      * return true if the new Alignment successfully append.
-     * return false if the new Alignment is exist or it's mate is bad algined.
+     * return false if the new Alignment is exist or it's mate is bad aligned.
      */
     bool append(Alignment* newAlignment);
 };
@@ -341,5 +341,5 @@ public:
     }
 };
 
-#endif //HISAT2_POSTION_3N_H
+#endif //HISAT2_POSITION_3N_H
 

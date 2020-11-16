@@ -67,7 +67,7 @@ int Alignment::calculatePairScore(Alignment *inputAlignment, int &nPair) {
         // when 2 alignment results are from same pair segment, output the lowest score and number of pair equal zero.
         pairScore = numeric_limits<int>::min();
     } else if (!mapped && !inputAlignment->mapped) {
-        // both ummaped.
+        // both unmapped.
         pairScore = numeric_limits<int>::min()/2 - 1;
     } else if (!mapped || !inputAlignment->mapped) {
         // one of the segment unmapped.

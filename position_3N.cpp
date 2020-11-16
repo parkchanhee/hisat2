@@ -20,6 +20,10 @@
 #include "alignment_3N.h"
 #include "position_3N.h"
 
+/**
+ * return true if two location is concordant.
+ * return false, if there are not concordant or too far (>500000bp).
+ */
 bool isConcordant(long long int &location1, bool &forward1, long long int &location2, bool &forward2) {
     if (abs(location1-location2) > 500000) { return false; }
     if (location1 < location2) {
@@ -30,10 +34,13 @@ bool isConcordant(long long int &location1, bool &forward1, long long int &locat
     return false;
 }
 
+/**
+ * this is the basic function to calculate DNA pair score.
+ * if the distance between 2 alignment is more than 1000, we reduce the score by the distance/100.
+ * if two alignment is concordant we add 500000 to make sure to select the concordant pair as best pair.
+ */
 int calculatePairScore_DNA (long long int &location0, int& AS0, bool& forward0, long long int &location1, int &AS1, bool &forward1, bool& concordant) {
-    // this is the basic function to calculate pair score.
-    // if the distance between 2 alignment is more than 1000, we reduce the score by the distance/100.
-    // if two alignment is concordant we add 500000 to make sure to select the concordant pair as best pair.
+    //
     int score = 100*AS0 + 100*AS1;
     int distance = abs(location0 - location1);
     if (distance > 500000) { return numeric_limits<int>::min(); }
@@ -43,10 +50,13 @@ int calculatePairScore_DNA (long long int &location0, int& AS0, bool& forward0, 
     return score;
 }
 
+/**
+ * this is the basic function to calculate RNA pair score.
+ *if the distance between 2 alignment is more than 100,000, we reduce the score by the distance/1000.
+ * if two alignment is concordant we add 500,000 to make sure to select the concordant pair as best pair.
+ */
 int calculatePairScore_RNA (long long int &location0, int& XM0, bool& forward0, long long int &location1, int &XM1, bool &forward1, bool& concordant) {
-    // this is the basic function to calculate pair score.
-    // if the distance between 2 alignment is more than 100,000, we reduce the score by the distance/1000.
-    // if two alignment is concordant we add 500,000 to make sure to select the concordant pair as best pair.
+    //
     int score = -100*XM0 + -100*XM1;
     int distance = abs(location0 - location1);
     if (distance > 500000) { return numeric_limits<int>::min(); }
@@ -56,6 +66,10 @@ int calculatePairScore_RNA (long long int &location0, int& XM0, bool& forward0, 
     return score;
 }
 
+/**
+ * compare the MappingPosition to Alignment.
+ * if they have same chromosome and location information, return true.
+ */
 bool MappingPosition::operator==(Alignment* o) {
 
     BTString* testChromosome;
@@ -143,19 +157,19 @@ bool MappingPositions::positionExist (Alignment* newAlignment) {
  * return false if the new Alignment is exist or it's mate is bad algined.
  */
 bool MappingPositions::append(Alignment* newAlignment) {
-    if (positionExist(newAlignment)) { // check if position is exsit.
+    if (positionExist(newAlignment)) { // check if position is exist.
         return false;
     } else {
         int segment = newAlignment->pairSegment;
         if (!positions.empty() && positions[index] == newAlignment) {
-            // check if current MappingPosition is same to new Alginment.
+            // check if current MappingPosition is same to new Alignment.
             positions[index].segmentExist[segment] = true;
             if (positions[index].badAlignment) {
                 return false;
             }
             positions[index].alignments[segment] = newAlignment;
         } else {
-            // add the new Alginment to positions.
+            // add the new Alignment to positions.
             positions.emplace_back(newAlignment);
             index = positions.size()-1;
             if (oppositeAlignment != NULL) {
