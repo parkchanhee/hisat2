@@ -19,9 +19,9 @@
 # along with HISAT 2.  If not, see <http://www.gnu.org/licenses/>.
 #
 
-# hisat2:
+# hisat-3n:
 #
-# A wrapper script for hisat2.  Provides various advantages over running
+# A wrapper script for hisat-3n.  Provides various advantages over running
 # hisat directly, including:
 #
 # 1. Handling compressed inputs
@@ -57,6 +57,9 @@ my $idx_ext_l     = 'ht2l';
 my $idx_ext_s     = 'ht2'; 
 my $idx_ext       = $idx_ext_s; 
 my $seq_in_args = 0;
+my $skip_read_stat = 0;
+my $base_change_opt = 0;
+my $no_base_change_opt = 0;
 my %signo       = ();
 my @signame     = ();
 
@@ -73,6 +76,8 @@ my @signame     = ();
 
 (-x "$align_prog") ||
 	Fail("Expected hisat2 to be in same directory with hisat2-align-s and hisat2-align-l:\n$script_path\n");
+
+(-x "$read_stat_prog") || ($skip_read_stat = 1);
 
 # Get description of arguments from HISAT so that we can distinguish HISAT
 # args from wrapper args
@@ -183,8 +188,18 @@ for(my $i = 0; $i < scalar(@ht2_args); $i++) {
 		$large_idx = 1;
 		$ht2_args[$i] = undef;
 	}
+	if($arg eq "--skip-read-lengths") {
+		$skip_read_stat = 1;
+		$ht2_args[$i] = undef
+	}
 	if($arg eq "-c") {
 		$seq_in_args = 1;
+	}
+	if($arg eq "--base-change") {
+		$base_change_opt = 1;
+	}
+	if($arg eq "--no-base-change") {
+		$no_base_change_opt = 1;
 	}
 	for my $rarg ("un-conc", "al-conc", "al-conc-disc", "un", "al") {
 		if($arg =~ /^--${rarg}$/ || $arg =~ /^--${rarg}-gz$/ || $arg =~ /^--${rarg}-bz2$/) {
@@ -203,6 +218,7 @@ for(my $i = 0; $i < scalar(@ht2_args); $i++) {
 		}
 	}
 }
+
 # If the user asked us to redirect some reads to files, or to suppress
 # unaligned reads, then we need to capture the output from HISAT and pass it
 # through this wrapper.
@@ -277,7 +293,9 @@ Info("  Binary args:\n[ @ht2_args ]\n");
 # check read lengths
 # if read_files have more than 1 files, use first one,
 my @read_files = (scalar(@unps) > 0) ? @unps : @mate1s;
-if ((scalar(@read_files) > 0) && ($seq_in_args == 0)) {
+if ((scalar(@read_files) > 0)
+		&& ($seq_in_args == 0)
+		&& ($skip_read_stat == 0)) {
 	Info("Check read length: $read_files[0]\n");
 	my $cmd = "'$read_stat_prog' $read_files[0]";
 	my $read_len_str = "";
@@ -287,14 +305,25 @@ if ((scalar(@read_files) > 0) && ($seq_in_args == 0)) {
 		chomp;
 		next if /^\s*$/;
 		my @ts = split(/ /);
-		$read_len_str = $ts[4];
+		if (scalar(@ts) > 4) {
+			$read_len_str = $ts[4];
+		} else {
+			$read_len_str = "";
+		}
 	}
 	close($fh);
 
 	if (($read_len_str ne "") && ($read_len_str ne "0")) {
 		Info("Read Length String: $read_len_str\n");
-		#push @ht2_args, ("--read-lengths", $read_len_str);
+		push @ht2_args, ("--read-lengths", $read_len_str);
 	}
+}
+
+# Check options for HISAT-3N
+# --base-change or --no-base-change
+# one of the two options must be set.
+if ($base_change_opt == 0 && $help == 0) {
+	Fail("--base-change must be set\n");
 }
 
 sub check_file_exist($$$) {
