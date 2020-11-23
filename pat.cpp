@@ -835,8 +835,10 @@ bool FastaPatternSource::read(
 		}
 		if(asc2dnacat[c] > 0 && begin++ >= mytrim5) {
 		    r.patFw.append(asc2dna_3N[0][c]);
-		    r.patFw1.append(asc2dna_3N[1][c]);
-		    r.originalFw.append((asc2dna[c]));
+            if (threeN) {
+                r.patFw1.append(asc2dna_3N[1][c]);
+                r.originalFw.append((asc2dna[c]));
+            }
 			r.qual.append('I');
 		}
 		if(fb_.peek() == '>') break;
@@ -953,8 +955,10 @@ bool FastqPatternSource::read(
 				// If it's past the 5'-end trim point
 				if(charsRead >= trim5) {
 				    r.patFw.append(asc2dna_3N[0][c]);
-				    r.patFw1.append(asc2dna_3N[1][c]);
-                    r.originalFw.append((asc2dna[c]));
+                    if (threeN) {
+                        r.patFw1.append(asc2dna_3N[1][c]);
+                        r.originalFw.append((asc2dna[c]));
+                    }
 				    (*dstLenCur)++;
 				}
                 charsRead++;
@@ -1439,8 +1443,10 @@ int TabbedPatternSource::parseSeq(
 			if(begin++ >= trim5) {
 				assert_neq(0, asc2dnacat[c]);
 				r.patFw.append(asc2dna_3N[0][c]);
-                r.patFw1.append(asc2dna_3N[1][c]);
-                r.originalFw.append((asc2dna[c]));
+                if (threeN) {
+                    r.patFw1.append(asc2dna_3N[1][c]);
+                    r.originalFw.append((asc2dna[c]));
+                }
 			}
 			charsRead++;
 		}

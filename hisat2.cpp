@@ -3918,6 +3918,10 @@ static void driver(
 	if(gVerbose || startVerbose)  {
 		cerr << "Entered driver(): "; logTime(cerr, true);
 	}
+
+	if (gVerbose || startVerbose) {
+	    cerr << "Running in " << ((threeN) ? "3N" : "Regular") << " Mode" << endl;
+	}
     
     initializeCntLut();
     initializeCntBit();
@@ -4287,7 +4291,7 @@ static void driver(
             if(gfm->gh().linearFM()) khits = 5;
             else                    khits = 10;
         }
-    }
+    } // else threeN
 
 	OutputQueue oq(
 		*fout,                   // out file buffer
@@ -4490,7 +4494,7 @@ static void driver(
 
 
         
-        BitPairReference* rrefss[2]{NULL};
+        BitPairReference* rrefss[2] = {NULL, };
         BitPairReference* rrefs = NULL;
 
         if (threeN) {
