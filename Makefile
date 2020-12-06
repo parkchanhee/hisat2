@@ -56,7 +56,8 @@ ifneq (,$(findstring Darwin,$(shell uname)))
 endif
 
 EXTRA_FLAGS += -DUSE_TRANSCRIPTOME
-#-DCP_DEBUG
+#EXTRA_FLAGS += -DCP_DEBUG
+#EXTRA_FLAGS += -DCP_DEBUG_MEM
 
 
 EXTRA_FLAGS += -DPOPCNT_CAPABILITY -std=c++11

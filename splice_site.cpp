@@ -848,7 +848,7 @@ float SpliceSiteDB::probscore(
     return probscore;
 }
 
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
 void SpliceSiteDB::show_mem_usage()
 {
     fprintf(stderr, "Num of Refs: %d\n", _numRefs);

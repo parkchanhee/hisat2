@@ -58,7 +58,7 @@
 #include "outq.h"
 #include "repeat_kmer.h"
 
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
 #include <malloc.h>
 #endif
 
@@ -3791,7 +3791,7 @@ static void driver(
     repeatdb = new RepeatDB<index_t>();
     raltdb = new ALTDB<index_t>();
 	adjIdxBase = adjustEbwtBase(argv0, bt2indexBase, gVerbose);
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
     {
         fprintf(stderr, "Before gfm\n");
         malloc_stats();
@@ -3819,7 +3819,7 @@ static void driver(
                                      false /*passMemExc*/,
                                      sanityCheck,
                                      use_haplotype); //use haplotypes?
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
     {
         fprintf(stderr, "After gfm\n");
         malloc_stats();
@@ -3857,7 +3857,7 @@ static void driver(
                            !noRefNames,  // load names?
                            startVerbose);
     }
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
     {
         fprintf(stderr, "After loadIntoMemory\n");
         malloc_stats();
@@ -4131,7 +4131,7 @@ static void driver(
                                 write, // write?
                                 read);  // read?
 
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
         {
             fprintf(stderr, "After new SSDB\n");
             malloc_stats();
@@ -4139,7 +4139,7 @@ static void driver(
 #endif
         ssdb->read(gfm, altdb->alts());
 
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
         {
             fprintf(stderr, "After ssdb->read\n");
             malloc_stats();
@@ -4403,7 +4403,7 @@ int hisat2(int argc, const char **argv) {
 			}
 			driver<SString<char> >("DNA", bt2index, outfile);
 		}
-#ifdef CP_DEBUG
+#if defined(CP_DEBUG) && defined(CP_DEBUG_MEM)
         {
             fprintf(stderr, "Before ending\n");
             malloc_stats();
