@@ -182,6 +182,63 @@ def read_transcript(genome_seq, gtf_file, min_transcript_len=0):
 
     return genes, transcripts
 
+def check_filtered(schr, spos, slen, filter_list):
+    return False
+
+def load_snps(snp_file, filter_list):
+    # we assume that the snp_file is not sorted
+
+    snp_list = []
+
+    for line in snp_file:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            print('Skip the line:', line)
+            continue
+
+        fields = line.split()
+        stype = fields[1]
+        schr = fields[2]
+        spos = int(fields[3])
+
+        slen = 1
+
+        if stype == 'single' or stype == 'insertion':
+            slen = 1
+        elif stype == 'deletion':
+            slen = int(fields[4])
+        else:
+            print('Skip the line:', line)
+
+        if check_filtered(schr, spos, slen, filter_list):
+            # save to snp_list
+            snp_list.append(fields)
+
+        else:
+            print('Filtered:', line)
+
+    return snp_list
+
+def read_snps(snp_file, exons_list, genome_seq):
+    print('Read SNPs')
+    snp_list = {}
+    tmp_exon_list = []
+
+    for gene, exons in exons_list.items():
+        tmp_exon_list += exons
+
+    tmp_exon_list.sort()
+    print(tmp_exon_list[:10])
+
+    """
+    for i in range(1, len(tmp_exon_list)):
+        if tmp_exon_list[i-1][1] >= tmp_exon_list[i][0]:
+            print(tmp_exon_list[i-1], tmp_exon_list[i])
+    """
+
+    snp_list = load_snps(snp_file, tmp_exon_list)
+
+    return snp_list
 
 def merge_range(A, B):
     assert A[0] <= B[0]
@@ -400,7 +457,7 @@ def generate_chr_tome(genes, transcripts, gene_ids, exons_list, genome_seq, trse
     return
 
 
-def extract_transcript_graph(genome_file, gtf_file, base_fname):
+def extract_transcript_graph(genome_file, gtf_file, snp_file, base_fname):
     genome_seq = read_genome(genome_file)
     genes, transcripts = read_transcript(genome_seq, gtf_file)
 
@@ -432,6 +489,14 @@ def extract_transcript_graph(genome_file, gtf_file, base_fname):
         exon_list = make_consensus_exons(tmp_exons_list)
 
         exons_list[gene_id] = exon_list
+
+
+    # load snps in exons
+    if snp_file:
+        snp_list = read_snps(snp_file, exons_list, genome_seq)
+    else:
+        snp_list = {}
+
 
     with open(base_fname + ".gt.fa", "w") as trseq_file, \
             open(base_fname + ".gt.snp", "w") as trsnp_file, \
@@ -488,7 +553,7 @@ def write_exon_info(fp, tid, chr_name, strand, transcript_len, exons, gene_id):
         fp.write('\n')
 
 
-def extract_transcript_linear(genome_file, gtf_file, base_fname):
+def extract_transcript_linear(genome_file, gtf_file, snp_file, base_fname):
     genome_seq = read_genome(genome_file)
     genes, transcripts = read_transcript(genome_seq, gtf_file)
 
@@ -515,7 +580,12 @@ if __name__ == '__main__':
     parser.add_argument('-g', '--gtf-file',
                         dest='gtf_file',
                         type=FileType('r'),
-                        help='input GTF fie')
+                        help='input GTF file')
+
+    parser.add_argument('-s', '--snp-file',
+                        dest='snp_file',
+                        type=FileType('r'),
+                        help='input SNP file')
 
     parser.add_argument('-r', '--genome',
                         dest='genome_file',
@@ -576,9 +646,11 @@ if __name__ == '__main__':
         extract_transcript_linear(
             args.genome_file,
             args.gtf_file,
+            args.snp_file,
             args.out_fname)
     else:
         extract_transcript_graph(
             args.genome_file,
             args.gtf_file,
+            args.snp_file,
             args.out_fname)
