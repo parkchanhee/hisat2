@@ -29,7 +29,8 @@ import bisect
 bDebug = False
 bVerbose = False
 bUniqueSNP = False
-bChrTome = False
+#bChrTome = False
+bChrTome = True
 
 
 def read_genome(genome_file, chr_filter=None):
@@ -215,18 +216,113 @@ def check_in_ranges(spos, slen, range_list):
 
         return -1
 
-    i = bi_search(spos, range_list)
-    if i == -1:
+    idx = bi_search(spos, range_list)
+    if idx == -1:
         return False
 
-    r = range_list[i]
+    r = range_list[idx]
     if r[0] <= spos and (spos + slen - 1) <= r[1]:
         return True
 
     return False
 
+
+def read_snps(snp_file):
+    print('Read SNPs')
+    snps = defaultdict(list)
+
+    if not snp_file:
+        return snps
+
+    for line in snp_file:
+        line = line.strip()
+        if not line or line.startswith('#'):
+            continue
+        try:
+            snpID, type, chr, pos, data = line.split('\t')
+        except ValueError:
+            continue
+
+        assert type in ["single", "deletion", "insertion"]
+        if type == "deletion":
+            data = int(data)
+
+        snps[chr].append([snpID, type, int(pos), data])
+
+    return snps
+
+
+def find_snp_gene(chr_snp_list, chr_exon_list, snps_list):
+
+    # chr_snp_list and chr_exon_list are sorted by position
+    # for each snp, find gene_id and added to snps_list[gene_id]
+
+    snp_i = 0
+    exon_j = 0
+
+    while snp_i < len(chr_snp_list) and exon_j < len(chr_exon_list):
+
+        # snp position(inclusive)
+        snp_start = chr_snp_list[snp_i][2]
+        snp_end = snp_start
+        snp_type = chr_snp_list[snp_i][1]
+
+        if snp_type == 'deletion':
+            snp_end = snp_start + chr_snp_list[snp_i][3] - 1
+
+        # find gene that includes [snp_start, snp_end] region
+
+        j = exon_j
+        while j < len(chr_exon_list):
+            ex = chr_exon_list[j]
+
+            if snp_end < ex[0]:
+                break
+
+            if ex[0] <= snp_start and snp_end <= ex[1]:
+                gene_id = ex[2]
+                snps_list[gene_id].append(chr_snp_list[snp_i])
+
+            j += 1
+
+        exon_j = j
+        snp_i += 1
+
+    return
+
+
+def make_gene_snps(snps, genes, exons_list):
+    # snps_list[gene] = [list of snps within the gene]
+    snps_list = defaultdict(list)
+
+    # sort snps by position
+    for chrname in snps:
+        snps[chrname].sort(key=lambda x: x[2])
+
+        print(chrname, len(snps[chrname]))
+
+    # create temporary list of exons per each chromosome
+    tmp_chr_exons_list = defaultdict(list)
+    chr_gene_list = groupby_gene(genes)
+    for chrname, gene_list in chr_gene_list.items():
+        for gene_id in gene_list:
+            ex = exons_list[gene_id]
+            tmp_chr_exons_list[chrname] += [[e[0], e[1], gene_id] for e in ex]
+
+    for chrname in tmp_chr_exons_list:
+        tmp_chr_exons_list[chrname].sort()
+
+    for chrname, chr_snp_list in snps.items():
+        find_snp_gene(chr_snp_list, tmp_chr_exons_list[chrname], snps_list)
+
+    return snps_list
+
 def load_snps(snp_file, range_list_all):
-    # we assume that the snp_file is not sorted
+
+    snps = load_snps_file(snp_file)
+
+
+
 
     snp_list_all = {}
     snp_count_all = 0
@@ -274,7 +370,7 @@ def load_snps(snp_file, range_list_all):
     print(snp_count_all, snp_count_added)
     return snp_list_all
 
-def read_snps(snp_file, genes, exons_list, genome_seq):
+def read_snps_old(snp_file, genes, exons_list, genome_seq):
     print('Read SNPs')
     snp_list = {}
 
@@ -285,7 +381,7 @@ def read_snps(snp_file, genes, exons_list, genome_seq):
         chrom = genes[gene][3]
         if not chrom in tmp_exon_list:
             tmp_exon_list[chrom] = list()
-        tmp_exon_list[chrom] += exons
+        tmp_exon_list[chrom] += [[exon[0], exon[1], gene] for exon in exons]
 
     for chrom in tmp_exon_list:
         tmp_exon_list[chrom].sort()
@@ -396,20 +492,8 @@ def map_to_exons(old_exon, consensus_exon_list):
     return [-1, -1], -1
 
 
-def write_transcripts_snp(fp, gene_id, trans_ids, transcripts, exon_list, real_gene_id='', offset=0, snp_list_all={}):
+def write_transcripts_snp(fp, gene_id, trans_ids, transcripts, exon_list, real_gene_id='', offset=0):
     snps = set()
-
-    # first, print snp_list to file
-    # then, make a snp from transcriptome, then print to file
-    for chrname, snp_list_chr in snp_list_all.items():
-        print(chrname, len(snp_list_chr))
-
-
-    return
-
-
-
-
 
     for trans_id in trans_ids:
         trans = transcripts[trans_id]
@@ -527,8 +611,17 @@ def make_chrtome_seq(exon_list, out_seq, ref_seq):
     out_seq = get_seq(ref_seq, exon_list)
     return
 
+def write_transcripts_gene_snp(fp, new_chrname, trans_ids, transcripts, snp_list, exon_list, real_gene_id='', offset=0):
+    print(new_chrname, real_gene_id)
+    if len(snp_list) > 0:
+        print(snp_list)
 
-def generate_chr_tome(genes, transcripts, gene_ids, exons_list, snp_list_all, genome_seq, trseq_file, trsnp_file, trmap_file, trss_file):
+
+    return
+
+#def write_transcripts_snp(fp, gene_id, trans_ids, transcripts, exon_list, real_gene_id='', offset=0):
+
+def generate_chr_tome(genes, transcripts, gene_ids, exons_list, snps_list, genome_seq, trseq_file, trsnp_file, trmap_file, trss_file):
 
     chr_gene_list = groupby_gene(genes)
 
@@ -541,19 +634,23 @@ def generate_chr_tome(genes, transcripts, gene_ids, exons_list, snp_list_all, ge
 
         chrtome_name = '{}_tome'.format(chrname)
 
-        # write new snp per each chromosome
-        #write_transcripts_snp_new(trsnp_file)
-
         for g in chrgene:
             tmp_seq = get_seq(genome_seq[chrname], exons_list[g])
             seq += tmp_seq + 'N'
 
+            tran_ids = genes[g][0]
+
             # write ss, snp, map
-            write_transcripts_ss(trss_file, chrtome_name, genes[g][0], transcripts, exons_list[g], offset)
-            write_transcripts_snp(trsnp_file, chrtome_name, genes[g][0], transcripts, exons_list[g], g, offset, snp_list_all)
+            write_transcripts_ss(trss_file, chrtome_name, tran_ids, transcripts, exons_list[g], offset)
+            write_transcripts_gene_snp(trsnp_file, chrtome_name, tran_ids, transcripts, snps_list[g], exons_list[g], g, offset)
+            #write_transcripts_snp(trsnp_file, chrtome_name, tran_ids, transcripts, exons_list[g], g, offset)
             write_transcripts_map(trmap_file, chrtome_name, chrname, exons_list[g], g, offset, len(tmp_seq))
 
             offset += len(tmp_seq) + 1
+
+
+        # write new snp per each chromosome
+        # write_transcripts_snp_new(trsnp_file, )
 
         write_fasta(trseq_file, chrtome_name, seq)
 
@@ -563,6 +660,7 @@ def generate_chr_tome(genes, transcripts, gene_ids, exons_list, snp_list_all, ge
 def extract_transcript_graph(genome_file, gtf_file, snp_file, base_fname):
     genome_seq = read_genome(genome_file)
     genes, transcripts = read_transcript(genome_seq, gtf_file)
+    snps = read_snps(snp_file)
 
     """
     if bDebug:
@@ -593,13 +691,8 @@ def extract_transcript_graph(genome_file, gtf_file, snp_file, base_fname):
 
         exons_list[gene_id] = exon_list
 
-
-    # load snps in exons
-    if snp_file:
-        snp_list = read_snps(snp_file, genes, exons_list, genome_seq)
-    else:
-        snp_list = {}
-
+    # get snps only in the genes
+    snps_list = make_gene_snps(snps, genes, exons_list)
 
     with open(base_fname + ".gt.fa", "w") as trseq_file, \
             open(base_fname + ".gt.snp", "w") as trsnp_file, \
@@ -607,7 +700,8 @@ def extract_transcript_graph(genome_file, gtf_file, snp_file, base_fname):
             open(base_fname + ".gt.ss", "w") as trss_file:
 
         if bChrTome:
-            generate_chr_tome(genes, transcripts, gene_ids, exons_list, snp_list, genome_seq, trseq_file, trsnp_file, trmap_file, trss_file)
+            generate_chr_tome(genes, transcripts, gene_ids, exons_list, snps_list, genome_seq, trseq_file, trsnp_file,
+                              trmap_file, trss_file)
         else:
             if bDebug:
                 pprint.pprint(sorted(tmp_exons_list))
@@ -622,7 +716,7 @@ def extract_transcript_graph(genome_file, gtf_file, snp_file, base_fname):
                 write_transcripts_seq(trseq_file, gene_id, chrom, genome_seq, exon_list)
 
                 # print snps
-                write_transcripts_snp(trsnp_file, gene_id, trans_ids, transcripts, exon_list, snp_list)
+                write_transcripts_snp(trsnp_file, gene_id, trans_ids, transcripts, exon_list)
 
                 # print splice-sites
                 write_transcripts_ss(trss_file, gene_id, trans_ids, transcripts, exon_list)
