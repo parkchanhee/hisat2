@@ -247,7 +247,7 @@ def read_snps(snp_file):
         if type == "deletion":
             data = int(data)
 
-        snps[chr].append([snpID, type, int(pos), data])
+        snps[chr].append([snpID, type, int(pos), data, chr])
 
     return snps
 
@@ -302,18 +302,18 @@ def make_gene_snps(snps, genes, exons_list):
         print(chrname, len(snps[chrname]))
 
     # create temporary list of exons per each chromosome
-    tmp_chr_exons_list = defaultdict(list)
+    chr_exons_list = defaultdict(list)
     chr_gene_list = groupby_gene(genes)
     for chrname, gene_list in chr_gene_list.items():
         for gene_id in gene_list:
             ex = exons_list[gene_id]
-            tmp_chr_exons_list[chrname] += [[e[0], e[1], gene_id] for e in ex]
+            chr_exons_list[chrname] += [[e[0], e[1], gene_id] for e in ex]
 
-    for chrname in tmp_chr_exons_list:
-        tmp_chr_exons_list[chrname].sort()
+    for chrname in chr_exons_list:
+        chr_exons_list[chrname].sort()
 
     for chrname, chr_snp_list in snps.items():
-        find_snp_gene(chr_snp_list, tmp_chr_exons_list[chrname], snps_list)
+        find_snp_gene(chr_snp_list, chr_exons_list[chrname], snps_list)
 
     return snps_list
 
@@ -684,6 +684,7 @@ def extract_transcript_graph(genome_file, gtf_file, snp_file, base_fname):
         trans_ids = genes[gene_id][0]
         chrom = transcripts[trans_ids[0]][0]
         tmp_exons_list = list()
+        # collect all exons of the gene
         for tid in trans_ids:
             tmp_exons_list += transcripts[tid][3]
 
