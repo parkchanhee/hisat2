@@ -577,6 +577,26 @@ def write_transcripts_ss(fp, gene_id, trans_ids, transcripts, exon_list, offset=
     return
 
 
+def write_transcripts_gene_snp(fp, new_chrname, trans_ids, transcripts, snp_list, exon_list, real_gene_id='', offset=0):
+    #print(new_chrname, real_gene_id)
+    for snp in snp_list:
+
+        new_rsid = "{}.{}".format(snp[0], real_gene_id)
+
+        old_pos = [snp[2], snp[2]]
+        new_pos, idx = map_to_exons(old_pos, exon_list)
+
+        if bDebug:
+            print(old_pos, new_pos, idx)
+
+        if idx == -1:
+            print('Cannot map', snp)
+            continue
+
+        print('\t'.join([new_rsid, snp[1], new_chrname, str(new_pos[0]), str(snp[3])]), file=fp)
+    return
+
+
 def write_transcripts_map(fp, gene_id, chr_name, exon_list, real_gene_id='', offset=0, tome_len=0):
     header='>{}\t{}'.format(gene_id, chr_name)
 
@@ -611,13 +631,6 @@ def make_chrtome_seq(exon_list, out_seq, ref_seq):
     out_seq = get_seq(ref_seq, exon_list)
     return
 
-def write_transcripts_gene_snp(fp, new_chrname, trans_ids, transcripts, snp_list, exon_list, real_gene_id='', offset=0):
-    print(new_chrname, real_gene_id)
-    if len(snp_list) > 0:
-        print(snp_list)
-
-
-    return
 
 #def write_transcripts_snp(fp, gene_id, trans_ids, transcripts, exon_list, real_gene_id='', offset=0):
 
