@@ -30,7 +30,7 @@ def build_indexes():
             elif aligner == "HISAT-GT":
                 cmd = "../../aligners/bin/hisat2_extract_transcript_graph.py -g ../../data/{genome}.gtf -r ../../data/{genome}.fa -s ../../data/{genome}.snp --chrtome -o ../../data/{genome}".format(genome=genome)
                 cmd = cmd + ";../../aligners/bin/hisat2-build -p 4 ../../data/%s.gt.fa --ss ../../data/%s.gt.ss %s.gt" % (genome, genome, genome)
-                cmd = cmd + ";../../aligners/bin/hisat2-build -p 4 ../../data/{genome}.gt.fa --ss ../../data/{genome}.gt.ss --snp ../../data/{genome}.gt.snp {genome}.gt_snp".format(genome=genome)
+                cmd = cmd + ";../../aligners/bin/hisat2-build -p 4 ../../data/{genome}.gt.fa --ss ../../data/{genome}.gt.ss --snp ../../data/{genome}.gt.snp {genome}_snp.gt".format(genome=genome)
             elif aligner == "HISAT":
                 cmd = "../../aligners/bin/hisat-build ../../data/%s.fa %s" % (genome, genome)
                 cmd = cmd + "; ../../aligners/bin/tophat -G ../../data/%s.gtf --transcriptome-index=gtf %s; rm -rf tophat_out" % (genome, genome)
