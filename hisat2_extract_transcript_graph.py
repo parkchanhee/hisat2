@@ -29,8 +29,7 @@ import bisect
 bDebug = False
 bVerbose = False
 bUniqueSNP = False
-#bChrTome = False
-bChrTome = True
+bChrTome = False
 
 
 def read_genome(genome_file, chr_filter=None):
@@ -183,49 +182,6 @@ def read_transcript(genome_seq, gtf_file, min_transcript_len=0):
 
     return genes, transcripts
 
-def check_in_ranges(spos, slen, range_list):
-    """
-    check whether [spos, spos + slen] is in range_list or not
-    :param spos:
-    :param slen:
-    :param range_list:
-    :return:
-    """
-
-    def bi_search(spos, range_list):
-        if len(range_list) == 0:
-            return -1
-
-        left = 0
-        right = len(range_list)
-
-        while right - left > 5:
-            mid = left + int((right - left) / 2)
-
-            value = range_list[mid][0]
-            if spos < value:
-                right = mid
-            else:
-                left = mid
-
-        for i in range(left, right):
-            value = range_list[i][0]
-
-            if spos < value:
-                return i - 1
-
-        return -1
-
-    idx = bi_search(spos, range_list)
-    if idx == -1:
-        return False
-
-    r = range_list[idx]
-    if r[0] <= spos and (spos + slen - 1) <= r[1]:
-        return True
-
-    return False
-
 
 def read_snps(snp_file):
     print('Read SNPs')
@@ -317,112 +273,6 @@ def make_gene_snps(snps, genes, exons_list):
 
     return snps_list
 
-def load_snps(snp_file, range_list_all):
-
-    snps = load_snps_file(snp_file)
-
-
-
-
-    snp_list_all = {}
-    snp_count_all = 0
-    snp_count_added = 0
-
-    for line in snp_file:
-        line = line.strip()
-        if not line or line.startswith('#'):
-            print('Skip the line:', line)
-            continue
-
-        fields = line.split()
-        stype = fields[1]
-        schr = fields[2]
-        spos = int(fields[3])
-
-        slen = 1
-
-        snp_count_all += 1
-
-        if stype == 'single' or stype == 'insertion':
-            slen = 1
-        elif stype == 'deletion':
-            slen = int(fields[4])
-        else:
-            print('Skip the line:', line)
-
-        if not schr in range_list_all:
-            print('Cannot find a chromosome,', schr)
-            print('Filtered:', line)
-            continue
-
-        if check_in_ranges(spos, slen, range_list_all[schr]):
-            # save to snp_list
-            if not schr in snp_list_all:
-                snp_list_all[schr] = list()
-
-            snp_list_all[schr].append(fields)
-            snp_count_added += 1
-
-        else:
-            #print('Filtered:', line)
-            pass
-
-    print(snp_count_all, snp_count_added)
-    return snp_list_all
-
-def read_snps_old(snp_file, genes, exons_list, genome_seq):
-    print('Read SNPs')
-    snp_list = {}
-
-    # make a exon list for each chromosome
-    tmp_exon_list = {}
-
-    for gene, exons in exons_list.items():
-        chrom = genes[gene][3]
-        if not chrom in tmp_exon_list:
-            tmp_exon_list[chrom] = list()
-        tmp_exon_list[chrom] += [[exon[0], exon[1], gene] for exon in exons]
-
-    for chrom in tmp_exon_list:
-        tmp_exon_list[chrom].sort()
-
-        i = 0
-        j = 1
-
-        while j < len(tmp_exon_list[chrom]):
-            # if i , j are overlapped, merge two range and set to i
-            old = tmp_exon_list[chrom][i]
-            new = tmp_exon_list[chrom][j]
-
-            assert old[0] <= new[0]
-            if new[0] <= old[1]:
-                # overlapped
-                # print('merged', old, new)
-                tmp_exon_list[chrom][i] = [old[0], max(old[1], new[1]), 0]
-            else:
-                # copy j to i+1
-                if j != i + 1:
-                    tmp_exon_list[chrom][i+1] = tmp_exon_list[chrom][j]
-
-                i += 1
-
-            j += 1
-
-        del tmp_exon_list[chrom][i+1:]
-
-    #tmp_exon_list.sort()
-    #print(tmp_exon_list['22'][:10])
-
-    # check no-overlap
-    for chrom in tmp_exon_list:
-        chr_exon_list = tmp_exon_list[chrom]
-        for i in range(1, len(chr_exon_list)):
-            if chr_exon_list[i-1][1] >= chr_exon_list[i][0]:
-                print(chr_exon_list[i-1], chr_exon_list[i])
-
-    snp_list = load_snps(snp_file, tmp_exon_list)
-
-    return snp_list
 
 def merge_range(A, B):
     assert A[0] <= B[0]
