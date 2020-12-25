@@ -593,7 +593,7 @@ def write_transcripts_gene_snp(fp, new_chrname, trans_ids, transcripts, snp_list
             print('Cannot map', snp)
             continue
 
-        print('\t'.join([new_rsid, snp[1], new_chrname, str(new_pos[0]), str(snp[3])]), file=fp)
+        print('\t'.join([new_rsid, snp[1], new_chrname, str(new_pos[0] + offset), str(snp[3])]), file=fp)
     return
 
 
