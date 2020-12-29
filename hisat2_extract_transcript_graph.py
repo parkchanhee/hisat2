@@ -344,6 +344,9 @@ def get_seq(ref, exons):
     for e in exons:
         seq += ref[e[0]:e[1] + 1]
 
+    # Additional
+    seq += ref[e[1] + 1 : e[1] + 100]
+
     return seq
 
 

@@ -118,7 +118,10 @@ class Transinfo:
                 e_idx = i
                 break
 
-        assert e_idx >= 0
+        if e_idx < 0:
+            return new_chr, new_pos, -1, trans, offset
+
+        #assert e_idx >= 0
 
         return new_chr, new_pos, e_idx, trans, offset
 
@@ -128,6 +131,10 @@ class Transinfo:
 
     def translate_pos_cigar(self, tid, tr_pos, cigar_str):
         new_chr, new_pos, e_idx, trans, offset = self.map_position_internal(tid, tr_pos)
+
+        if e_idx == -1:
+            # wrong alignment
+            return new_chr, tr_pos, cigar_str
 
         #trans = self.tbl[tid]
         exons = trans[3]
