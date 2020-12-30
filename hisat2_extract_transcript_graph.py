@@ -29,7 +29,7 @@ import bisect
 bDebug = False
 bVerbose = False
 bUniqueSNP = False
-bChrTome = False
+bChrTome = True
 
 
 def read_genome(genome_file, chr_filter=None):
@@ -766,7 +766,7 @@ if __name__ == '__main__':
                         help='Show more messages')
 
     args = parser.parse_args()
-    if not args.gtf_file or not args.genome_file or not args.out_fname or not args.hap_file:
+    if not args.gtf_file or not args.genome_file or not args.out_fname:
         parser.print_help()
         exit(1)
 
