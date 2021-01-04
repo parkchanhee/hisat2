@@ -94,11 +94,69 @@ def validate_haplotype(haplotype, snps):
     return
 
 
-def validate_GT(snp_file, hap_file):
+def read_repeats(rep_file):
+    rep_info = {}
+
+    rep_name = None
+
+    for line in rep_file:
+        line = line.strip()
+        if line.startswith('#'):
+            continue
+
+        if line[0] == '>':
+            # header
+            fields = line[1:].split()
+            rep_name, rep_group_id = fields[0].split('*')
+            rep_chrname = fields[1]
+            rep_pos = int(fields[2])
+            rep_len = int(fields[3])
+            rep_count = int(fields[4])
+
+            if rep_name in rep_info:
+                if rep_info[rep_name][0] > rep_pos:
+                    rep_info[rep_name][0] = rep_pos
+
+                if rep_info[rep_name][1] < rep_len:
+                    rep_info[rep_name][1] = rep_len
+
+            else:
+                rep_info[rep_name] = [rep_pos, rep_len, list()]
+
+        else:
+            # pos
+
+            if not rep_name:
+                print('Error in rep_info', line, file=stderr)
+                continue
+
+            for tmp_line in line.split():
+                chr_name, chr_pos, chr_dir = tmp_line.split(':')[0:3]
+                rep_info[rep_name][2].append([chr_name, int(chr_pos), rep_len, rep_count])
+
+            continue
+
+    """
+    for rep_name, rep_pos_len in rep_info.items():
+        if rep_pos_len[1] > 5000:
+            print(rep_name, rep_pos_len)
+    """
+
+    return rep_info
+
+
+def validate_repeat_snp(rep_info, snps):
+
+
+    return
+
+def validate_GT(snp_file, hap_file, rep_file):
     snps = read_snps(snp_file)
     haplotypes = read_haplotypes(hap_file)
+    rep_info = read_repeats(rep_file)
 
-    validate_haplotype(haplotypes, snps)
+    # validate_haplotype(haplotypes, snps)
+    validate_repeat_snp(rep_info, snps)
 
     return
 
@@ -116,6 +174,11 @@ if __name__ == '__main__':
                         type=FileType('r'),
                         help='input Haplotype file')
 
+    parser.add_argument('-t', '--repeat',
+                        dest='rep_file',
+                        type=FileType('r'),
+                        help='input Repeat-info file')
+
     parser.add_argument('--debug',
                         dest='bDebug',
                         action='store_true',
@@ -127,9 +190,9 @@ if __name__ == '__main__':
                         help='Show more messages')
 
     args = parser.parse_args()
-    if not args.snp_file or not args.hap_file:
-        parser.print_help()
-        exit(1)
+    #if not args.snp_file or not args.hap_file:
+    #    parser.print_help()
+    #    exit(1)
 
     if args.bDebug is not None:
         bDebug = args.bDebug
@@ -137,4 +200,4 @@ if __name__ == '__main__':
     if args.bVerbose is not None:
         bVerbose = args.bVerbose
 
-    validate_GT(args.snp_file, args.hap_file)
+    validate_GT(args.snp_file, args.hap_file, args.rep_file)
