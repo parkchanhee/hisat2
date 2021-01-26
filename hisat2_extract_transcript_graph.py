@@ -428,16 +428,11 @@ def write_transcripts_ss(fp, gene_id, gene, trans_ids, transcripts, exon_list, o
         assert len(old_exons) >= 1
 
         new_exons = list()
-        for old_exon in old_exons:
-            ne, idx = map_to_exons(old_exon, exon_list)
+        for idx in trans[5]:
+            new_start = exon_list[idx][2]
+            new_len = exon_list[idx][1] - exon_list[idx][0] + 1
 
-            if bDebug:
-                print(ne, idx)
-
-            if idx == -1:
-                continue
-
-            new_exons.append(ne)
+            new_exons.append([new_start, new_start + new_len - 1])
 
         for i in range(1, len(new_exons)):
             gap = new_exons[i][0] - new_exons[i - 1][1] - 1
@@ -476,7 +471,7 @@ def write_transcripts_gene_snp(fp, new_chrname, trans_ids, transcripts, snp_list
 
 
 def write_transcripts_map(fp, gene_id, chr_name, exon_list, real_gene_id='', offset=0, tome_len=0):
-    header='>{}\t{}'.format(gene_id, chr_name)
+    header = '>{}\t{}'.format(gene_id, chr_name)
 
     if real_gene_id:
         header += '\t{}\t{}\t{}'.format(real_gene_id, offset, tome_len)
@@ -492,6 +487,19 @@ def write_transcripts_map(fp, gene_id, chr_name, exon_list, real_gene_id='', off
 
     if len(exon_list) % 4 != 0:
         fp.write('\n')
+
+    return
+
+
+def write_transcripts_tidmap(fp, chrtome_name, chr_name, gene_id, tid_map):
+    num_bit_len = tid_map[0]
+    num_trans = len(tid_map[1])
+    header = '>{}\t{}\t{}\t{}\t{}'.format(chrtome_name, chr_name, gene_id, num_bit_len, num_trans)
+
+    print(header, file=fp)
+
+    for t in tid_map[1]:
+        fp.write('{:X}\t{}\n'.format(t[0], t[1]))
 
     return
 
@@ -555,7 +563,8 @@ def make_chrtome_seq(exon_list, out_seq, ref_seq):
     return
 
 
-def generate_chr_tome(genes, transcripts, gene_ids, snps_list, haplotypes, genome_seq, trseq_file, trsnp_file, trmap_file, trss_file, trhap_file):
+def generate_chr_tome(genes, transcripts, gene_ids, snps_list, haplotypes, genome_seq, tid_map,
+                      trseq_file, trsnp_file, trmap_file, trss_file, trhap_file, trtid_file):
 
     chr_gene_list = groupby_gene(genes)
 
@@ -580,6 +589,8 @@ def generate_chr_tome(genes, transcripts, gene_ids, snps_list, haplotypes, genom
             write_transcripts_ss(trss_file, chrtome_name, gene, tran_ids, transcripts, exons, offset)
             write_transcripts_gene_snp(trsnp_file, chrtome_name, tran_ids, transcripts, snps_list[g], exons, g, offset)
             write_transcripts_map(trmap_file, chrtome_name, chrname, exons, g, offset, len(tmp_seq))
+
+            write_transcripts_tidmap(trtid_file, chrtome_name, chrname, g, tid_map[g])
 
             offset += len(tmp_seq) + 1
 
@@ -661,10 +672,17 @@ def generate_common_exons(genes, transcripts):
 
         unit_exons = make_unique_range(all_exons)
 
-        if bDebug:
-            print(len(unit_exons), unit_exons)
+        tmp_common_exons = list()
+        offset = 0
+        for r in unit_exons:
+            tmp_common_exons.append([r[0], r[1], offset])
+            offset += (r[1] - r[0] + 1)
 
-        gene_value[4] = unit_exons
+        if bDebug:
+            print(len(tmp_common_exons), tmp_common_exons)
+
+
+        gene_value[4] = tmp_common_exons
 
     return
 
@@ -707,7 +725,7 @@ def map_new_exons(new_exons, old_exons):
 
 
 def translate_to_common_exons(genes, transcripts):
-    print(transcripts)
+    # print(transcripts)
 
     for tran_id, tran_item in transcripts.items():
         old_exons = tran_item[3]
@@ -720,6 +738,32 @@ def translate_to_common_exons(genes, transcripts):
         # print(gene_id, old_exons, new_exons, id_list)
 
     return
+
+
+def generate_exon_tid_map(genes, transcripts):
+    # for each gene, make a list of (exon bit map, tid)
+
+    tid_map = dict()
+
+    # gene [list(), gene_biotype, gene_name, chrom, list()]
+    for gene_id, gene in genes.items():
+
+        tid_map[gene_id] = [len(gene[4]), list()]
+
+        for tid in gene[0]:
+            tran = transcripts[tid]
+
+            # tran[5] is a list of exon index
+            bitmap = 0
+            for i in tran[5]:
+                bitmap += 2 ** i
+
+            # print(len(tran[5]), max(tran[5]), len(gene[4]), bitmap, gene_id, tid)
+
+            tid_map[gene_id][1].append([bitmap, tid])
+
+    return tid_map
+
 
 def extract_transcript_graph(genome_file, gtf_file, snp_file, hap_file, base_fname):
     genome_seq = read_genome(genome_file)
@@ -743,6 +787,8 @@ def extract_transcript_graph(genome_file, gtf_file, snp_file, hap_file, base_fna
 
     translate_to_common_exons(genes, transcripts)
 
+    tid_map = generate_exon_tid_map(genes, transcripts)
+
     # get snps only in the genes
     snps_list = make_gene_snps(snps, genes)
 
@@ -750,10 +796,11 @@ def extract_transcript_graph(genome_file, gtf_file, snp_file, hap_file, base_fna
             open(base_fname + ".gt.snp", "w") as trsnp_file, \
             open(base_fname + ".gt.map", "w") as trmap_file, \
             open(base_fname + ".gt.ss", "w") as trss_file, \
-            open(base_fname + ".gt.haplotype", "w") as trhap_file:
+            open(base_fname + ".gt.haplotype", "w") as trhap_file, \
+            open(base_fname + ".gt.tmap", "w") as trtid_file:
 
-        generate_chr_tome(genes, transcripts, gene_ids, snps_list, haplotypes, genome_seq, trseq_file, trsnp_file,
-                              trmap_file, trss_file, trhap_file)
+        generate_chr_tome(genes, transcripts, gene_ids, snps_list, haplotypes, genome_seq, tid_map,
+                          trseq_file, trsnp_file, trmap_file, trss_file, trhap_file, trtid_file)
 
 
     return
