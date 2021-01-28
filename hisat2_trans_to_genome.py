@@ -231,7 +231,8 @@ class Transinfo:
                         e_idx += 1
                         r_len = exons[e_idx][1]
 
-                    exon_bit_list.append(e_idx)
+                    if c_op in ['M']:
+                        exon_bit_list.append(e_idx)
 
                 tmp_cigar.append([gap, 'N'])
 
