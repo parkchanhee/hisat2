@@ -18,6 +18,80 @@ def read_len_cigar(cigars):
     return read_len
 
 
+class Alignment:
+    def __init__(self, samline = None):
+
+        # Read ID
+        self.qid = None # read(query) id
+        self.flag = 0
+        self.rid = None # Reference Name
+        self.pos = 0    # 1-based position
+        self.mapq = None   # mapping quality
+        self.cigar = None   # CIGAR
+        self.rnext = None   # Reference of mate/next read
+        self.pnext = 0  # position of mate/next read
+        self.tlen = 0   # template length
+        self.seq = None # segment sequeunce
+        self.qual = None    # base quality
+        #
+        self.options = list()   # optional fields
+
+
+        #
+        self.gid = None # Gene ID
+        self.tid_list = list()  # Transcript ID
+
+        if isinstance(samline, str):
+            self.parse(samline)
+
+        return
+
+    def parse(self, samline):
+        fields = samline.split('\t')
+
+        self.qid = fields[0]
+        self.flag = int(fields[1])
+        self.rid = fields[2]
+        self.pos = int(fields[3])
+        self.mapq = fields[4]
+        self.cigar = fields[5]
+        self.rnext = fields[6]
+        self.pnext = fields[7]
+        self.tlen = fields[8]
+        self.seq = fields[9]
+        self.qual = fields[10]
+
+        self.options = fields[11:]
+        return
+
+    def __str__(self):
+        return '%s\t%s\t%s' % (self.qid, str(self.flag), self.rid)
+
+    def isPaired(self):
+        return (self.flag & 0x1) == 0x1
+
+    def isMapped(self):
+        return (self.flag & 0x04) != 0x04
+
+    def updateTI(self):
+        if not self.tid_list:
+            return
+
+        self.options.append("TI:Z:{}".format(self.tid_list[0]))
+
+        TO = '|'.join(self.tid_list[1:])
+        if TO:
+            self.options.append("TO:Z:{}".format(TO))
+
+        return
+
+    def updateGI(self):
+        if not self.gid:
+            return
+
+        self.options.append("GI:Z:{}".format(self.gid))
+        return
+
 class Transinfo:
     def __init__(self):
         # tbl['tid,offset'] = (gene_id, tlen, ..., list of exons)
@@ -58,14 +132,13 @@ class Transinfo:
 
                 tbl_key = '{},{}'.format(current_tid, offset)
 
-
                 # add to offset_lookup_table
-                if not current_tid in self.offset_lookup_table:
+                if current_tid not in self.offset_lookup_table:
                     self.offset_lookup_table[current_tid] = [offset]
                 else:
                     self.offset_lookup_table[current_tid].append(offset)
 
-                if not tbl_key in self.tbl:
+                if tbl_key not in self.tbl:
                     #                   chr_name, strand, len, exons, gene_id
                     self.tbl[tbl_key] = [chr_name, strand, tran_gene_len, list(), gene_id]
                     current_trans = self.tbl[tbl_key]
@@ -84,7 +157,6 @@ class Transinfo:
         # sort offset_lookup_table
         for tid in self.offset_lookup_table:
             self.offset_lookup_table[tid].sort()
-
 
     def load_tmapfile(self, tmap_fp):
         self.tmap = {}
@@ -127,7 +199,6 @@ class Transinfo:
 
         # print(self.tmap)
         return
-
 
     def find_offset_in_lookup_table(self, tid, pos):
         # find a rightmost offset less than or equal to the pos
@@ -172,16 +243,23 @@ class Transinfo:
         new_chr, new_pos, e_idx, _, _ = self.map_position_internal(tid, tr_pos)
         return new_chr, new_pos
 
+    def translate(self, aln: Alignment):
+        new_chr, new_pos, e_idx, trans, offset = self.map_position_internal(aln.rid, aln.pos - 1)
+        tid_list = list()
+
+        return
+
+
     def translate_pos_cigar(self, tid, tr_pos, cigar_str):
         new_chr, new_pos, e_idx, trans, offset = self.map_position_internal(tid, tr_pos)
 
         tid_list = list()
-
+        gid = ''
         #trans = self.tbl[tid]
         exons = trans[3]
 
         if cigar_str == '*':
-            return new_chr, new_pos, cigar_str, tid_list
+            return new_chr, new_pos, cigar_str, tid_list, gid
 
         cigars = cigar_re.findall(cigar_str)
         cigars = [[int(cigars[i][:-1]), cigars[i][-1]] for i in range(len(cigars))]
@@ -190,7 +268,7 @@ class Transinfo:
         tr_pos -= offset
         if tr_pos + read_len > trans[2]:
             # wrong transcript
-            return new_chr, new_pos, cigar_str, tid_list
+            return new_chr, new_pos, cigar_str, tid_list, gid
 
         assert tr_pos + read_len <= trans[2]
 
@@ -292,7 +370,7 @@ class Transinfo:
         for i in range(ni+1):
             new_cigar.append('{}{}'.format(tmp_cigar[i][0], tmp_cigar[i][1]))
 
-        return new_chr, new_pos, ''.join(new_cigar), tid_list
+        return new_chr, new_pos, ''.join(new_cigar), tid_list, gid
 
 
 class OutputQueue:
@@ -344,6 +422,10 @@ class OutputQueue:
             fields.append("TO:Z:{}".format(TO))
         return
 
+
+    def updateGI(self, fields, gid):
+        fields.append("GI:Z:{}".format(gid))
+        return
 
     def remove_dup(self):
         # not empty
@@ -481,6 +563,7 @@ class OutputQueue:
 
                 # update NH
                 self.updateNH(fields, count)
+                self.updateGI(fields)
                 self.updateTITZ(fields, tid_list)
 
                 assert self.current_rid == '' or self.current_rid == fields[0]
@@ -533,12 +616,15 @@ class OutputQueue:
         return
 
 
+    def push_alignment(self, aln: Alignment):
+        return
+
+
 def main(sam_file, transinfo_file, tmap_file):
     transinfo_table = Transinfo()
     transinfo_table.loadfromfile(transinfo_file)
 
     transinfo_table.load_tmapfile(tmap_file)
-
 
     outq = OutputQueue()
 
@@ -552,28 +638,12 @@ def main(sam_file, transinfo_file, tmap_file):
             print(line)
             continue
 
-        fields = line.split('\t')
-
-        flag = int(fields[1])
-
-        # read id
-        rid = fields[0]
-
-        # reference name = chromosome name...
-        old_chr = fields[2]
-        old_pos = int(fields[3])
-
-        old_pair_chr = fields[6]
-        old_pair_pos = int(fields[7])
-
-        '''
-        if rid == '989880':
-            print(rid)
-        '''
+        aln = Alignment()
+        aln.parse(line)
 
         # update pair-read
-        if flag & 0x1:
-
+        if aln.isPaired():
+            """
             if old_chr == '*':
                 new_chr = '*'
                 new_pos = 0
@@ -598,24 +668,29 @@ def main(sam_file, transinfo_file, tmap_file):
                 new_pair_chr, new_pair_pos = transinfo_table.map_position(old_pair_chr, old_pair_pos)
 
             outq.push(flag, rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, fields, tid_list)
-
+            """
+            pass
         else:
+
             # single
-            if flag & 0x04:
+            if not aln.isMapped():
                 # unmapped
                 outq.flush()
                 print(line)
                 continue
 
-            old_pos -= 1
-            cigar_str = fields[5]
+            # old_pos -= 1
+            # cigar_str = fields[5]
 
-            new_chr, new_pos, new_cigar, tid_list = transinfo_table.translate_pos_cigar(old_chr, old_pos, cigar_str)
+            # new_chr, new_pos, new_cigar, tid_list = transinfo_table.translate_pos_cigar(old_chr, old_pos, cigar_str)
 
-            new_pair_chr = '*'
-            new_pair_pos = 0
+            # new_pair_chr = '*'
+            # new_pair_pos = 0
 
-            outq.push(flag, rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, fields, tid_list)
+            # outq.push(flag, rid, new_chr, new_pos, new_cigar, new_pair_chr, new_pair_pos, fields, tid_list)
+
+            transinfo_table.translate(aln)
+            outq.push_alignment(aln)
 
             #print(fields[0], new_chr, new_pos + 1, new_cigar)
 
