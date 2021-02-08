@@ -156,6 +156,8 @@ QUANT_CPPS = \
 	ds.cpp multikey_qsort.cpp limit.cpp \
 	random_source.cpp tinythread.cpp
 
+STX_CPPS = \
+	stx.cpp
 
 HISAT2_CPPS_MAIN = $(SEARCH_CPPS) hisat2_main.cpp
 HISAT2_BUILD_CPPS_MAIN = $(BUILD_CPPS) hisat2_build_main.cpp
@@ -472,6 +474,26 @@ hisat2-quant-bin-debug: hisat2_quant.cpp $(QUANT_CPPS) $(HEADERS)
 	$(INC) \
 	-o $@ $< \
 	$(HISAT2_QUANT_CPPS_MAIN) \
+	$(LIBS) $(BUILD_LIBS)
+
+
+#
+# stx_test targets
+#
+stx-test-bin: stx_test.cpp $(STX_CPPS)
+	$(CXX) $(RELEASE_FLAGS) $(RELEASE_DEFS) $(EXTRA_FLAGS) \
+	$(DEFS) -DBOWTIE2 -DBOWTIE_64BIT_INDEX $(NOASSERT_FLAGS) -Wall \
+	$(INC) \
+	-o $@ $< \
+	$(STX_CPPS) \
+	$(LIBS) $(BUILD_LIBS)
+
+stx-test-bin-debug: stx_test.cpp $(STX_CPPS)
+	$(CXX) $(DEBUG_FLAGS) $(DEBUG_DEFS) $(EXTRA_FLAGS) \
+	$(DEFS) -DBOWTIE2 -DBOWTIE_64BIT_INDEX -Wall \
+	$(INC) \
+	-o $@ $< \
+	$(STX_CPPS) \
 	$(LIBS) $(BUILD_LIBS)
 
 
