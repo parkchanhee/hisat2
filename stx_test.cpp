@@ -18,17 +18,62 @@
 */
 
 #include <iostream>
+#include <strings.h>
 
 #include "stx.h"
 
-
 using namespace std;
 
+string get_filename(const char *long_filename)
+{
+    if (long_filename == NULL) {
+        return string();
+    }
+
+    const char *pos = rindex(long_filename, '/');
+    if (pos == NULL) {
+        return string(long_filename);
+    }
+
+    return string(pos + 1);
+}
+
+void show_usage(int argc, char *argv[])
+{
+    const string application_name = get_filename(argv[0]);
+    cerr << application_name << " <Map Filename>" << endl;
+    return;
+}
 
 int main(int argc, char *argv[])
 {
     STXMap stxmap;
 
     cerr << "Hello World" << endl;
+
+    if (argc < 2) {
+        show_usage(argc, argv);
+        return 0;
+    }
+
+//    stxmap.load_from_map(argv[1]);
+
+
+//    string tmp_str;
+//    pos_t tmp_pos;
+//    stxmap.map_position("17_tome", 757220, tmp_str, tmp_pos);
+//    stxmap.map_position("2_tome", 358917, tmp_str, tmp_pos);
+//    stxmap.map_position("2_tome", 362166, tmp_str, tmp_pos);
+//
+//
+//    stxmap.map_position("22_tome", 0, tmp_str, tmp_pos);
+//    stxmap.map_position("22_tome", 3498419 + 5870 , tmp_str, tmp_pos);
+//
+//    stxmap.map_position("1_tome", 4179 , tmp_str, tmp_pos);
+
+//    stxmap.save_to_map("aa.map");
+
+    stxmap.test(argv[1]);
+
     return 0;
 }
