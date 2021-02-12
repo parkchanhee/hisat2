@@ -489,7 +489,7 @@ stx-test-bin: stx_test.cpp $(STX_CPPS)
 	$(LIBS) $(BUILD_LIBS)
 
 stx-test-bin-debug: stx_test.cpp $(STX_CPPS)
-	$(CXX) $(DEBUG_FLAGS) $(DEBUG_DEFS) $(EXTRA_FLAGS) \
+	$(CXX) $(DEBUG_FLAGS) $(DEBUG_DEFS) $(EXTRA_FLAGS) -DDEBUGLOG\
 	$(DEFS) -DBOWTIE2 -DBOWTIE_64BIT_INDEX -Wall \
 	$(INC) \
 	-o $@ $< \

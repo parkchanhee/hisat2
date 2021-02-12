@@ -22,6 +22,9 @@
 
 #include "stx.h"
 
+#include "bitvector.h"
+#include <bitset>
+
 using namespace std;
 
 string get_filename(const char *long_filename)
@@ -43,6 +46,57 @@ void show_usage(int argc, char *argv[])
     const string application_name = get_filename(argv[0]);
     cerr << application_name << " <Map Filename>" << endl;
     return;
+}
+
+void bitvector_test()
+{
+    BitVector bit(33);
+    BitVector bit2(32);
+
+
+    for (int i = 0; i < 12; i++) {
+        bit.set(i, 1);
+        bit2.set(i, 1);
+    }
+
+    if (bit == bit2) {
+        cerr << "Same bitvector" << endl;
+    } else {
+        cerr << "Different" << endl;
+    }
+
+    bit[0] = 0;
+    bit[4] = 0;
+    bit[7] = 0;
+
+    if (bit == bit2) {
+        cerr << "Same bitvector" << endl;
+    } else {
+        cerr << "Different" << endl;
+    }
+
+
+    bit[33] = 1;
+    cerr << bit.to_str() << endl;
+    cerr << bit.to_hex() << endl;
+
+
+    BitVector bit_a(16);
+    BitVector bit_b(16);
+    BitVector bit_mask(16);
+
+    bit_a.all_clear();
+    bit_b.all_set();
+    bit_mask.all_clear();
+
+
+    bit_a[0] = 1; bit_a[1] = 0; bit_a[2] = 1;
+    bit_mask[0] = 1;
+    cerr << bit_a.to_hex() << " " << bit_b.to_hex() << " with mask: " << bit_mask.to_hex() << endl;
+
+    if (bit_a.cmp_mask(bit_b, bit_mask)) {
+        cerr << "cmp_mask true" << endl;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -75,5 +129,6 @@ int main(int argc, char *argv[])
 
     stxmap.test(argv[1]);
 
+//    bitvector_test();
     return 0;
 }

@@ -269,6 +269,8 @@ add_dependencies(hisat2-all
 		stx-test-bin
 		)
 
+target_compile_options(stx-test-bin PUBLIC $<$<CONFIG:DEBUG>:-DDEBUGLOG>)
+
 #
 # Examples
 #

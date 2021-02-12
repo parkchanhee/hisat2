@@ -25,10 +25,27 @@
 //#include <algorithm>
 #include <vector>
 #include <map>
+#include "bitvector.h"
 
 using namespace std;
 
 typedef uint64_t pos_t;     // position type
+const pos_t INVALID_POS = (pos_t)-1;
+
+struct Position {
+    Position() {};
+    Position(const string& in_chrname, pos_t in_pos, const string& in_cigar)
+            : chrname(in_chrname)
+            , pos(in_pos)
+            , cigar(in_cigar) {};
+
+    string chrname;
+    pos_t pos;
+    string cigar;
+
+    string gene;
+    vector<string> transcripts;
+};
 
 struct STXExon {
 public:
@@ -41,15 +58,28 @@ ostream& operator<<(ostream& os, const STXExon& stx);
 
 struct STXRecord {
 public:
-    string stx_chrname; //
+    string stxChrname; //
     string chrname;
     string gene;
-    uint32_t stx_offset; // offset in str_chr
-    uint32_t stx_len;
+    uint32_t stxOffset; // offset in str_chr
+    uint32_t stxLen;
 
     vector<STXExon> exons;
+
+    int bitWidth;
+    int numTIDs;
+    vector<pair<string, string>> tidList;
 };
 ostream& operator<<(ostream& os, const STXRecord& rec);
+
+struct CIGAR {
+    CIGAR() {};
+    CIGAR(char in_op, pos_t in_len)
+        : len(in_len), op(in_op) {};
+
+    pos_t len;
+    char op;
+};
 
 /**
  * SuperTranscript mapping information
@@ -73,15 +103,16 @@ public:
      *
      * @param fname
      */
-    void load_from_map(const string& fname);
+    void loadFromMap(const string& fname);
+    void loadFromTIDMap(const string& fname);
 
     /**
      * Save mapping information to map file
      *
      * @param fname
      */
-    void save_to_map(const string& fname);
-    void save_to_map(ostream& os);
+    void saveToMap(const string& fname);
+    void saveToMap(ostream& os);
 
     /**
      * Map location to genomic location
@@ -92,32 +123,35 @@ public:
      * @param pos_chr
      * @return
      */
-    int map_position(const string& stx_chrname, const pos_t pos,
-                     string& chrname, pos_t& pos_chr);
+    int mapPosition(const string& stxChrname, const pos_t stxPos,
+                     string& chrname, pos_t& posChr);
+
+    int mapPosition(const Position& inPosition, Position& outPosition);
 
 private:
 
     // list of all SuperTranscript Records
-    vector<STXRecord> stx_list;
+    vector<STXRecord> stxList;
 
+    // mapping pair(stx_chrname, stx_offset) to STXRecord
+    map<record_map_t, STXRecord *> recordMap;
+    // mapping gene name to STXRecord
+    map<string, STXRecord *> geneMap;
 
-    // mapping pair(stx_chrname, stx_offset) to STXRecords
-    map<record_map_t, STXRecord *> record_map;
-
-    // list of stx_offsets per each stx_chrname
-    map<string, vector<pos_t>> offset_map;
+    // list of stxOffsets per each stx_chrname
+    map<string, vector<pos_t>> offsetMap;
 
 private:
 
     /**
-     * Make offset_list from stx_list
+     * Make offsetMap from stxList
      */
-    void build_offset_list();
+    void buildOffsetMap();
 
     /**
-     * Make record_map from stx_list
+     * Make recordMap, geneMap from stx_list
      */
-    void build_record_map();
+    void buildRecordMap();
 
     /**
      * Find nearest offset of pos
@@ -126,15 +160,25 @@ private:
      * @param pos
      * @return
      */
-    pos_t find_offset(const string& stx_chrname, pos_t pos);
+    pos_t findOffset(const string& stx_chrname, pos_t pos);
 
-    int find_position(const STXRecord& rec, pos_t pos, pos_t& pos_in_chr);
-    int find_position(const STXRecord& rec, pos_t pos, const vector<string>& cigars, pos_t& pos_in_chr, vector<string>& cigars_in_chr);
+    /**
+     * Convert Position to new
+     *
+     * @param rec
+     * @param pos
+     * @param pos_in_chr
+     * @return
+     */
+    int findPosition(const STXRecord& rec, pos_t pos, pos_t& posChr);
+    int findPosition(const STXRecord& rec, pos_t pos, const vector<string>& cigars, pos_t& posChr, vector<string>& cigarsChr);
+    int findPosition(const STXRecord& rec, const Position& inPosition, Position& outPosition, bool bCigar = false, bool bExonBitmap = false);
 
 public:
     void test(const string& fname);
-    static int bisect_right(const vector<pos_t>& list, pos_t pos);
-    static int cigar_to_list(const string& cigar, vector<string>& cigar_list);
+    static int bisectRight(const vector<pos_t>& list, pos_t pos);
+    static int cigarToList(const string& cigar, vector<CIGAR>& cigarList);
+    static string cigarListToString(const vector<CIGAR>& cigarList);
 };
 
 

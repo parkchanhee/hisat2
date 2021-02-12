@@ -41,7 +41,20 @@ STXMap::~STXMap()
 {
 }
 
-void STXMap::load_from_map(const string &fname)
+static inline pos_t calReadLengthCigar(const vector<CIGAR>& cigars)
+{
+    pos_t tot_len = 0;
+
+    for (const auto& c: cigars) {
+        if (c.op == 'M' || c.op == 'I' || c.op == 'S' || c.op == 'H') {
+            tot_len += c.len;
+        }
+    }
+
+    return tot_len;
+}
+
+void STXMap::loadFromMap(const string &fname)
 {
     ifstream fp(fname, ifstream::in);
 
@@ -66,20 +79,20 @@ void STXMap::load_from_map(const string &fname)
             tokenize(line, delimiter, fields);
             assert(fields.size() >= 5);
 
-            rec.stx_chrname  = string(fields[0], 1);
+            rec.stxChrname  = string(fields[0], 1);
             rec.chrname = fields[1];
             rec.gene = fields[2];
-            rec.stx_offset = stoi(fields[3]);
-            rec.stx_len = stoi(fields[4]);
+            rec.stxOffset = stoi(fields[3]);
+            rec.stxLen = stoi(fields[4]);
 
-            stx_list.push_back(rec);
+            stxList.push_back(rec);
         } else {
-            if (stx_list.empty()) {
+            if (stxList.empty()) {
                 cerr << "Invalid file format. Skip line: " << line << endl;
                 continue;
             }
 
-            STXRecord& current_rec = stx_list.back();
+            STXRecord& current_rec = stxList.back();
 
             vector<string> exon_maps;
             tokenize(line, delimiter, exon_maps);
@@ -107,25 +120,85 @@ void STXMap::load_from_map(const string &fname)
 
     fp.close();
 
-    build_offset_list();
-    build_record_map();
+    buildOffsetMap();
+    buildRecordMap();
 }
 
-void STXMap::save_to_map(const string &fname)
+void STXMap::loadFromTIDMap(const string &fname)
+{
+    ifstream fp(fname, ifstream::in);
+
+    if (!fp.is_open()) {
+        cerr << "Can't open file: " << fname << endl;
+        return;
+    }
+
+    string line;
+
+    STXRecord *pRec = NULL;
+    while (getline(fp, line)) {
+        if (line.empty()) {
+            continue;
+        }
+
+        if (line[0] == '#') {
+            continue;
+        }
+
+        if (line[0] == '>') {
+            // header
+            vector<string> fields;
+
+            tokenize(line, delimiter, fields);
+            assert(fields.size() >= 5);
+
+#ifdef DEBUGLOG
+//            cerr << fields[0] << " " << fields[1] << " " << fields[2] << endl;
+#endif
+            if (geneMap.find(fields[2]) != geneMap.end()) {
+                pRec = geneMap[fields[2]];
+
+                assert(pRec != NULL);
+
+                pRec->bitWidth = stoi(fields[3]);
+                pRec->numTIDs = stoi(fields[4]);
+            } else {
+
+                cerr << "No gene: " << fields[2] << endl;
+                pRec = NULL;
+            }
+
+        } else {
+            if (pRec == NULL) {
+                cerr << "Invalid line. No headers: " << line << endl;
+                continue;
+            }
+            vector<string> fields;
+
+            tokenize(line, delimiter, fields);
+            assert(fields.size() >= 2);
+
+            pRec->tidList.push_back(pair<string, string>(fields[0], fields[1]));
+
+        }
+    }
+}
+
+void STXMap::saveToMap(const string &fname)
 {
     ofstream fp(fname, ofstream::out);
-    save_to_map(fp);
+    saveToMap(fp);
     fp.close();
 }
 
-void STXMap::save_to_map(ostream &os)
+void STXMap::saveToMap(ostream &os)
 {
-    for (const STXRecord& rec: stx_list) {
-        os  << ">" << rec.stx_chrname << delimiter
+    for (const STXRecord& rec: stxList) {
+        os  << ">" << rec.stxChrname << delimiter
             << rec.chrname << delimiter
             << rec.gene << delimiter
-            << rec.stx_offset << delimiter
-            << rec.stx_len << endl;
+            << rec.stxOffset << delimiter
+            << rec.stxLen << endl;
 
         int count = 0;
         for (const STXExon& exon: rec.exons) {
@@ -150,30 +223,43 @@ void STXMap::save_to_map(ostream &os)
     }
 }
 
-int STXMap::map_position(const string &stx_chrname, const pos_t pos, string &chrname, pos_t &pos_chr)
+int STXMap::mapPosition(const string &stxChrname, const pos_t stxPos, string &chrname, pos_t &posChr)
 {
-    pos_t offset = find_offset(stx_chrname, pos);
+    pos_t offset = findOffset(stxChrname, stxPos);
 
     // Get Record
-    const record_map_t key = record_map_t(stx_chrname, offset);
-    const STXRecord& rec = *record_map[key];
+    const record_map_t key = record_map_t(stxChrname, offset);
+    const STXRecord& rec = *recordMap[key];
 
     pos_t new_pos;
-    int ret = find_position(rec, pos, new_pos);
+    int ret = findPosition(rec, stxPos, new_pos);
     if (ret < 0) {
-        cerr << "Can't find position: " << stx_chrname << ":" << pos << endl;
+        cerr << "Can't find position: " << stxChrname << ":" << stxPos << endl;
         return 0;
     }
 
-    cerr << stx_chrname << ":" << pos << " -> " << rec.gene << ":" << offset << " -> " << rec.chrname << ":" << new_pos << endl;
+#ifdef DEBUGLOG
+    cerr << stxChrname << ":" << stxPos << " -> " << rec.gene << ":" << offset << " -> " << rec.chrname << ":" << new_pos << endl;
+#endif
 
     return 0;
 }
 
-int STXMap::find_position(const STXRecord &rec, pos_t pos, pos_t &pos_in_chr)
+int STXMap::mapPosition(const Position& inPosition, Position& outPosition)
+{
+    pos_t offset = findOffset(inPosition.chrname, inPosition.pos);
+
+    // Get Record
+    const record_map_t key = record_map_t(inPosition.chrname, offset);
+    const STXRecord& rec = *recordMap[key];
+
+    return findPosition(rec, inPosition, outPosition, true);
+}
+
+int STXMap::findPosition(const STXRecord &rec, pos_t pos, pos_t &posChr)
 {
     // offset in SuperTranscript
-    pos_t offset = pos - rec.stx_offset;
+    pos_t offset = pos - rec.stxOffset;
     pos_t new_pos = 0;
 
     for(int i = 0; i < rec.exons.size(); i++) {
@@ -187,16 +273,145 @@ int STXMap::find_position(const STXRecord &rec, pos_t pos, pos_t &pos_in_chr)
         }
     }
 
-    pos_in_chr = new_pos;
+    posChr = new_pos;
     return 0;
 }
 
-int STXMap::find_position(const STXRecord &rec, pos_t pos, const vector<string> &cigars, pos_t &pos_in_chr,
-                          vector<string> &cigars_in_chr)
+int STXMap::findPosition(const STXRecord &rec, const Position &inPosition, Position &outPosition,
+                          bool bCigar, bool bExonBitmap)
+{
+    pos_t offset_in_stx = inPosition.pos - rec.stxOffset;
+    pos_t new_pos = INVALID_POS;
+
+    int f_exon_idx = 0;
+
+    if (offset_in_stx >= rec.stxLen) {
+        cerr << "out of SuperTranscript" << endl;
+        return -1;
+    }
+
+    for (; f_exon_idx < rec.exons.size(); f_exon_idx++) {
+        const STXExon& exon = rec.exons[f_exon_idx];
+
+        if (offset_in_stx < exon.len) {
+            new_pos = exon.pos + offset_in_stx;
+            break;
+        } else {
+            offset_in_stx -= exon.len;
+        }
+    }
+
+    if (new_pos == INVALID_POS) {
+        cerr << "Invalid Pos" << endl;
+        return -2;
+    }
+
+    outPosition.chrname = rec.chrname;
+    outPosition.pos = new_pos;
+
+    if (!bCigar) {
+        return 0;
+    }
+
+    if (inPosition.cigar.empty() || inPosition.cigar == "*") {
+        return 0;
+    }
+
+    // Mapping CIGAR
+    cerr << "first exon idx: " << f_exon_idx << endl;
+    cerr << "offset_in_stx: " << offset_in_stx << endl;
+
+    vector<CIGAR> cigars;
+    cigarToList(inPosition.cigar, cigars);
+    pos_t read_len = calReadLengthCigar(cigars);
+
+    if (offset_in_stx + read_len > rec.stxLen) {
+        fprintf(stderr, "Read length(%u) and offset(%u) is longer than stx length(%u)\n",
+                read_len, offset_in_stx, rec.stxLen);
+        return -1;
+    }
+
+    vector<int> exon_bit_list;
+    exon_bit_list.push_back(f_exon_idx);
+
+    vector<CIGAR> out_cigars;
+
+    int e_idx = f_exon_idx;
+    pos_t r_len = rec.exons[e_idx].len - (new_pos - rec.exons[e_idx].pos);
+
+    for (const auto& c: cigars) {
+        char c_op = c.op;
+        pos_t c_len = c.len;
+
+        if (c_op == 'S') {
+            out_cigars.push_back(CIGAR(c_op, c_len));
+            continue;
+        }
+
+        while (c_len > 0 && e_idx < rec.exons.size()) {
+            if (c_len <= r_len) {
+                r_len -= c_len;
+                out_cigars.push_back(CIGAR(c_op, c_len));
+                break;
+            }
+
+            c_len -= r_len;
+            out_cigars.push_back(CIGAR(c_op, r_len));
+
+            pos_t gap = INVALID_POS;
+            if (e_idx == (rec.exons.size() - 1)) {
+                // wrong alignment (across a transcript)
+                gap = c_len;
+                e_idx++;
+            } else {
+                gap = rec.exons[e_idx + 1].pos - (rec.exons[e_idx].pos + rec.exons[e_idx].len);
+                e_idx++;
+                r_len = rec.exons[e_idx].len;
+            }
+
+            if (c_op == 'M') {
+                exon_bit_list.push_back(e_idx);
+            }
+
+            out_cigars.push_back(CIGAR('N', gap));
+        }
+    }
+
+    if (exon_bit_list.back() == rec.exons.size()) {
+        exon_bit_list.pop_back();
+    }
+
+    // merge cigars
+    int ni = 0;
+    for (int i = 1; i < out_cigars.size(); i++) {
+        if (out_cigars[i].len == 0) {
+            continue;
+        } else if (out_cigars[i].op == 'S' && out_cigars[ni].op == 'N') {
+            out_cigars[ni] = out_cigars[i];
+        } else if (out_cigars[i].op == 'N' && out_cigars[ni].op == 'S') {
+            continue;
+        } else if (out_cigars[ni].op == out_cigars[i].op) {
+            // merge
+            out_cigars[ni].len += out_cigars[i].len;
+        } else {
+            ni++;
+            out_cigars[ni] = out_cigars[i];
+        }
+    }
+    out_cigars.resize(ni+1);
+
+
+    outPosition.cigar = cigarListToString(out_cigars);
+
+    outPosition.gene = rec.gene;
+    return 0;
+}
+int STXMap::findPosition(const STXRecord &rec, pos_t pos, const vector<string> &cigars, pos_t &posChr,
+                          vector<string> &cigarsChr)
 {
     // offset in SuperTranscript
-    pos_t offset = pos - rec.stx_offset;
-    pos_t new_pos = (pos_t)-1;
+    pos_t offset = pos - rec.stxOffset;
+    pos_t new_pos = INVALID_POS;
 
     for(int i = 0; i < rec.exons.size(); i++) {
         const STXExon& exon = rec.exons[i];
@@ -217,54 +432,58 @@ int STXMap::find_position(const STXRecord &rec, pos_t pos, const vector<string> 
     return 0;
 }
 
-void STXMap::build_offset_list()
+void STXMap::buildOffsetMap()
 {
-    for (const auto& i: stx_list) {
-        const string& stx_chrname = i.stx_chrname;
-        offset_map[stx_chrname].push_back(i.stx_offset);
+    for (const auto& i: stxList) {
+        const string& stx_chrname = i.stxChrname;
+        offsetMap[stx_chrname].push_back(i.stxOffset);
     }
 
-    for (auto& key_value: offset_map) {
+    for (auto& key_value: offsetMap) {
         sort(key_value.second.begin(), key_value.second.end());
     }
 
-    cerr << "Total count of str_chrname: " << offset_map.size() << endl;
-
+#ifdef DEBUGLOG
+    cerr << "Total count of str_chrname: " << offsetMap.size() << endl;
+#endif
 }
 
-void STXMap::build_record_map()
+void STXMap::buildRecordMap()
 {
-    for (const auto& rec: stx_list) {
-        record_map_t key = record_map_t(rec.stx_chrname, rec.stx_offset);
-        record_map[key] = (STXRecord *)&rec;
+    for (const auto& rec: stxList) {
+        record_map_t key = record_map_t(rec.stxChrname, rec.stxOffset);
+        recordMap[key] = (STXRecord *)&rec;
+
+        geneMap[rec.gene] = (STXRecord *)&rec;
     }
 
-    cerr << "Total number of record_map: " << record_map.size() << endl;
+#ifdef DEBUGLOG
+    cerr << "Total number of record_map: " << recordMap.size() << endl;
+#endif
 }
 
-pos_t STXMap::find_offset(const string &stx_chrname, pos_t pos)
+pos_t STXMap::findOffset(const string &stxChrname, pos_t pos)
 {
-    const vector<pos_t>& offsets = offset_map[stx_chrname];
+    const vector<pos_t>& offsets = offsetMap[stxChrname];
     if (offsets.size() == 0) {
-        return 0;
+        return INVALID_POS;
     }
 
     // offsets is sorted
     // find nearest offset of pos
-    int idx = bisect_right(offsets, pos);
+    int idx = bisectRight(offsets, pos);
 
     if (idx < 0) {
-        return 0;
+        return INVALID_POS;
     }
 
     return offsets[idx];
 }
 
-int STXMap::bisect_right(const vector<pos_t> &list, pos_t pos)
+int STXMap::bisectRight(const vector<pos_t> &list, pos_t pos)
 {
     int lo = 0;
     int hi = list.size();
-
 
     while (lo < hi) {
         int mid = (lo + hi) / 2;
@@ -280,23 +499,36 @@ int STXMap::bisect_right(const vector<pos_t> &list, pos_t pos)
 
 }
 
-int STXMap::cigar_to_list(const string &cigar, vector<string> &cigar_list)
+int STXMap::cigarToList(const string &cigar, vector<CIGAR> &cigarList)
 {
-    const regex re("\\d+\\w");
-    cigar_list.resize(0);
+    const regex re("(\\d+)([MIDNSHPX=])");
+    cigarList.resize(0);
 
     if (cigar.empty()) {
         return 0;
     }
 
-    sregex_token_iterator itr(cigar.begin(), cigar.end(), re);
-    sregex_token_iterator itr_end;
+    sregex_iterator itr(cigar.begin(), cigar.end(), re);
+    sregex_iterator itr_end;
 
     for(; itr != itr_end; itr++) {
-        cigar_list.push_back(*itr);
+        std::smatch match = *itr;
+
+        cigarList.push_back(CIGAR(match.str(2)[0], stoi(match.str(1))));
     }
 
-    return cigar_list.size();
+    return cigarList.size();
+}
+
+string STXMap::cigarListToString(const vector<CIGAR> &cigarList)
+{
+    stringstream ss;
+
+    for (const auto&c : cigarList) {
+        ss << c.len << c.op;
+    }
+
+    return ss.str();
 }
 
 ostream& operator<<(ostream& os, const STXExon& stx)
@@ -307,11 +539,11 @@ ostream& operator<<(ostream& os, const STXExon& stx)
 
 ostream& operator<<(ostream& os, const STXRecord& rec)
 {
-    os  << rec.stx_chrname << ":"
+    os  << rec.stxChrname << ":"
         << rec.chrname << ":"
         << rec.gene << ":"
-        << rec.stx_offset << ":"
-        << rec.stx_len;
+        << rec.stxOffset << ":"
+        << rec.stxLen;
 
     if (rec.exons.size() > 0) {
         os << endl;
@@ -337,30 +569,47 @@ ostream& operator<<(ostream& os, const STXRecord& rec)
 
 void STXMap::test(const string& fname)
 {
-    load_from_map(fname);
+    loadFromMap(fname);
+    loadFromTIDMap("genome.gt.tmap");
 
     string tmp_str;
     pos_t tmp_pos;
 
-    map_position("17_tome", 757220, tmp_str, tmp_pos);
-    map_position("2_tome", 358917, tmp_str, tmp_pos);
-    map_position("2_tome", 362166, tmp_str, tmp_pos);
+    mapPosition("17_tome", 757220, tmp_str, tmp_pos);
+    mapPosition("2_tome", 358917, tmp_str, tmp_pos);
+    mapPosition("2_tome", 362166, tmp_str, tmp_pos);
 
+    mapPosition("22_tome", 0, tmp_str, tmp_pos);
+    mapPosition("22_tome", 3498419 + 5870 , tmp_str, tmp_pos);
+    mapPosition("1_tome", 4179 , tmp_str, tmp_pos);
 
-    map_position("22_tome", 0, tmp_str, tmp_pos);
-    map_position("22_tome", 3498419 + 5870 , tmp_str, tmp_pos);
-    map_position("1_tome", 4179 , tmp_str, tmp_pos);
+    const string cigar = "1M53N1187M355N12M";
+    vector<CIGAR> cigars;
+    cigarToList(cigar, cigars);
 
-
-    vector<string> cigars;
-    cigar_to_list("1M53N87M355N12M", cigars);
-
-    for (const auto& i: cigars) {
-        cerr << i << endl;
+    for (const auto& c: cigars) {
+        cerr << c.len << c.op << endl;
     }
 
+    cerr << "Construct from list: " << cigarListToString(cigars) << endl;
+
+    cigarToList("99M100", cigars);
+    for (const auto& c: cigars) {
+        cerr << c.len << c.op << endl;
+    }
+
+    pos_t tot_len = calReadLengthCigar(cigars);
+    cerr << "read_len_cigar: " << tot_len << endl;
+    cerr << "Construct from list: " <<  cigarListToString(cigars) << endl;
 
 
+    Position old("22_tome", 496021, "53M486N47M");
+    Position n;
+
+    int ret = mapPosition(old, n);
+    cerr << "map_position: " << ret << endl;
+    cerr << "\t" << old.chrname << ":" << old.pos << ":" << old.cigar << endl;
+    cerr << "\t" << n.chrname << ":" << n.pos << ":" << n.cigar << ":" << n.gene << endl;
 
     return;
 }
