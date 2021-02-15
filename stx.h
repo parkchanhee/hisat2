@@ -26,6 +26,7 @@
 #include <vector>
 #include <map>
 #include "bitvector.h"
+#include "sam_format.h"
 
 using namespace std;
 
@@ -130,6 +131,7 @@ public:
                      string& chrname, pos_t& posChr);
 
     int mapPosition(const Position& inPosition, Position& outPosition);
+    int mapPosition(SAMRecord& sam);
 
 private:
 
@@ -171,6 +173,7 @@ private:
     int findPosition(const STXRecord& rec, pos_t pos, pos_t& posChr);
     int findPosition(const STXRecord& rec, pos_t pos, const vector<string>& cigars, pos_t& posChr, vector<string>& cigarsChr);
     int findPosition(const STXRecord& rec, const Position& inPosition, Position& outPosition, bool bCigar = false, bool bExonBitmap = false);
+
 
 public:
     void test(const string& fname);

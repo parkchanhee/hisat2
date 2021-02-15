@@ -158,7 +158,8 @@ QUANT_CPPS = \
 
 STX_CPPS = \
 	stx.cpp \
-	bitvector.cpp
+	bitvector.cpp \
+	sam_format.cpp
 
 HISAT2_CPPS_MAIN = $(SEARCH_CPPS) hisat2_main.cpp
 HISAT2_BUILD_CPPS_MAIN = $(BUILD_CPPS) hisat2_build_main.cpp
@@ -490,7 +491,7 @@ stx-test-bin: stx_test.cpp $(STX_CPPS)
 	$(LIBS) $(BUILD_LIBS)
 
 stx-test-bin-debug: stx_test.cpp $(STX_CPPS)
-	$(CXX) $(DEBUG_FLAGS) $(DEBUG_DEFS) $(EXTRA_FLAGS) -DDEBUGLOG\
+	$(CXX) $(DEBUG_FLAGS) $(DEBUG_DEFS) $(EXTRA_FLAGS) -DDEBUGLOG \
 	$(DEFS) -DBOWTIE2 -DBOWTIE_64BIT_INDEX -Wall \
 	$(INC) \
 	-o $@ $< \

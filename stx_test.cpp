@@ -19,11 +19,11 @@
 
 #include <iostream>
 #include <strings.h>
+#include <fstream>
 
 #include "stx.h"
-
 #include "bitvector.h"
-#include <bitset>
+#include "sam_format.h"
 
 using namespace std;
 
@@ -99,6 +99,51 @@ void bitvector_test()
     }
 }
 
+
+void sam_parse(const string& fname)
+{
+
+    STXMap stxmap;
+    stxmap.loadFromMap("22.gt.map");
+    stxmap.loadFromTIDMap("22.gt.tmap");
+
+    ifstream fp(fname, ifstream::in);
+
+    if (!fp.is_open()) {
+        cerr << "Can't open file: " << fname << endl;
+        return;
+    }
+
+    string linebuf;
+
+    while (getline(fp, linebuf)) {
+        if (linebuf.empty()) {
+            continue;
+        }
+
+        if (linebuf[0] == '@') {
+            cerr << "Comment: " << linebuf << endl;
+            continue;
+        }
+
+
+        SAMRecord sam;
+
+        sam.parse_from_line(linebuf);
+
+
+        cout << sam << endl;
+        if (stxmap.mapPosition(sam) < 0) {
+            cout << "Can't map" << endl;
+        }
+        cout << sam << endl;
+
+    }
+
+    fp.close();
+
+}
+
 int main(int argc, char *argv[])
 {
     STXMap stxmap;
@@ -127,8 +172,10 @@ int main(int argc, char *argv[])
 
 //    stxmap.save_to_map("aa.map");
 
-    stxmap.test(argv[1]);
+//    stxmap.test(argv[1]);
 
 //    bitvector_test();
+
+    sam_parse(argv[1]);
     return 0;
 }

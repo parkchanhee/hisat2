@@ -151,9 +151,6 @@ void STXMap::loadFromTIDMap(const string &fname)
             tokenize(line, delimiter, fields);
             assert(fields.size() >= 5);
 
-#ifdef DEBUGLOG
-//            cerr << fields[0] << " " << fields[1] << " " << fields[2] << endl;
-#endif
             if (geneMap.find(fields[2]) != geneMap.end()) {
                 pRec = geneMap[fields[2]];
 
@@ -183,11 +180,13 @@ void STXMap::loadFromTIDMap(const string &fname)
 
             pRec->tidList.push_back(pair<BitVector, string>(bitVector, fields[1]));
 
+#if 0
             cerr << "fields[0]: " << fields[0] << ", " << bitVector.to_hex() << ", tid: " << fields[1] << endl;
 
             if (fields[0] != bitVector.to_hex(true)) {
                 cerr << "--------------Wrong------------------" << endl;
             }
+#endif
         }
     }
 }
@@ -270,6 +269,45 @@ int STXMap::mapPosition(const Position& inPosition, Position& outPosition)
     return findPosition(rec, inPosition, outPosition, true, true);
 }
 
+int STXMap::mapPosition(SAMRecord& sam)
+{
+    //    Position old("22_tome", 2133882, "100M");
+    Position old(sam.m_rname, sam.m_pos, sam.m_cigar);
+    Position n;
+
+    int ret = mapPosition(old, n);
+    if (ret < 0) {
+        return ret;
+    }
+
+    sam.m_rname = n.chrname;
+    sam.m_pos = n.pos;
+    sam.m_cigar = n.cigar;
+
+    if (!n.gene.empty()) {
+        // Append Gene
+        sam.update_tag("GI", "Z", n.gene);
+    }
+
+    if (n.transcripts.size() > 0) {
+        // Append Transcripts
+
+        sam.update_tag("TI", "Z", n.transcripts[0]);
+
+        if (n.transcripts.size() > 1) {
+            stringstream ss;
+
+            ss << n.transcripts[1];
+            for (int i = 2; i < n.transcripts.size(); i++) {
+                ss << "|" << n.transcripts[i];
+            }
+
+            sam.update_tag("TO", "Z", ss.str());
+        }
+    }
+    return 0;
+}
+
 int STXMap::findPosition(const STXRecord &rec, pos_t pos, pos_t &posChr)
 {
     // offset in SuperTranscript
@@ -332,8 +370,8 @@ int STXMap::findPosition(const STXRecord &rec, const Position &inPosition, Posit
     }
 
     // Mapping CIGAR
-    cerr << "first exon idx: " << f_exon_idx << endl;
-    cerr << "offset_in_stx: " << offset_in_stx << endl;
+//    cerr << "first exon idx: " << f_exon_idx << endl;
+//    cerr << "offset_in_stx: " << offset_in_stx << endl;
 
     vector<CIGAR> cigars;
     cigarToList(inPosition.cigar, cigars);
@@ -566,14 +604,12 @@ int STXRecord::findTIDs(const vector<int> &bit_list, vector<string> &out_tids) c
         bitVector.set(i, 1);
     }
 
-    cerr << "bitMask: " << bitMask.to_str() << ", bitVector: " << bitVector.to_str() << endl;
-
-
+//    cerr << "bitMask: " << bitMask.to_str() << ", bitVector: " << bitVector.to_str() << endl;
 
     for (const auto& tidmap : tidList) {
         const BitVector& tid_bitvector = tidmap.first;
 
-#ifdef DEBUGLOG
+#if 0
         for (const auto& r : tidList) {
             cerr << r.first.to_str() << ", " << (tid_bitvector & bitMask).to_str() << ", " << r.second << endl;
         }
@@ -675,7 +711,8 @@ void STXMap::test(const string& fname)
 
 
     //Position old("22_tome", 377316, "100M");
-    Position old("22_tome", 406553, "100M");
+    Position old("22_tome", 2133882, "100M");
+//    Position old("22_tome", 406553, "100M");
     Position n;
 
     int ret = mapPosition(old, n);
