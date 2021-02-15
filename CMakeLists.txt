@@ -155,6 +155,7 @@ set(QUANT_BIN_CPPS
 
 set(STX_TEST_CPPS
 		stx.cpp
+		bitvector.cpp
 		stx_test.cpp)
 
 set(HT2LIB_CPPS

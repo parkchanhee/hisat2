@@ -68,7 +68,10 @@ public:
 
     int bitWidth;
     int numTIDs;
-    vector<pair<string, string>> tidList;
+    vector<pair<BitVector, string>> tidList;
+
+    int findTIDs(const vector<int>& bit_list, vector<string>& out_tids) const;
+
 };
 ostream& operator<<(ostream& os, const STXRecord& rec);
 
@@ -144,14 +147,9 @@ private:
 private:
 
     /**
-     * Make offsetMap from stxList
+     * Make offsetMap, recordMap and geneMap from stxList
      */
-    void buildOffsetMap();
-
-    /**
-     * Make recordMap, geneMap from stx_list
-     */
-    void buildRecordMap();
+    void buildMaps();
 
     /**
      * Find nearest offset of pos

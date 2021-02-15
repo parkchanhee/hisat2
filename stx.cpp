@@ -120,8 +120,7 @@ void STXMap::loadFromMap(const string &fname)
 
     fp.close();
 
-    buildOffsetMap();
-    buildRecordMap();
+    buildMaps();
 }
 
 void STXMap::loadFromTIDMap(const string &fname)
@@ -178,8 +177,17 @@ void STXMap::loadFromTIDMap(const string &fname)
             tokenize(line, delimiter, fields);
             assert(fields.size() >= 2);
 
-            pRec->tidList.push_back(pair<string, string>(fields[0], fields[1]));
+            BitVector bitVector(pRec->bitWidth);
 
+            bitVector.load_from_hex(fields[0]);
+
+            pRec->tidList.push_back(pair<BitVector, string>(bitVector, fields[1]));
+
+            cerr << "fields[0]: " << fields[0] << ", " << bitVector.to_hex() << ", tid: " << fields[1] << endl;
+
+            if (fields[0] != bitVector.to_hex(true)) {
+                cerr << "--------------Wrong------------------" << endl;
+            }
         }
     }
 }
@@ -226,6 +234,9 @@ void STXMap::saveToMap(ostream &os)
 int STXMap::mapPosition(const string &stxChrname, const pos_t stxPos, string &chrname, pos_t &posChr)
 {
     pos_t offset = findOffset(stxChrname, stxPos);
+    if (offset == INVALID_POS) {
+        return -1;
+    }
 
     // Get Record
     const record_map_t key = record_map_t(stxChrname, offset);
@@ -248,12 +259,15 @@ int STXMap::mapPosition(const string &stxChrname, const pos_t stxPos, string &ch
 int STXMap::mapPosition(const Position& inPosition, Position& outPosition)
 {
     pos_t offset = findOffset(inPosition.chrname, inPosition.pos);
+    if (offset == INVALID_POS) {
+        return -1;
+    }
 
     // Get Record
     const record_map_t key = record_map_t(inPosition.chrname, offset);
     const STXRecord& rec = *recordMap[key];
 
-    return findPosition(rec, inPosition, outPosition, true);
+    return findPosition(rec, inPosition, outPosition, true, true);
 }
 
 int STXMap::findPosition(const STXRecord &rec, pos_t pos, pos_t &posChr)
@@ -400,10 +414,18 @@ int STXMap::findPosition(const STXRecord &rec, const Position &inPosition, Posit
     }
     out_cigars.resize(ni+1);
 
-
     outPosition.cigar = cigarListToString(out_cigars);
-
     outPosition.gene = rec.gene;
+
+
+    if (!bExonBitmap) {
+        return 0;
+    }
+
+    // Find TIDs
+    //vector<string> tid_list;
+    rec.findTIDs(exon_bit_list, outPosition.transcripts);
+
     return 0;
 }
 int STXMap::findPosition(const STXRecord &rec, pos_t pos, const vector<string> &cigars, pos_t &posChr,
@@ -432,11 +454,18 @@ int STXMap::findPosition(const STXRecord &rec, pos_t pos, const vector<string> &
     return 0;
 }
 
-void STXMap::buildOffsetMap()
+void STXMap::buildMaps()
 {
-    for (const auto& i: stxList) {
-        const string& stx_chrname = i.stxChrname;
-        offsetMap[stx_chrname].push_back(i.stxOffset);
+    for (const auto& rec: stxList) {
+
+        const string& stx_chrname = rec.stxChrname;
+
+        offsetMap[stx_chrname].push_back(rec.stxOffset);
+
+        record_map_t key = record_map_t(stx_chrname, rec.stxOffset);
+        recordMap[key] = (STXRecord *)&rec;
+
+        geneMap[rec.gene] = (STXRecord *)&rec;
     }
 
     for (auto& key_value: offsetMap) {
@@ -445,22 +474,11 @@ void STXMap::buildOffsetMap()
 
 #ifdef DEBUGLOG
     cerr << "Total count of str_chrname: " << offsetMap.size() << endl;
-#endif
-}
-
-void STXMap::buildRecordMap()
-{
-    for (const auto& rec: stxList) {
-        record_map_t key = record_map_t(rec.stxChrname, rec.stxOffset);
-        recordMap[key] = (STXRecord *)&rec;
-
-        geneMap[rec.gene] = (STXRecord *)&rec;
-    }
-
-#ifdef DEBUGLOG
     cerr << "Total number of record_map: " << recordMap.size() << endl;
 #endif
+
 }
+
 
 pos_t STXMap::findOffset(const string &stxChrname, pos_t pos)
 {
@@ -531,6 +549,44 @@ string STXMap::cigarListToString(const vector<CIGAR> &cigarList)
     return ss.str();
 }
 
+int STXRecord::findTIDs(const vector<int> &bit_list, vector<string> &out_tids) const
+{
+    BitVector bitVector(bitWidth);
+    BitVector bitMask(bitWidth);
+
+    bitVector.all_clear();
+    bitMask.all_clear();
+
+    // Mask
+    for (int i = bit_list.front(); i <= bit_list.back(); i++) {
+        bitMask.set(i, 1);
+    }
+
+    for (const auto& i: bit_list) {
+        bitVector.set(i, 1);
+    }
+
+    cerr << "bitMask: " << bitMask.to_str() << ", bitVector: " << bitVector.to_str() << endl;
+
+
+
+    for (const auto& tidmap : tidList) {
+        const BitVector& tid_bitvector = tidmap.first;
+
+#ifdef DEBUGLOG
+        for (const auto& r : tidList) {
+            cerr << r.first.to_str() << ", " << (tid_bitvector & bitMask).to_str() << ", " << r.second << endl;
+        }
+#endif
+
+        if ((tid_bitvector & bitMask) == bitVector) {
+            out_tids.push_back(tidmap.second);
+        }
+    }
+
+    return 0;
+}
+
 ostream& operator<<(ostream& os, const STXExon& stx)
 {
     os << stx.chrname << ":" << stx.pos << ":" << stx.len;
@@ -570,18 +626,33 @@ ostream& operator<<(ostream& os, const STXRecord& rec)
 void STXMap::test(const string& fname)
 {
     loadFromMap(fname);
-    loadFromTIDMap("genome.gt.tmap");
+    //loadFromTIDMap("genome.gt.tmap");
+    loadFromTIDMap("22.gt.tmap");
 
     string tmp_str;
     pos_t tmp_pos;
 
-    mapPosition("17_tome", 757220, tmp_str, tmp_pos);
-    mapPosition("2_tome", 358917, tmp_str, tmp_pos);
-    mapPosition("2_tome", 362166, tmp_str, tmp_pos);
+    if (mapPosition("17_tome", 757220, tmp_str, tmp_pos) < 0) {
+        cerr << "Can't find position" << endl;
+    }
 
-    mapPosition("22_tome", 0, tmp_str, tmp_pos);
-    mapPosition("22_tome", 3498419 + 5870 , tmp_str, tmp_pos);
-    mapPosition("1_tome", 4179 , tmp_str, tmp_pos);
+    if (mapPosition("2_tome", 358917, tmp_str, tmp_pos) < 0) {
+        cerr << "Can't find position" << endl;
+    }
+
+    if (mapPosition("2_tome", 362166, tmp_str, tmp_pos) < 0 ) {
+        cerr << "Can't find position" << endl;
+    }
+
+    if (mapPosition("22_tome", 0, tmp_str, tmp_pos) < 0) {
+        cerr << "Can't find position" << endl;
+    }
+    if (mapPosition("22_tome", 3498419 + 5870 , tmp_str, tmp_pos) < 0) {
+        cerr << "Can't find position" << endl;
+    }
+    if (mapPosition("1_tome", 4179 , tmp_str, tmp_pos) < 0) {
+        cerr << "Can't find position" << endl;
+    }
 
     const string cigar = "1M53N1187M355N12M";
     vector<CIGAR> cigars;
@@ -603,13 +674,23 @@ void STXMap::test(const string& fname)
     cerr << "Construct from list: " <<  cigarListToString(cigars) << endl;
 
 
-    Position old("22_tome", 496021, "53M486N47M");
+    //Position old("22_tome", 377316, "100M");
+    Position old("22_tome", 406553, "100M");
     Position n;
 
     int ret = mapPosition(old, n);
     cerr << "map_position: " << ret << endl;
-    cerr << "\t" << old.chrname << ":" << old.pos << ":" << old.cigar << endl;
-    cerr << "\t" << n.chrname << ":" << n.pos << ":" << n.cigar << ":" << n.gene << endl;
+    if (ret == 0) {
+        cerr << "\t" << old.chrname << ":" << old.pos << ":" << old.cigar << endl;
+        cerr << "\t" << n.chrname << ":" << n.pos << ":" << n.cigar << ":" << n.gene << ", " << "# tid: " << n.transcripts.size() << endl;
+
+        for (const auto& t: n.transcripts) {
+            cerr << "\t\t" << t << endl;
+        }
+    } else {
+        cerr << "Can't find position" << endl;
+    }
+
 
     return;
 }

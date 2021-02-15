@@ -40,80 +40,17 @@ public:
     ~BitVector() {};
 
 
-
 public:
-    void resize(size_t n_bit_len)
-    {
-        data.resize(0);
+    void resize(size_t n_bit_len);
 
-        int data_len = (n_bit_len + bit_per_data - 1) / bit_per_data;
-        data.resize(data_len);
+    int get(size_t pos) const;
+    int set(size_t pos, int value);
 
-        bit_len = n_bit_len;
-    }
+    bool cmp_mask(const BitVector& b, const BitVector& m) const;
 
-    int get(size_t pos) const
-    {
-        if (data.empty() || pos >= bit_len) {
-            return -1;
-        }
-
-        size_t index = pos / bit_per_data;
-        size_t offset = pos % bit_per_data;
-
-        uint32_t t = data[index];
-
-        return (t >> offset) & 0x1;
-    }
-
-    int set(size_t pos, int value)
-    {
-        if (data.empty() || pos >= bit_len) {
-            return -1;
-        }
-
-        size_t index = pos / bit_per_data;
-        size_t offset = pos % bit_per_data;
-
-        uint32_t m = 1 << offset;
-
-        if (value > 0) {
-            // set
-            data[index] |= m;
-        } else {
-            // clear
-            data[index] &= ~m;
-        }
-        return value > 0;
-    }
-
-    bool cmp_mask(const BitVector& b, const BitVector& m) const
-    {
-        if (bit_len != b.bit_len || bit_len != m.bit_len) {
-            return false;
-        }
-
-        for (int i = 0; i < bit_len; i++) {
-            int v1 = get(i) & m.get(i);
-            int v2 = b.get(i) & m.get(i);
-            if (v1 != v2) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    void all_set() {
-        for (int i = 0; i < bit_len; i++) {
-            set(i, 1);
-        }
-    }
-    void all_clear() {
-        for (int i = 0; i < bit_len; i++) {
-            set(i, 0);
-        }
-    }
+    void all_set();
+    void all_clear();
+    void load_from_hex(const string& hex_str);
 
 private:
     vector<uint32_t> data;
@@ -160,38 +97,10 @@ public:
         return !operator==(b);
     }
 
-    string to_str()
-    {
-        string tstr;
+    BitVector operator&(const BitVector& b) const;
 
-        for(int i = bit_len - 1; i >= 0; i--) {
-            tstr.push_back(get(i) ? '1':'0');
-        }
-
-        return tstr;
-    }
-
-    string to_hex()
-    {
-        char buf[32];
-        string tstr;
-
-        for (int i = 0; i < data.size() - 1; i++) {
-            snprintf(buf, 32,"%08X", data[i]);
-            tstr = string(buf) + tstr;
-        }
-
-        snprintf(buf, 32, "%08X", data.back());
-        string msb_str(buf);
-
-        int rlen = bit_len % bit_per_data;
-        if (rlen) {
-            rlen = (rlen + 3) / 4;
-
-            tstr = msb_str.substr(msb_str.length() - rlen, rlen) + tstr;
-        }
-        return tstr;
-    }
+    string to_str() const;
+    string to_hex(bool bTrimLeadingZero = false) const;
 
 };
 

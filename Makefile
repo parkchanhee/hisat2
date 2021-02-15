@@ -157,7 +157,8 @@ QUANT_CPPS = \
 	random_source.cpp tinythread.cpp
 
 STX_CPPS = \
-	stx.cpp
+	stx.cpp \
+	bitvector.cpp
 
 HISAT2_CPPS_MAIN = $(SEARCH_CPPS) hisat2_main.cpp
 HISAT2_BUILD_CPPS_MAIN = $(BUILD_CPPS) hisat2_build_main.cpp
