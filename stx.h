@@ -127,7 +127,7 @@ public:
      * @param pos_chr
      * @return
      */
-    int mapPosition(const string& stxChrname, const pos_t stxPos,
+    int mapPosition(const string& stxChrname, pos_t stxPos,
                      string& chrname, pos_t& posChr);
 
     int mapPosition(const Position& inPosition, Position& outPosition);

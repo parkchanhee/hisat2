@@ -43,9 +43,6 @@ public:
 public:
     void resize(size_t n_bit_len);
 
-    int get(size_t pos) const;
-    int set(size_t pos, int value);
-
     bool cmp_mask(const BitVector& b, const BitVector& m) const;
 
     void all_set();
@@ -55,6 +52,9 @@ public:
 private:
     vector<uint32_t> data;
     size_t bit_len;
+
+    int get(size_t pos) const;
+    int set(size_t pos, int value);
 
 public:
     struct BitVector_Proxy {
@@ -71,8 +71,10 @@ public:
             bitVector.set(pos, value);
             return *this;
         }
+        operator int() const {
+            return bitVector.get(pos);
+        }
     };
-
 
 public:
     BitVector_Proxy operator[](size_t pos)

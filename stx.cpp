@@ -230,7 +230,7 @@ void STXMap::saveToMap(ostream &os)
     }
 }
 
-int STXMap::mapPosition(const string &stxChrname, const pos_t stxPos, string &chrname, pos_t &posChr)
+int STXMap::mapPosition(const string &stxChrname, pos_t stxPos, string &chrname, pos_t &posChr)
 {
     pos_t offset = findOffset(stxChrname, stxPos);
     if (offset == INVALID_POS) {
@@ -597,11 +597,11 @@ int STXRecord::findTIDs(const vector<int> &bit_list, vector<string> &out_tids) c
 
     // Mask
     for (int i = bit_list.front(); i <= bit_list.back(); i++) {
-        bitMask.set(i, 1);
+        bitMask[i] = 1;
     }
 
     for (const auto& i: bit_list) {
-        bitVector.set(i, 1);
+        bitVector[i] = 1;
     }
 
 //    cerr << "bitMask: " << bitMask.to_str() << ", bitVector: " << bitVector.to_str() << endl;

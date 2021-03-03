@@ -53,10 +53,9 @@ void bitvector_test()
     BitVector bit(33);
     BitVector bit2(32);
 
-
     for (int i = 0; i < 12; i++) {
-        bit.set(i, 1);
-        bit2.set(i, 1);
+        bit[i] = 1;
+        bit2[i] = 1;
     }
 
     if (bit == bit2) {
@@ -64,6 +63,9 @@ void bitvector_test()
     } else {
         cerr << "Different" << endl;
     }
+
+    float zz = bit[2];
+    cout << "zz " << zz << endl;
 
     bit[0] = 0;
     bit[4] = 0;
@@ -126,11 +128,8 @@ void sam_parse(const string& fname)
             continue;
         }
 
-
         SAMRecord sam;
-
         sam.parse_from_line(linebuf);
-
 
         cout << sam << endl;
         if (stxmap.mapPosition(sam) < 0) {
