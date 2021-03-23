@@ -1,3 +1,4 @@
-[submodule "simde"]
-	path = simde
-	url = https://github.com/nemequ/simde-no-tests
+[submodule "third_party/simde"]
+	path = third_party/simde
+	url = https://github.com/simd-everywhere/simde-no-tests.git
+	branch = master
