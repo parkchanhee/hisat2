@@ -20,13 +20,11 @@
 #ifndef SSE_UTIL_H_
 #define SSE_UTIL_H_
 
-#define SIMDE_ENABLE_NATIVE_ALIASES
-#include <simde/x86/sse2.h>
-
 #include "assert_helpers.h"
 #include "ds.h"
 #include "limit.h"
 #include <iostream>
+#include "sse_wrap.h"
 
 class EList_m128i {
 public:
