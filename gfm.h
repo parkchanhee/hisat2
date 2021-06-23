@@ -1679,7 +1679,8 @@ public:
                         ss_file >> left >> right >> strand;
                         // Convert exonic position to intronic position
                         left += 1; right -= 1;
-                        if(left >= right) continue;
+                        // if(left >= right) continue;
+                        if(left > right) continue;
                         index_t chr_idx = 0;
                         for(; chr_idx < _refnames_nospace.size(); chr_idx++) {
                             if(chr == _refnames_nospace[chr_idx])
