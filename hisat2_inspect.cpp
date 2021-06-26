@@ -469,7 +469,7 @@ static void print_splicesites(
     for(size_t i = 0; i < alts.size(); i++) {
         const ALT<index_t>& alt = alts[i];
         if(!alt.splicesite()) continue;
-        if(alt.left >= alt.right) continue;
+        if(alt.left > alt.right) continue;
         if(!splicesite_all_only && alt.excluded) continue;
         index_t tidx = 0, toff = 0, tlen = 0;
         bool straddled2 = false;
@@ -631,7 +631,7 @@ static void print_index_summary(
         if(alt.snp()) {
             numSnps++;
         } else if(alt.splicesite()) {
-            if(alt.left < alt.right) {
+            if(alt.left <= alt.right) {
                 numSpliceSites++;
             }
         } else if(alt.exon()) {
